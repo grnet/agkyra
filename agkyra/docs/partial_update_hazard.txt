@@ -1,0 +1,51 @@
+
+Consider a shell script file with the following segment:
+
+  # Run tests
+  TDIR=./test-data
+  ./test $TDIR
+  rm -rf $TDIR
+
+Consider a small change:
+
+  # Run tests in subdir
+  TDIR=./test-data
+  ./test $TDIR
+  rm -rf $TDIR
+
+Consider the byte strings for the two segments above:
+
+"# Run tests\nTDIR=./test-data\n./test $TDIR\nrm -rf $TDIR\n"
+"# Run tests in subdir\nTDIR=./test-data\n./test $TDIR\nrm -rf $TDIR\n"
+                             ^^
+                             ||
+        Previous page <------  -----> Next page
+                             VV
+                         Memory page
+                            boundary
+
+If the second version of the file is partially updated so that only the
+previous page is updated then the resulting segment is:
+
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n./test $TDIR\nrm -rf $TDIR\n"
+"# Run tests in subdir\nTDIR=.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+  # Run tests in subdir
+  TDIR=.
+  ./test $TDIR
+  rm -rf $TDIR
+
+The last command inadvertently removes the PARENT of the directory
+intended for removal. This will result in unintended loss of data.
+
+For this reason, a partial update is not safe to perform.
+But how to avoid it?
+
+Partial update is a hazard both while reading the source file and while
+writing the target file.
+
+For reading a file, one can wait until nobody has write access and
+then exclude all writers until the file has been read.
+
+For writing a file, one can write a new file and when complete,
+atomically replace the old file.

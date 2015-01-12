@@ -1,0 +1,75 @@
+Overview
+~~~~~~~~
+
+Synchronizing between two copies of the same file is clean when only one
+of them has changed since the last successful synchronization. If both
+of them have changed, then there are in general three possibilities:
+
+1. Merge the two changes to obtain the next common version of the file,
+   avoiding, or automatically resolving any conflicts. This requires
+   knowledge of the semantics of the changes.
+
+2. Abort the synchronization and either block further changes until
+   conflict resolution is performed externally, or let the versions
+   diverge.
+
+3. Choose one side, the master side, that will force its version onto
+   the other, slave side, so that synchronization is always achieved.
+   The slave's changes, however can be preserved as a branching remnant
+   of the conflict so that there is no data loss.
+
+The first solution can't be general enough for arbitrary user files.
+Eventually, the user is the one responsible to make up their mind and
+resolve a conflict. If the user has two computers and is writing a poem,
+there is no way the system can automatically resolve the conflicting use
+between two words in a way that satisfies the user.
+
+Aborting synchronization or letting the versions diverge defeats the
+purpose of synchronization. The user can copy a file and produce
+diverging versions as they see fit.
+
+Therefore, the only practical option is to force one side's version onto
+another and preserve any conflicting changes separately archived. The
+concern is that the user must not lose data because of a conflict.
+Rather, they must be able to review the conflicting changes and decide
+what to do with them themselves.
+
+Synchronize-Update Race
+~~~~~~~~~~~~~~~~~~~~~~~
+
+In synchronizing two files, say A/alpha and B/alpha, there is a race
+between those who introduce new changes to the files and the system that
+keeps the files synchronized. The decision to copy one version onto
+another, for example A/alpha -> B/alpha is made after examining the
+contents of both versions.
+
+However, by the time that the copying takes place, either of the two
+versions could have been updated, obsoleting the states which the
+decision was based on. A straightforward solution is to keep both files
+locked as the synchronization is running.
+
+Locking both files, which may include remote systems, is not at all
+practical. The synchronization may take time for data inspection and
+transfers, and loss of connectivity may result in inaccessible files.
+This greatly reduces usability.
+
+Lost-Conflict Hazard
+~~~~~~~~~~~~~~~~~~~~
+
+Instead, we choose to be optimistic and not lock anything. Instead we
+prepare the synchronization without yet committing to it, even based on
+potentially stale state. However, at the last moment, just before we
+make the new version of the updated file visible, we check that it is
+indeed the same version we started with and that no changes have been
+made to it as we were preparing to update it.
+
+This last step must perform the committing update and the check
+atomically. Otherwise, concurrent updates to the file will remain unseen
+and therefore discarded, when they should have been archived as a
+conflict. Hence, the lost-conflict hazard.
+
+Performing a commit-if-unchanged action at the end still requires
+synchronization but the action can be compressed in a single point in
+time and at a single computer. Locking would create a critical time
+period among different machines where all but one would be denied
+access.

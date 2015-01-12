@@ -1,0 +1,101 @@
+"""
+    Sketch for a safe asynchronous syncer
+
+    The syncer is built around a database, and facilitates synchronization
+    between filesystem-like archives. Separate clients to each of the
+    archives are responsible for triggering and applying syncer decisions.
+
+    The syncer is based on the following practical concerns:
+
+    - The decision to synchronize a path must have access to both master and
+      slave live states, which cannot be considered always current, because
+      that would require locking both archives. Therefore the syncer must
+      operate asynchronously, optimistically but safely.
+
+    - Due to the asynchronous nature of the process, conflicts cannot be
+      centrally declared, but must be handled by the clients that update
+      each archive.
+
+    - Clients must be able to atomically update files defeating the partial
+      update, and the lost conflict hazard.
+
+
+    The 'syncer' has access to a database and to two 'clients',
+    the MASTER and the SLAVE. Each client can access a file-system-like
+    repository called an 'archive'.
+
+    For each path in each archive there is a state in the syncer's
+    database. This state is updated by 'probing' a specific archive
+    path through a client. The client is given the old state registered
+    in the database and if it detects that the path has changed it
+    reports a new state back.
+
+    Thus far the syncer maintains state for each archive separately.
+    The next step is to synchronize a path between the archives.
+    The idea is that all archives the syncer is connected to are views
+    of the same file repository and therefore they should all have the
+    same contents.
+
+    To keep track this one 'true' state of a path, the syncer maintains
+    a special 'SYNC' archive in the database. The state in this path
+    is the last acknowledged state that was synchronized across the
+    archives.
+
+    All deviations from the state in the SYNC archives are considered
+    new changes and are propagated. When new changes occur in both
+    archives, then the MASTER's version gets propagated and the SLAVE's
+    version gets conflicted, and is stashed away.
+
+    The syncer's operation for each path follows a simple state machine:
+
+       probe -> update()
+                        decide()        acknowledge()
+                  |
+                  |       |                  |
+                  V       V +--> PUSHING --+ V
+                DECIDING ---|              |---> IDLE
+                            +--> PULLING --+
+
+                           |                |
+                           +----------------+
+                                 Syncing
+
+    A probe only ends in an update() if it detects a change in state.
+    decide() changes the state of two paths, the path in the archive
+    that was changed goes into PUSHING while the path in the archive
+    that will receive the change goes into PULLING.
+
+    Along with these transitions, the PUSHING client is told to 'stage'
+    the changed file. Staging a file provides a handle to enable
+    communication between the two clients so that the PULLING client
+    can pull it.
+
+    After the pulling client has committed the changes onto its archive,
+    it calls back with acknowledge(), that puts the new state into the
+    SYNC archive and tells the pushing client to unstage the file.
+
+    So the state machine runs in a loop, from IDLE to DECIDING and back
+    to IDLE. Each such loop has a serial number. This number is used to
+    defend against old or double calls. Each probe records this serial
+    and its update() will not succeed if the serial has changed.
+    Likewise, each pulling records the serial and its acknowledge will
+    not have an effect if the serial has changed.
+
+    This mechanism can also defend against failures. An update() will
+    always set the state to DECIDING even if there is a pulling going
+    on concurrently. The new sync cycle will race the old one but only
+    one will prevail.
+
+    To ensure that, serials must never be reissued, and the pulling
+    of the changes in an archive must be atomic and only applied if
+    the state of the archive is identical with the SYNC state in the
+    syncer's database.
+
+    Other than that, the database can safely rewind to previous
+    state (e.g. lose changes not committed to disk) provided that
+    the serials are never re-issued.
+
+    The clients must strictly observe the order of serials in the
+    commands for probing or staging or pulling. A command must not
+    be executed unless the associated serial exceeds every past serial.
+"""
