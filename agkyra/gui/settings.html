@@ -1,0 +1,54 @@
+<html>
+<head>
+  <title>Agira client settings</title>
+  <style>
+    @import url('foundation.min.css');
+  </style>
+</head>
+<body>
+  <form>
+
+    <h1>Account settings</h1>
+
+    <h2>Cloud:</h2>
+    <div class="row">
+      <div class="large-12 columns">
+        <label>Cloud URL
+          <input type="text" placeholder="Authentication URL"/>
+        </label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="large-12 columns">
+        <label>Token
+          <input type="text" placeholder="User token"/>
+        </label>
+      </div>
+    </div>
+
+    <h2>What to sync:</h2>
+    <div class="row">
+      <div class="large-4 columns">
+        <label>Remote container
+          <input type="text" value="pithos"/>
+        </label>
+      </div>
+      <div class="large-4 columns">
+        <label>Local directory
+          <input type="file" nwdirectory />
+        </label>
+      </div>
+      <script>var gui=require('nw.gui');</script>
+      <div class="large-4 columns">
+        <label>Exclude these items from syncing
+          <input
+            type="button"
+            onclick="gui.Shell.openItem('logs.txt');"/>
+        </label>
+      </div>
+    </div>
+
+  </form>
+
+</body>
+</html>

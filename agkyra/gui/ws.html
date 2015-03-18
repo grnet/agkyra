@@ -1,0 +1,20 @@
+<html><head>
+<script>
+
+    // Read config file
+        var socket = new WebSocket("ws://83.212.96.33:8888");
+        socket.onopen = function() {
+          console.log('open dude!');
+          this.send('Hello World!');
+        };
+        socket.onmessage = function(e) {
+          console.log('message', e.data);
+        };
+        socket.onerror = function() {
+          console.log('error');
+        };
+        socket.onclose = function(e) {
+          console.log('close', e.code, e.reason);
+        };
+</script>
+</head><body></body></html>
