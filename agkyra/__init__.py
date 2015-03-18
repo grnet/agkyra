@@ -7,6 +7,9 @@ from tempfile import NamedTemporaryFile
 import subprocess
 import json
 from os.path import abspath
+from threading import Thread
+from hashlib import sha256
+from os import urandom
 
 from ws4py.client import WebSocketBaseClient
 
@@ -14,51 +17,58 @@ from ws4py.client import WebSocketBaseClient
 class GUILauncher(WebSocketBaseClient):
     """Launch the GUI when the helper server is ready"""
 
-    def __init__(self, port, gui_exec_path, token):
-        super(GUILauncher, self).__init__('ws://localhost:%s' % port)
-        self.port = port
+    def __init__(self, addr, gui_exec_path, token):
+        """Initialize the GUI Launcher"""
+        super(GUILauncher, self).__init__(addr)
+        self.addr = addr
         self.gui_exec_path = gui_exec_path
         self.token = token
 
     def handshake_ok(self):
+        """If handshake is OK, the helper is UP, so the GUI can be launched
+        If the GUI is terminated for some reason, the WebSocket is closed"""
         with NamedTemporaryFile(mode='a+') as fp:
-            json.dump(dict(token=self.token, port=self.port), fp)
+            json.dump(dict(token=self.token, address=self.addr), fp)
             fp.flush()
+            # subprocess.call blocks the execution
             subprocess.call([
                 '/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw',
                 abspath('gui/gui.nw'),
                 fp.name])
+        self.close()
 
 
-class Helper(object):
-    """Coordination between the GUI and the Syncer instances
+def setup_server(token, port=0):
+    """Setup and return the helper server"""
+    WebSocketProtocol.token = token
+    server = make_server(
+        '', port,
+        server_class=WSGIServer,
+        handler_class=WebSocketWSGIRequestHandler,
+        app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
+    server.initialize_websockets_manager()
+    # self.port = server.server_port
+    return server
 
-    Setup a minimal server at a ephemeral port, create a random token, dump
-    this information in a local file and launch the GUI with this file as a
-    parameter.
-    Then the GUI connects and a WebSocket is established.
 
-    """
+def random_token():
+    return 'random token'
 
-    def __init__(self, gui_exec_path, port=0):
-        self.server = self.setup_server(port)
-        self.port = self.server.server_port
-        self.token = 'some random token'
-        self.gui_exec_path = gui_exec_path
 
-    def setup_server(self, port=0):
-        server = make_server(
-            '', port,
-            server_class=WSGIServer,
-            handler_class=WebSocketWSGIRequestHandler,
-            app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
-        server.initialize_websockets_manager()
-        # self.port = server.server_port
-        return server
+def run(gui_exec_path):
+    """Prepare helper and GUI and run them in the proper order"""
+    token = sha256(urandom(256)).hexdigest()
+    server = setup_server(token)
+    addr = 'ws://localhost:%s' % server.server_port
 
-    def run(self):
-        gui = GUILauncher(self.port, self.gui_exec_path, self.token)
-        gui.connect()
-        self.server.serve_forever()
+    gui = GUILauncher(addr, gui_exec_path, token)
+    Thread(target=gui.connect).start()
 
-Helper('ls').run()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print 'Shutdown GUI'
+        gui.close()
+
+if __name__ == '__main__':
+    run('/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw gui.nw')

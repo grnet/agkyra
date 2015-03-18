@@ -36,6 +36,14 @@ class WebSocketProtocol(WebSocket):
         {"ERROR": <error code>, "MESSAGE": <message>}
     """
 
-    def __init__(self, *args, **kwargs):
-        super(WebSocketProtocol, self).__init__(*args, **kwargs)
-        print 'lala'
+    token = None
+
+    def opened(self):
+        print 'A connection is open', self.token
+
+    def closed(self, *args):
+        print 'A connection is closed', args
+
+    def received_message(self, message):
+        print 'Got message', message
+        self.send(message)
