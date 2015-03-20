@@ -3,72 +3,105 @@ from wsgiref.simple_server import make_server
 from protocol import WebSocketProtocol
 from ws4py.server.wsgirefserver import WSGIServer, WebSocketWSGIRequestHandler
 from ws4py.server.wsgiutils import WebSocketWSGIApplication
+from ws4py.client import WebSocketBaseClient
 from tempfile import NamedTemporaryFile
 import subprocess
 import json
 from os.path import abspath
 from threading import Thread
-from hashlib import sha256
-from os import urandom
+from hashlib import sha1
+import os
+import logging
 
-from ws4py.client import WebSocketBaseClient
+
+LOG = logging.getLogger(__name__)
 
 
-class GUILauncher(WebSocketBaseClient):
+class GUI(WebSocketBaseClient):
     """Launch the GUI when the helper server is ready"""
 
-    def __init__(self, addr, gui_exec_path, token):
+    def __init__(self, addr, gui_exec_path, gui_id):
         """Initialize the GUI Launcher"""
-        super(GUILauncher, self).__init__(addr)
+        super(GUI, self).__init__(addr)
         self.addr = addr
         self.gui_exec_path = gui_exec_path
-        self.token = token
+        self.gui_id = gui_id
+        self.start = self.connect
+
+    def run_gui(self):
+        """Launch the GUI and keep it running, clean up afterwards.
+        If the GUI is terminated for some reason, the WebSocket is closed and
+        the temporary file with GUI settings is deleted.
+        In windows, the file must be closed before the GUI is launched.
+        """
+        # NamedTemporaryFile creates a file accessible only to current user
+        LOG.debug('Create temporary file')
+        with NamedTemporaryFile(delete=False) as fp:
+            json.dump(dict(gui_id=self.gui_id, address=self.addr), fp)
+        # subprocess.call blocks the execution
+        LOG.debug('RUN: %s %s' % (self.gui_exec_path, fp.name))
+        subprocess.call([
+            '/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw',
+            # self.gui_exec_path,
+            abspath('gui/gui.nw'),
+            fp.name])
+        LOG.debug('GUI process closed, remove temp file')
+        os.remove(fp.name)
 
     def handshake_ok(self):
-        """If handshake is OK, the helper is UP, so the GUI can be launched
-        If the GUI is terminated for some reason, the WebSocket is closed"""
-        with NamedTemporaryFile(mode='a+') as fp:
-            json.dump(dict(token=self.token, address=self.addr), fp)
-            fp.flush()
-            # subprocess.call blocks the execution
-            subprocess.call([
-                '/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw',
-                abspath('gui/gui.nw'),
-                fp.name])
+        """If handshake is OK, the helper is UP, so the GUI can be launched"""
+        self.run_gui()
+        LOG.debug('Close GUI wrapper connection')
         self.close()
 
 
-def setup_server(token, port=0):
-    """Setup and return the helper server"""
-    WebSocketProtocol.token = token
-    server = make_server(
-        '', port,
-        server_class=WSGIServer,
-        handler_class=WebSocketWSGIRequestHandler,
-        app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
-    server.initialize_websockets_manager()
-    # self.port = server.server_port
-    return server
+class HelperServer(object):
+    """Agkyra Helper Server sets a WebSocket server with the Helper protocol
+    It also provided methods for running and killing the Helper server
+    :param gui_id: Only the GUI with this ID is allowed to chat with the Helper
+    """
 
+    def __init__(self, port=0):
+        """Setup the helper server"""
+        self.gui_id = sha1(os.urandom(128)).hexdigest()
+        WebSocketProtocol.gui_id = self.gui_id
+        server = make_server(
+            '', port,
+            server_class=WSGIServer,
+            handler_class=WebSocketWSGIRequestHandler,
+            app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
+        server.initialize_websockets_manager()
+        self.server, self.port = server, server.server_port
 
-def random_token():
-    return 'random token'
+    def start(self):
+        """Start the helper server in a thread"""
+        Thread(target=self.server.serve_forever).start()
+
+    def shutdown(self):
+        """Shutdown the server (needs another thread) and join threads"""
+        t = Thread(target=self.server.shutdown)
+        t.start()
+        t.join()
 
 
 def run(gui_exec_path):
     """Prepare helper and GUI and run them in the proper order"""
-    token = sha256(urandom(256)).hexdigest()
-    server = setup_server(token)
-    addr = 'ws://localhost:%s' % server.server_port
+    server = HelperServer()
+    addr = 'ws://localhost:%s' % server.port
+    gui = GUI(addr, gui_exec_path, server.gui_id)
 
-    gui = GUILauncher(addr, gui_exec_path, token)
-    Thread(target=gui.connect).start()
+    LOG.info('Start helper server')
+    server.start()
 
     try:
-        server.serve_forever()
+        LOG.info('Start GUI')
+        gui.start()
     except KeyboardInterrupt:
-        print 'Shutdown GUI'
+        LOG.info('Shutdown GUI')
         gui.close()
+    LOG.info('Shutdown helper server')
+    server.shutdown()
 
 if __name__ == '__main__':
-    run('/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw gui.nw')
+    logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)
+    run(abspath('gui/app'))
