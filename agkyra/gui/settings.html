@@ -1,54 +1,84 @@
-<html>
-<head>
-  <title>Agira client settings</title>
-  <style>
-    @import url('foundation.min.css');
-  </style>
-</head>
-<body>
-  <form>
+<!DOCTYPE html>
+    <head>
+        <title>User Settings</title>
+        <link rel="stylesheet" href="static/stylesheets/normalize.css" />
+        <link rel="stylesheet" href="static/stylesheets/main.css" />
+        <script src="static/js/jquery.js"></script>
+        <script src="static/js/common.js"></script>
+    </head>
 
-    <h1>Account settings</h1>
+    <body>
+        <div class="row js-main">
+            <header>
+            <h2>&nbsp;<img src="static/images/about.png" style="width: 16; height: 16;"/>&nbsp;User Settings</h2>
+            </header>
+            <form>
+                <div class="row">
+                    <div class="small-8 columns">
+                        <fieldset>
+                            <legend>Cloud</legend>
+                            <div class="row error">
+                                <div class="small-3 columns">
+                                    <label for="cloud-url" class="right inline">Cloud URL</label>
 
-    <h2>Cloud:</h2>
-    <div class="row">
-      <div class="large-12 columns">
-        <label>Cloud URL
-          <input type="text" placeholder="Authentication URL"/>
-        </label>
-      </div>
-    </div>
-    <div class="row">
-      <div class="large-12 columns">
-        <label>Token
-          <input type="text" placeholder="User token"/>
-        </label>
-      </div>
-    </div>
+                                </div>
+                                <div class="small-9 columns">
+                                    <input type="text" id="cloud-url" placeholder="Authentication URL">
+                                    <small class="error">Invalid entry</small>
+                                </div>
+                            </div>
 
-    <h2>What to sync:</h2>
-    <div class="row">
-      <div class="large-4 columns">
-        <label>Remote container
-          <input type="text" value="pithos"/>
-        </label>
-      </div>
-      <div class="large-4 columns">
-        <label>Local directory
-          <input type="file" nwdirectory />
-        </label>
-      </div>
-      <script>var gui=require('nw.gui');</script>
-      <div class="large-4 columns">
-        <label>Exclude these items from syncing
-          <input
-            type="button"
-            onclick="gui.Shell.openItem('logs.txt');"/>
-        </label>
-      </div>
-    </div>
+                            <div class="row error">
+                                <div class="small-3 columns">
+                                    <label for="token" class="right inline">Token</label>
+                                </div>
+                                <div class="small-9 columns">
+                                    <input type="text" id="token" placeholder="User token">
+                                    <small class="error">Invalid entry</small>
+                                </div>
+                             </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>What to sync</legend>
+                            <div class="row">
+                                <div class="small-3 columns">
+                                    <label for="container" class="right inline">Remote container</label>
+                                </div>
+                                <div class="small-9 columns">
+                                    <input type="text" id="container" value="pithos">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="small-3 columns">
+                                    <label for="" class="right inline">Local directory</label>
+                                </div>
+                                <div class="small-9 columns">
+                                    <input type="file" nwdirectory />
+                                </div>
+                                <script>var gui=require('nw.gui');</script>
+                            </div>
+                            <div class="row">
+                                <div class="small-3 columns">
+                                    <label for="" class="right inline">Exclude these items from syncing</label>
+                                </div>
+                                <div class="small-9 columns">
+                                    <textarea>tmp/
+skata*</textarea>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <div class="clearfix">
+                            <a class="button right">Sync</a>
+                        </div>
+                    </div>
 
-  </form>
+                    <div class="small-4 columns">
+                        <p class="panel">I have no idea what will happen if I put my credentials there...<br>My space could be used to explain what is going on here.</p>
+                    </div>
 
-</body>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </body>
 </html>
