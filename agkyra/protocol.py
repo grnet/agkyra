@@ -61,11 +61,13 @@ class WebSocketProtocol(WebSocket):
         directory='/tmp/.',
         exclude='agkyra.log',
         pithos_url='https://pithos.okeanos.grnet.gr/ui/')
-    status = dict(progress=-1, paused=False)
+    status = dict(progress=0, paused=False)
 
     # Syncer-related methods
     def get_status(self):
-        self.status['progress'] += 1
+        from random import randint
+        if self.status['progress'] < 100:
+            self.status['progress'] += 0 if randint(0, 2) else 1
         return self.status
 
     def get_settings(self):

@@ -131,37 +131,39 @@ function closeWindows() {
 var tray = new gui.Tray({
   // tooltip: 'Paused (0% synced)',
   title: 'Agkyra syncs with Pithos+',
-  icon: 'icons/tray.png'
+  icon: 'images/tray.png'
 });
 
 var menu = new gui.Menu();
 
 // Progress and Pause
-var start_syncing = 'Start syncing';
-var pause_syncing = 'Pause syncing';
+var start_syncing = 'Start Syncing';
+var start_icon = 'images/play.png';
+var pause_syncing = 'Pause Syncing';
 var paused = true;
 
 progress_item = new gui.MenuItem({
   // progress menu item
   label: 'Initializing',
-  type: 'normal'
+  type: 'normal',
+  enabled: false
 });
 menu.append(progress_item);
+menu.append(new gui.MenuItem({type: 'separator'}));
 pause_item = new gui.MenuItem({
   // pause menu item
+  icon: 'images/play_pause.png',
   label: '',
   type: 'normal',
   click: function() {
-    if(paused) {post_start(socket);}
-    else {post_pause(socket);}
+    if (paused) {post_start(socket);} else {post_pause(socket);}
   }
 });
 pause_item.enabled = false;
 menu.append(pause_item);
 
 // Update progress
-
-function reset_status() {
+window.setInterval(function() {
   var status = globals['status'];
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
@@ -172,25 +174,22 @@ function reset_status() {
           // Update to "Paused - start syncing"
           paused = true;
           new_pause = start_syncing;
-          progress_item.enabled = false;
           menu_modified = true;
         } // else continue syncing
-        new_progress = 'Progress: ' + status['progress'] + '%';
+        new_progress = status['progress'] + '%' + ' synced';
       break;
       case start_syncing: if (status['paused']) return;
         // else update to "Syncing - pause syncing"
         paused = false;
         new_pause = pause_syncing;
-        progress_item.enabled = true;
-        new_progress = 'Progress: ' + status['progress'] + '%';
+        new_progress = status['progress'] + '%' + ' synced';
         menu_modified = true;
       break;
       default:
         if (status['paused']) {new_pause = start_syncing; paused=true;}
         else {new_pause = pause_syncing; paused=false;}
-        new_progress = 'Progress: ' + status['progress'] + '%';
+        new_progress = status['progress'] + '%' + ' synced';
         pause_item.enabled = true;
-        progress_item.enabled = true;
         menu_modified = true;
     }
   }
@@ -202,16 +201,17 @@ function reset_status() {
     progress_item.label = new_progress;
     menu_modified = true;
   }
-  if (menu_modified) tray.menu = menu;
+  if (menu_modified) {
+    if (paused) progress_item.label += ' - paused';
+    tray.menu = menu;
+  }
   get_status(socket);
-}
-window.setInterval(reset_status, 1000);
+}, 1500);
 
 // Menu actions contents
-menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
   label: 'Open local folder',
-  icon: 'icons/folder.png',
+  icon: 'images/folder.png',
   click: function () {
     var dir = globals['settings']['directory'];
     console.log('Open ' + dir);
@@ -221,7 +221,7 @@ menu.append(new gui.MenuItem({
 
 menu.append(new gui.MenuItem({
   label: 'Launch Pithos+ page',
-  icon: 'icons/pithos.png',
+  icon: 'images/pithos.png',
   click: function () {
     var pithos_url = globals['settings']['pithos_url'];
     console.log('Visit ' + pithos_url);
@@ -229,17 +229,11 @@ menu.append(new gui.MenuItem({
   }
 }));
 
-menu.append(new gui.MenuItem({
-  label: 'Recently changed files',
-  icon: 'icons/logs.png',
-  click: function () {gui.Shell.openItem('logs.txt');}
-}));
-
 // Settings and About
 menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
   label: 'Settings',
-  icon: 'icons/settings.png',
+  icon: 'images/settings.png',
   click: function () {
     if (windows['settings']) windows['settings'].close();
     windows['settings'] = gui.Window.open("settings.html", {
@@ -249,7 +243,7 @@ menu.append(new gui.MenuItem({
 
 menu.append(new gui.MenuItem({
   label: 'About',
-  icon: 'icons/about.png',
+  icon: 'images/about.png',
   click: function () {
     if (windows['about']) windows['about'].close();
     windows['about'] = gui.Window.open("about.html", {
@@ -261,7 +255,7 @@ menu.append(new gui.MenuItem({
 menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
   label: 'Quit Agkyra',
-  icon: 'icons/exit.png',
+  icon: 'images/exit.png',
   click: function() {post_shutdown(socket);}
 }));
 
