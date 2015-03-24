@@ -16,6 +16,14 @@ class WebSocketProtocol(WebSocket):
     -- SHUT DOWN --
     GUI: {"method": "post", "path": "shutdown"}
 
+    -- PAUSE --
+    GUI: {"method": "post", "path": "pause"}
+    HELPER: {"OK": 200} or error
+
+    -- start --
+    GUI: {"method": "post", "path": "start"}
+    HELPER: {"OK": 200} or error
+
     -- GET SETTINGS --
     GUI: {"method": "get", "path": "settings"}
     HELPER:
@@ -34,6 +42,7 @@ class WebSocketProtocol(WebSocket):
             "url": <auth url>,
             "container": <container>,
             "directory": <local directory>,
+            "pithos_url": <pithos URL>,
             "exclude": <file path>
         }
     HELPER: {"CREATED": 201} or {<ERROR>: <ERROR CODE>}
@@ -45,20 +54,28 @@ class WebSocketProtocol(WebSocket):
 
     gui_id = None
     accepted = False
+    settings = dict(
+        token='token',
+        url=' https://accounts.okeanos.grnet.gr/identity/v2.0',
+        container='pithos',
+        directory='/tmp/.',
+        exclude='agkyra.log',
+        pithos_url='https://pithos.okeanos.grnet.gr/ui/')
+    status = dict(progress=-1, paused=False)
 
     # Syncer-related methods
     def get_status(self):
-        self.progress = getattr(self, 'progress', -1)
-        self.progress += 1
-        return dict(progress=self.progress, paused=False)
+        self.status['progress'] += 1
+        return self.status
 
     def get_settings(self):
-        return dict(
-            token='token',
-            url='http://www.google.com',
-            container='pithos',
-            directory='~/tmp',
-            exclude='agkyra.log')
+        return self.settings
+
+    def pause_sync(self):
+        self.status['paused'] = True
+
+    def start_sync(self):
+        self.status['paused'] = False
 
     # WebSocket connection methods
     def opened(self):
@@ -74,10 +91,17 @@ class WebSocketProtocol(WebSocket):
     # Protocol handling methods
     def _post(self, r):
         """Handle POST requests"""
+        LOG.debug('CALLED with %s' % r)
         if self.accepted:
-            if r['path'] == 'shutdown':
+            action = r['path']
+            if action == 'shutdown':
                 self.close()
-            raise KeyError()
+                return
+            {
+                'start': self.start_sync,
+                'pause': self.pause_sync
+            }[action]()
+            self.send_json({'OK': 200})
         elif r['gui_id'] == self.gui_id:
             self.accepted = True
             self.send_json({'ACCEPTED': 202})
@@ -115,11 +139,12 @@ class WebSocketProtocol(WebSocket):
             LOG.error('JSON ERROR: %s' % ve)
             return
         try:
+            method = r.pop('method')
             {
                 'post': self._post,
                 'put': self._put,
                 'get': self._get
-            }[r.pop('method')](r)
+            }[method](r)
         except KeyError as ke:
             self.send_json({'BAD REQUEST': 400})
             LOG.error('KEY ERROR: %s' % ke)

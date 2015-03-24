@@ -1,4 +1,5 @@
 var gui = require('nw.gui');
+var path = require('path');
 
 // Read config file
 var fs = require('fs');
@@ -16,6 +17,7 @@ var globals = {
     'url': null,
     'container': null,
     'directory': null,
+    'pithos_url': null,
     'exclude': null
   },
   'status': {"progress": null, "paused": null}
@@ -29,7 +31,20 @@ function post_gui_id(socket) {
 
 function post_shutdown(socket) {
   send_json(socket, {'method': 'post', 'path': 'shutdown'});
+  closeWindows();
 } // expected response: nothing
+
+function post_pause(socket) {
+  console.log('SEND post pause');
+  requests.push('post pause');
+  send_json(socket, {'method': 'post', 'path': 'pause'});
+} // expected response: {"OK": 200}
+
+function post_start(socket) {
+  console.log('SEND post start');
+  requests.push('post start');
+  send_json(socket, {'method': 'post', 'path': 'start'});
+} // expected response: {"OK": 200}
 
 function get_settings(socket) {
   requests.push('get settings');
@@ -59,7 +74,7 @@ socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
   switch(requests.shift()) {
     case 'post gui_id':
-      if (r['ACCEPTED'] == 202) {
+      if (r['ACCEPTED'] === 202) {
         get_settings(this);
         get_status(this);
       } else {
@@ -67,13 +82,21 @@ socket.onmessage = function(e) {
         closeWindows();
       }
     break;
+    case 'post start':
+    case 'post pause': console.log('RECV ' + r['OK']);
+      if (r['OK'] === 200) {
+        get_status(this);
+      } else {
+        console.log('Helper: ' + JSON.stringify(r));
+      }
+    break;
     case 'get settings':
       console.log(r);
       globals['settings'] = r;
     break;
     case 'put settings':
-      if (r['CREATED'] == 201) {
-        get_settings(socket);
+      if (r['CREATED'] === 201) {
+        get_settings(this);
       } else {
         console.log('Helper: ' + JSON.stringify(r));
       }
@@ -113,29 +136,86 @@ var tray = new gui.Tray({
 
 var menu = new gui.Menu();
 
+// Progress and Pause
+var start_syncing = 'Start syncing';
+var pause_syncing = 'Pause syncing';
+var paused = true;
 
-progress_menu = new gui.MenuItem({
-  label: 'Calculating status',
-  type: 'normal',
+progress_item = new gui.MenuItem({
+  // progress menu item
+  label: 'Initializing',
+  type: 'normal'
 });
-menu.append(progress_menu);
-window.setInterval(function() {
-  var status = globals['status']
-  var msg = 'Syncing'
-  if (status['paused']) msg = 'Paused'
-  progress_menu.label = msg + ' (' + status['progress'] + '%)';
-  tray.menu = menu;
+menu.append(progress_item);
+pause_item = new gui.MenuItem({
+  // pause menu item
+  label: '',
+  type: 'normal',
+  click: function() {
+    if(paused) {post_start(socket);}
+    else {post_pause(socket);}
+  }
+});
+pause_item.enabled = false;
+menu.append(pause_item);
+
+// Update progress
+
+function reset_status() {
+  var status = globals['status'];
+  var new_progress = progress_item.label;
+  var new_pause = pause_item.label;
+  var menu_modified = false;
+  if (status['paused'] !== null) {
+    switch(pause_item.label) {
+      case pause_syncing: if (status['paused']) {
+          // Update to "Paused - start syncing"
+          paused = true;
+          new_pause = start_syncing;
+          progress_item.enabled = false;
+          menu_modified = true;
+        } // else continue syncing
+        new_progress = 'Progress: ' + status['progress'] + '%';
+      break;
+      case start_syncing: if (status['paused']) return;
+        // else update to "Syncing - pause syncing"
+        paused = false;
+        new_pause = pause_syncing;
+        progress_item.enabled = true;
+        new_progress = 'Progress: ' + status['progress'] + '%';
+        menu_modified = true;
+      break;
+      default:
+        if (status['paused']) {new_pause = start_syncing; paused=true;}
+        else {new_pause = pause_syncing; paused=false;}
+        new_progress = 'Progress: ' + status['progress'] + '%';
+        pause_item.enabled = true;
+        progress_item.enabled = true;
+        menu_modified = true;
+    }
+  }
+  if (new_pause != pause_item.label) {
+    pause_item.label = new_pause;
+    menu_modified = true;
+  }
+  if (new_progress != progress_item.label) {
+    progress_item.label = new_progress;
+    menu_modified = true;
+  }
+  if (menu_modified) tray.menu = menu;
   get_status(socket);
-}, 5000);
+}
+window.setInterval(reset_status, 1000);
 
-
-// See contents
+// Menu actions contents
 menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
   label: 'Open local folder',
   icon: 'icons/folder.png',
   click: function () {
-    gui.Shell.showItemInFolder('.');
+    var dir = globals['settings']['directory'];
+    console.log('Open ' + dir);
+    gui.Shell.showItemInFolder(dir);
   }
 }));
 
@@ -143,7 +223,9 @@ menu.append(new gui.MenuItem({
   label: 'Launch Pithos+ page',
   icon: 'icons/pithos.png',
   click: function () {
-    gui.Shell.openExternal('https://pithos.okeanos.grnet.gr');
+    var pithos_url = globals['settings']['pithos_url'];
+    console.log('Visit ' + pithos_url);
+    gui.Shell.openExternal(pithos_url);
   }
 }));
 
