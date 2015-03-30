@@ -1,6 +1,6 @@
 {
   "name": "Agkyra",
-  "main": "index.html",
+  "main": "menu.html",
   "description": "A Pithos+ Syncing Client for Desktop",
   "version": 0.0,
   "window": {

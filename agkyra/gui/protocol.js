@@ -10,7 +10,6 @@ function send_json(socket, msg) {
   socket.send(JSON.stringify(msg))
 }
 
-var requests = []
 var globals = {
   'settings': {
     'token': null,
@@ -25,7 +24,6 @@ var globals = {
 
 // Protocol: requests ::: responses
 function post_gui_id(socket) {
-  requests.push('post gui_id');
   send_json(socket, {"method": "post", "gui_id": cnf['gui_id']})
 } // expected response: {"ACCEPTED": 202}
 
@@ -36,30 +34,25 @@ function post_shutdown(socket) {
 
 function post_pause(socket) {
   console.log('SEND post pause');
-  requests.push('post pause');
   send_json(socket, {'method': 'post', 'path': 'pause'});
 } // expected response: {"OK": 200}
 
 function post_start(socket) {
   console.log('SEND post start');
-  requests.push('post start');
   send_json(socket, {'method': 'post', 'path': 'start'});
 } // expected response: {"OK": 200}
 
 function get_settings(socket) {
-  requests.push('get settings');
   send_json(socket, {'method': 'get', 'path': 'settings'});
 } // expected response: {settings JSON}
 
 function put_settings(socket, new_settings) {
-  requests.push('put settings');
   new_settings['method'] = 'put';
   new_settings['path'] = 'settings';
   send_json(socket, new_settings);
 } // expected response: {"CREATED": 201}
 
 function get_status(socket) {
-  requests.push('get status');
   send_json(socket, {'method': 'get', 'path': 'status'});
 } // expected response {"progress": ..., "paused": ...}
 
@@ -72,7 +65,8 @@ socket.onopen = function() {
 }
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
-  switch(requests.shift()) {
+  //console.log('RECV: ' + r['action'])
+  switch(r['action']) {
     case 'post gui_id':
       if (r['ACCEPTED'] === 202) {
         get_settings(this);
@@ -101,7 +95,8 @@ socket.onmessage = function(e) {
         console.log('Helper: ' + JSON.stringify(r));
       }
     break;
-    case 'get status': globals['status'] = r;
+    case 'get status':
+      globals['status'] = r;
     break;
     default:
       console.log('Incomprehensible response ' + r);
@@ -110,153 +105,9 @@ socket.onmessage = function(e) {
 };
 socket.onerror = function (e) {
     console.log('GUI - helper error' + e.data);
-    gui.Window.get().close();
+    closeWindows();
 }
 socket.onclose = function() {
     console.log('Connection to helper closed');
     closeWindows();
 }
-
-// Setup GUI
-var windows = {
-  "settings": null,
-  "about": null,
-  "index": gui.Window.get()
-}
-function closeWindows() {
-  for (win in windows) if (windows[win]) windows[win].close();
-}
-
-// GUI components
-var tray = new gui.Tray({
-  // tooltip: 'Paused (0% synced)',
-  title: 'Agkyra syncs with Pithos+',
-  icon: 'images/tray.png'
-});
-
-var menu = new gui.Menu();
-
-// Progress and Pause
-var start_syncing = 'Start Syncing';
-var start_icon = 'images/play.png';
-var pause_syncing = 'Pause Syncing';
-var paused = true;
-
-progress_item = new gui.MenuItem({
-  // progress menu item
-  label: 'Initializing',
-  type: 'normal',
-  enabled: false
-});
-menu.append(progress_item);
-menu.append(new gui.MenuItem({type: 'separator'}));
-pause_item = new gui.MenuItem({
-  // pause menu item
-  icon: 'images/play_pause.png',
-  label: '',
-  type: 'normal',
-  click: function() {
-    if (paused) {post_start(socket);} else {post_pause(socket);}
-  }
-});
-pause_item.enabled = false;
-menu.append(pause_item);
-
-// Update progress
-window.setInterval(function() {
-  var status = globals['status'];
-  var new_progress = progress_item.label;
-  var new_pause = pause_item.label;
-  var menu_modified = false;
-  if (status['paused'] !== null) {
-    switch(pause_item.label) {
-      case pause_syncing: if (status['paused']) {
-          // Update to "Paused - start syncing"
-          paused = true;
-          new_pause = start_syncing;
-          menu_modified = true;
-        } // else continue syncing
-        new_progress = status['progress'] + '%' + ' synced';
-      break;
-      case start_syncing: if (status['paused']) return;
-        // else update to "Syncing - pause syncing"
-        paused = false;
-        new_pause = pause_syncing;
-        new_progress = status['progress'] + '%' + ' synced';
-        menu_modified = true;
-      break;
-      default:
-        if (status['paused']) {new_pause = start_syncing; paused=true;}
-        else {new_pause = pause_syncing; paused=false;}
-        new_progress = status['progress'] + '%' + ' synced';
-        pause_item.enabled = true;
-        menu_modified = true;
-    }
-  }
-  if (new_pause != pause_item.label) {
-    pause_item.label = new_pause;
-    menu_modified = true;
-  }
-  if (new_progress != progress_item.label) {
-    progress_item.label = new_progress;
-    menu_modified = true;
-  }
-  if (menu_modified) {
-    if (paused) progress_item.label += ' - paused';
-    tray.menu = menu;
-  }
-  get_status(socket);
-}, 1500);
-
-// Menu actions contents
-menu.append(new gui.MenuItem({
-  label: 'Open local folder',
-  icon: 'images/folder.png',
-  click: function () {
-    var dir = globals['settings']['directory'];
-    console.log('Open ' + dir);
-    gui.Shell.showItemInFolder(dir);
-  }
-}));
-
-menu.append(new gui.MenuItem({
-  label: 'Launch Pithos+ page',
-  icon: 'images/pithos.png',
-  click: function () {
-    var pithos_url = globals['settings']['pithos_url'];
-    console.log('Visit ' + pithos_url);
-    gui.Shell.openExternal(pithos_url);
-  }
-}));
-
-// Settings and About
-menu.append(new gui.MenuItem({type: 'separator'}));
-menu.append(new gui.MenuItem({
-  label: 'Settings',
-  icon: 'images/settings.png',
-  click: function () {
-    if (windows['settings']) windows['settings'].close();
-    windows['settings'] = gui.Window.open("settings.html", {
-      "toolbar": false, "focus": true});
-  }
-}));
-
-menu.append(new gui.MenuItem({
-  label: 'About',
-  icon: 'images/about.png',
-  click: function () {
-    if (windows['about']) windows['about'].close();
-    windows['about'] = gui.Window.open("about.html", {
-      "toolbar": false, "resizable": false, "focus": true});
-  }
-}));
-
-// Quit
-menu.append(new gui.MenuItem({type: 'separator'}));
-menu.append(new gui.MenuItem({
-  label: 'Quit Agkyra',
-  icon: 'images/exit.png',
-  click: function() {post_shutdown(socket);}
-}));
-
-tray.menu = menu;

@@ -1,6 +1,7 @@
 from ws4py.websocket import WebSocket
 import json
 import logging
+from os.path import abspath
 
 
 LOG = logging.getLogger(__name__)
@@ -11,23 +12,25 @@ class WebSocketProtocol(WebSocket):
 
     -- INTERRNAL HANDSAKE --
     GUI: {"method": "post", "gui_id": <GUI ID>}
-    HELPER: {"ACCEPTED": 202}" or "{"REJECTED": 401}
+    HELPER: {"ACCEPTED": 202, "method": "post"}" or
+        "{"REJECTED": 401, "action": "post gui_id"}
 
     -- SHUT DOWN --
     GUI: {"method": "post", "path": "shutdown"}
 
     -- PAUSE --
     GUI: {"method": "post", "path": "pause"}
-    HELPER: {"OK": 200} or error
+    HELPER: {"OK": 200, "action": "post pause"} or error
 
     -- start --
     GUI: {"method": "post", "path": "start"}
-    HELPER: {"OK": 200} or error
+    HELPER: {"OK": 200, "action": "post start"} or error
 
     -- GET SETTINGS --
     GUI: {"method": "get", "path": "settings"}
     HELPER:
         {
+            "action": "get settings",
             "token": <user token>,
             "url": <auth url>,
             "container": <container>,
@@ -45,11 +48,13 @@ class WebSocketProtocol(WebSocket):
             "pithos_url": <pithos URL>,
             "exclude": <file path>
         }
-    HELPER: {"CREATED": 201} or {<ERROR>: <ERROR CODE>}
+    HELPER: {"CREATED": 201, "action": "put settings",} or
+        {<ERROR>: <ERROR CODE>, "action": "get settings",}
 
     -- GET STATUS --
     GUI: {"method": "get", "path": "status"}
-    HELPER: ""progress": <int>, "paused": <boolean>} or {<ERROR>: <ERROR CODE>}
+    HELPER: {"progress": <int>, "paused": <boolean>, "action": "get status"} or
+        {<ERROR>: <ERROR CODE>, "action": "get status"}
     """
 
     gui_id = None
@@ -59,7 +64,7 @@ class WebSocketProtocol(WebSocket):
         url=' https://accounts.okeanos.grnet.gr/identity/v2.0',
         container='pithos',
         directory='/tmp/.',
-        exclude='agkyra.log',
+        exclude=abspath('exclude.cnf'),
         pithos_url='https://pithos.okeanos.grnet.gr/ui/')
     status = dict(progress=0, paused=False)
 
@@ -72,6 +77,9 @@ class WebSocketProtocol(WebSocket):
 
     def get_settings(self):
         return self.settings
+
+    def set_settings(self, new_settings):
+        self.settings = new_settings
 
     def pause_sync(self):
         self.status['paused'] = True
@@ -103,32 +111,40 @@ class WebSocketProtocol(WebSocket):
                 'start': self.start_sync,
                 'pause': self.pause_sync
             }[action]()
-            self.send_json({'OK': 200})
+            self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['gui_id'] == self.gui_id:
             self.accepted = True
-            self.send_json({'ACCEPTED': 202})
+            self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
         else:
-            self.send_json({'REJECTED': 401})
+            action = r.get('path', 'gui_id')
+            self.send_json({'REJECTED': 401, 'action': 'post %s' % action})
             self.terminate()
 
     def _put(self, r):
         """Handle PUT requests"""
         if not self.accepted:
-            self.send_json({'UNAUTHORIZED': 401})
+            action = r['path']
+            self.send_json({'UNAUTHORIZED': 401, 'action': 'put %s' % action})
             self.terminate()
         else:
             LOG.debug('put %s' % r)
+            action = r.pop('path')
+            self.set_settings(r)
+            r.update({'CREATED': 201, 'action': 'put %s' % action})
+            self.send_json(r)
 
     def _get(self, r):
         """Handle GET requests"""
+        action = r.pop('path')
         if not self.accepted:
-            self.send_json({'UNAUTHORIZED': 401})
+            self.send_json({'UNAUTHORIZED': 401, 'action': 'get %s' % action})
             self.terminate()
         else:
             data = {
                 'settings': self.get_settings,
                 'status': self.get_status,
-            }[r.pop('path')]()
+            }[action]()
+            data['action'] = 'get %s' % action
             self.send_json(data)
 
     def received_message(self, message):
