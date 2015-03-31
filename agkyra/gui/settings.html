@@ -21,10 +21,59 @@
                 exclude = get_setting('exclude');
                 if (exclude) $('#exclude').val(
                     fs.readFileSync(exclude, encoding='utf-8'));
+                var weblogin = get_setting('weblogin');
+                var pithos_url = get_setting('pithos_url');
+                if (weblogin && pithos_url) {
+                    $('#get_creds').show();
+                } else {
+                    console.log('No pithos view, remove credential button');
+                    $('#get_creds').hide();
+                }
             });
 
             function update_exclude(new_content) {
                 if (exclude) fs.writeFile(exclude, new_content);
+            }
+
+
+            function extract_credentials(cookie) {
+                var credentials = cookie.value.split('%7C');
+                var uuid = credentials[0];
+                var token = credentials[1];
+                //$('#uuid').html(uuid);
+                $('#token').val(token);
+                $('#token').trigger('change');
+                //set_setting('token', $(this).val())
+            }
+
+            var gui = require('nw.gui');
+            function extract_cookie(url) {
+                var cookie_name = '_pithos2_a';
+                var w = gui.Window.open(url, {
+                    focus: true, width: 520, height: 841
+                });
+                w.cookies.getAll({name: cookie_name}, function(cookies) {
+                    if (cookies.length) {
+                        console.log('Already logged in');
+                        extract_credentials(cookies[0]);
+                        w.close();
+                    } else {
+                        console.log('Not logged in');
+                    }
+                });
+                w.cookies.onChanged.addListener(function(info) {
+                    if (info.cookie.name === cookie_name) {
+                        console.log('Succesfully logged in');
+                        extract_credentials(info.cookie);
+                        w.close();
+                    }
+                });
+            }
+
+            function get_credentials() {
+                var weblogin = get_setting('weblogin')
+                var pithos_url = get_setting('url');
+                extract_cookie(weblogin + '?next=' + pithos_url);
             }
         </script>
     </head>
@@ -60,6 +109,13 @@
                                     <small class="error" style="visibility: hidden">Invalid entry</small>
                                 </div>
                              </div>
+
+                            <div class="clearfix">
+                               <a id="get_creds"
+                                    class="button right" style="display: none;"
+                                    onclick="get_credentials();">Get credentials</a>
+                            </div>
+
                         </fieldset>
                         <fieldset>
                             <legend>What to sync</legend>
@@ -107,9 +163,9 @@
                         </div>   -->
                     </div>
 
-                    <div class="small-4 columns">
+                    <!--<div class="small-4 columns">
                         <p class="panel">I have no idea what will happen if I put my credentials there...<br>My space could be used to explain what is going on here.</p>
-                    </div>
+                    </div>-->
 
                     </div>
                 </div>

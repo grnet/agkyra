@@ -61,11 +61,12 @@ class WebSocketProtocol(WebSocket):
     accepted = False
     settings = dict(
         token='token',
-        url=' https://accounts.okeanos.grnet.gr/identity/v2.0',
+        url='https://accounts.okeanos.grnet.gr/identity/v2.0',
         container='pithos',
         directory='/tmp/.',
         exclude=abspath('exclude.cnf'),
-        pithos_url='https://pithos.okeanos.grnet.gr/ui/')
+        pithos_url='https://pithos.okeanos.grnet.gr/ui/',
+        weblogin='https://accounts.okeanos.grnet.gr/ui')
     status = dict(progress=0, paused=False)
 
     # Syncer-related methods
