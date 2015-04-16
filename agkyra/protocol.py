@@ -2,6 +2,7 @@ from ws4py.websocket import WebSocket
 import json
 import logging
 from os.path import abspath
+from titanic import syncer
 
 
 LOG = logging.getLogger(__name__)
@@ -67,7 +68,8 @@ class WebSocketProtocol(WebSocket):
         exclude=abspath('exclude.cnf'),
         pithos_url='https://pithos.okeanos.grnet.gr/ui/',
         weblogin='https://accounts.okeanos.grnet.gr/ui')
-    status = dict(progress=0, paused=False)
+    status = dict(progress=0, paused=True)
+    file_syncer = None
 
     # Syncer-related methods
     def get_status(self):
