@@ -3,6 +3,7 @@ import time
 import sqlite3
 import json
 import logging
+import random
 
 from agkyra.syncer import common
 
@@ -177,13 +178,18 @@ class SqliteFileStateDB(FileStateDB):
         return state
 
 
-def transaction(retries=5, retry_wait=1):
+def rand(lim):
+    return random.random() * lim
+
+
+def transaction(max_wait=60, init_wait=0.4, exp_backoff=1.1):
     def wrap(func):
         @wraps(func)
         def inner(*args, **kwargs):
             obj = args[0]
             db = obj.get_db()
             attempt = 0
+            current_max_wait = init_wait
             while True:
                 try:
                     db.begin()
@@ -194,11 +200,22 @@ def transaction(retries=5, retry_wait=1):
                     db.rollback()
                     # TODO check conflict
                     if isinstance(e, sqlite3.OperationalError) and \
-                            "locked" in e.message and attempt < retries:
-                        logger.warning(
-                            "Got DB error '%s'. Retrying transaction." % e)
-                        time.sleep(retry_wait)
-                        attempt += 1
+                            "locked" in e.message:
+                        if current_max_wait <= max_wait:
+                            attempt += 1
+                            logger.warning(
+                                "Got DB error '%s' while running '%s' "
+                                "with args '%s' and kwargs '%s'. "
+                                "Retrying transaction (%s times)." %
+                                (e, func.__name__, args, kwargs, attempt))
+                            time.sleep(rand(current_max_wait))
+                            current_max_wait *= exp_backoff
+                        else:
+                            logger.error(
+                                "Got DB error '%s' while running '%s' "
+                                "with args '%s' and kwargs '%s'. Aborting." %
+                                (e, func.__name__, args, kwargs))
+                            return
                     else:
                         raise e
         return inner
