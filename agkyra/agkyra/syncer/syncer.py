@@ -44,6 +44,10 @@ class FileSyncer(object):
         self.clients = {self.MASTER: master, self.SLAVE: slave}
         self.decide_event = None
 
+    @property
+    def paused(self):
+        return (not self.decide_event.is_set()) if self.decide_event else True
+
     def launch_daemons(self):
         self.start_notifiers()
         self.start_decide()
