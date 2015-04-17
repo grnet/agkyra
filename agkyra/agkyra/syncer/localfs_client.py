@@ -62,7 +62,7 @@ def file_is_open(path):
             for nt in flist:
                 if nt.path == path:
                     return True
-        except psutil.NoSuchProcess:
+        except psutil.Error:
             pass
     return False
 
