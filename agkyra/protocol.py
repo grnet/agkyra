@@ -3,6 +3,9 @@ import json
 import logging
 from os.path import abspath
 from titanic import syncer
+from config import AgkyraConfig
+from kamaki.clients.astakos import AstakosClient
+from kamaki.clients.pithos import PithosClient
 
 
 LOG = logging.getLogger(__name__)
@@ -61,15 +64,54 @@ class WebSocketProtocol(WebSocket):
     gui_id = None
     accepted = False
     settings = dict(
-        token='token',
-        url='https://accounts.okeanos.grnet.gr/identity/v2.0',
-        container='pithos',
-        directory='/tmp/.',
-        exclude=abspath('exclude.cnf'),
-        pithos_url='https://pithos.okeanos.grnet.gr/ui/',
-        weblogin='https://accounts.okeanos.grnet.gr/ui')
+        token=None, url=None,
+        container=None, directory=None,
+        exclude=None, pithos_ui=None)
     status = dict(progress=0, paused=True)
     file_syncer = None
+    cnf = AgkyraConfig()
+
+    def _load_settings(self):
+        sync = self.cnf.get('global', 'default_sync')
+        cloud = self.cnf.get_sync(sync, 'cloud')
+
+        url = self.cnf.get_cloud(cloud, 'url')
+        token = self.cnf.get_cloud(cloud, 'token')
+
+        astakos = AstakosClient(url, token)
+        self.settings['url'], self.settings['token'] = url, token
+
+        try:
+            endpoints = astakos.get_endpoints()['access']['serviceCatalog']
+            for endpoint in endpoints:
+                if endpoint['type'] == PithosClient.service_type:
+                    pithos_ui = endpoint['endpoints'][0]['SNF:uiURL']
+                    self.settings['pithos_ui'] = pithos_ui
+                    break
+        except Exception as e:
+            LOG.debug('Failed to retrieve pithos_ui: %s' % e)
+
+        for option in ('container', 'directory', 'exclude'):
+            self.settings[option] = self.cnf.get_sync(sync, option)
+
+    def _dump_settings(self):
+        sync = self.cnf.get('global', 'default_sync')
+        cloud = self.cnf.get_sync(sync, 'cloud')
+
+        old_url = self.cnf.get_cloud(cloud, 'url')
+        while old_url != self.settings['url']:
+            cloud = '%s_%s' % (cloud, sync)
+            try:
+                self.cnf.get_cloud(cloud, 'url')
+            except KeyError:
+                break
+
+        self.cnf.set_cloud(cloud, 'url', self.settings['url'])
+        self.cnf.set_cloud(cloud, 'token', self.settings['token'])
+        self.cnf.set_sync(sync, 'cloud', cloud)
+
+        for option in ('directory', 'container', 'exclude'):
+            self.cnf.set_sync(sync, option, self.settings[option])
 
     # Syncer-related methods
     def get_status(self):
@@ -79,10 +121,12 @@ class WebSocketProtocol(WebSocket):
         return self.status
 
     def get_settings(self):
+        self._load_settings()
         return self.settings
 
     def set_settings(self, new_settings):
         self.settings = new_settings
+        self._dump_settings()
 
     def pause_sync(self):
         self.status['paused'] = True
@@ -93,6 +137,7 @@ class WebSocketProtocol(WebSocket):
     # WebSocket connection methods
     def opened(self):
         LOG.debug('Helper: connection established')
+        self._load_settings()
 
     def closed(self, *args):
         LOG.debug('Helper: connection closed')

@@ -16,8 +16,7 @@ var globals = {
     'url': null,
     'container': null,
     'directory': null,
-    'pithos_url': null,
-    'weblogin': null,
+    'pithos_ui': null,
     'exclude': null
   },
   'status': {"progress": null, "paused": null}

@@ -12,5 +12,6 @@
     "name": "Synnefo Development Team",
     "web": "http://www.synnefo.org"
     }],
-  "licences": [{"type": "GPLv3"}]
+  "licences": [{"type": "GPLv3"}],
+  "chromium-args": "--incognito"
 }

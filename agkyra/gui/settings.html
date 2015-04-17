@@ -21,9 +21,8 @@
                 exclude = get_setting('exclude');
                 if (exclude) $('#exclude').val(
                     fs.readFileSync(exclude, encoding='utf-8'));
-                var weblogin = get_setting('weblogin');
-                var pithos_url = get_setting('pithos_url');
-                if (weblogin && pithos_url) {
+                var pithos_ui = get_setting('pithos_ui');
+                if (pithos_ui) {
                     $('#get_creds').show();
                 } else {
                     console.log('No pithos view, remove credential button');
@@ -49,17 +48,13 @@
             var gui = require('nw.gui');
             function extract_cookie(url) {
                 var cookie_name = '_pithos2_a';
-                var w = gui.Window.open(url, {
-                    focus: true, width: 520, height: 841
+                var logout_url = 'https://accounts.okeanos.grnet.gr/ui/logout'
+                var w = gui.Window.open(logout_url, {
+                    focus: false, width: 20, height: 20
                 });
-                w.cookies.getAll({name: cookie_name}, function(cookies) {
-                    if (cookies.length) {
-                        console.log('Already logged in');
-                        extract_credentials(cookies[0]);
-                        w.close();
-                    } else {
-                        console.log('Not logged in');
-                    }
+                w.close();
+                var w = gui.Window.open(logout_url, {
+                    focus: true, width: 520, height: 920
                 });
                 w.cookies.onChanged.addListener(function(info) {
                     if (info.cookie.name === cookie_name) {
@@ -71,9 +66,8 @@
             }
 
             function get_credentials() {
-                var weblogin = get_setting('weblogin')
-                var pithos_url = get_setting('url');
-                extract_cookie(weblogin + '?next=' + pithos_url);
+                var pithos_ui = get_setting('pithos_ui');
+                extract_cookie(pithos_ui);
             }
         </script>
     </head>

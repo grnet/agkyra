@@ -44,7 +44,8 @@ class GUI(WebSocketBaseClient):
             '/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw',
             # self.gui_exec_path,
             abspath('gui/gui.nw'),
-            fp.name])
+            fp.name,
+            '--data-path', abspath('~/.agkyra')])
         LOG.debug('GUI process closed, remove temp file')
         os.remove(fp.name)
 

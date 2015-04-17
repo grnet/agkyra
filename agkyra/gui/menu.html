@@ -112,9 +112,9 @@ menu.append(new gui.MenuItem({
   label: 'Launch Pithos+ page',
   icon: 'images/pithos.png',
   click: function () {
-    var pithos_url = globals['settings']['pithos_url'];
-    console.log('Visit ' + pithos_url);
-    gui.Shell.openExternal(pithos_url);
+    var pithos_ui = globals['settings']['pithos_ui'];
+    console.log('Visit ' + pithos_ui);
+    gui.Shell.openExternal(pithos_ui);
   }
 }));
 
