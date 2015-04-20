@@ -54,6 +54,19 @@ def give_heartbeat(f):
     return inner
 
 
+def handle_client_errors(f):
+    @wraps(f)
+    def inner(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except ClientError as e:
+            if e.status == 412:  # Precondition failed
+                raise common.CollisionError(e)
+            # TODO handle other cases, too
+            raise common.SyncError(e)
+    return inner
+
+
 class PithosSourceHandle(object):
     def __init__(self, settings, source_state):
         self.NAME = "PithosSourceHandle"
@@ -91,6 +104,7 @@ class PithosSourceHandle(object):
         db.insert_cachepath(fetch_name, self.NAME, filename)
         return utils.join_path(self.cache_path, fetch_name)
 
+    @handle_client_errors
     @give_heartbeat
     def send_file(self, sync_state):
         fetched_file = self.register_fetch_name(self.path)
@@ -176,6 +190,7 @@ class PithosTargetHandle(object):
             if_etag_match=etag)
         return r
 
+    @handle_client_errors
     @give_heartbeat
     def pull(self, source_handle, sync_state):
 #        assert isinstance(source_handle, LocalfsSourceHandle)

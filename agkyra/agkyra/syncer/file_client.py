@@ -19,7 +19,7 @@ class FileClient(object):
         raise NotImplementedError
 
     def start_pulling_file(self, source_handle, target_state, sync_state,
-                           callback=None):
+                           callback=None, failure_callback=None):
         try:
             synced_source_state, synced_target_state = \
                 self._start(source_handle, target_state, sync_state)
@@ -27,6 +27,9 @@ class FileClient(object):
                 callback(synced_source_state, synced_target_state)
         except common.SyncError as e:
             logger.warning(e)
+            if isinstance(e, common.HardSyncError):
+                if failure_callback is not None:
+                    failure_callback(source_handle.source_state)
 
     def _start(self, source_handle, target_state, sync_state):
         try:

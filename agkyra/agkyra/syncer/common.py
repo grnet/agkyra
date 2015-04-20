@@ -1,4 +1,5 @@
 from collections import namedtuple
+import threading
 
 FileStateTuple = namedtuple('FileStateTuple',
                             ['archive', 'path', 'serial', 'info'])
@@ -35,3 +36,28 @@ class InvalidInput(SyncError):
 
 class HandledError(SyncError):
     pass
+
+
+class HardSyncError(SyncError):
+    pass
+
+
+class CollisionError(HardSyncError):
+    pass
+
+
+class LockedDict(object):
+    def __init__(self, *args, **kwargs):
+        self._Dict = {}
+        self._Lock = threading.Lock()
+
+    def put(self, key, value):
+        self._Lock.acquire()
+        self._Dict[key] = value
+        self._Lock.release()
+
+    def get(self, key):
+        self._Lock.acquire()
+        value = self._Dict.get(key)
+        self._Lock.release()
+        return value
