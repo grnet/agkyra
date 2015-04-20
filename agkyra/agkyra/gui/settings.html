@@ -18,9 +18,11 @@
                 if (container) $('#container').val(container);
                 var directory = get_setting('directory');
                 if (directory) $('#directory').html(directory);
-                exclude = get_setting('exclude');
-                if (exclude) $('#exclude').val(
-                    fs.readFileSync(exclude, encoding='utf-8'));
+                var exclude = get_setting('exclude');
+                if (exclude) try {
+                        $('#exclude').val(
+                            fs.readFileSync(exclude, encoding='utf-8'));
+                } catch (err) {console.log(err);}
                 var pithos_ui = get_setting('pithos_ui');
                 if (pithos_ui) {
                     $('#get_creds').show();

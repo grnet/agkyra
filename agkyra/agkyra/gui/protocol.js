@@ -19,7 +19,8 @@ var globals = {
     'pithos_ui': null,
     'exclude': null
   },
-  'status': {"progress": null, "paused": null}
+  'status': {"progress": null, "paused": null},
+  'authenticated': false
 }
 
 // Protocol: requests ::: responses
@@ -71,6 +72,7 @@ socket.onmessage = function(e) {
       if (r['ACCEPTED'] === 202) {
         get_settings(this);
         get_status(this);
+        globals.authenticated = true;
       } else {
         console.log('Helper: ' + JSON.stringify(r));
         closeWindows();

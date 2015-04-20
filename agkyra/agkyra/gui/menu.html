@@ -42,7 +42,7 @@ menu.append(new gui.MenuItem({type: 'separator'}));
 pause_item = new gui.MenuItem({
   // pause menu item
   icon: 'images/play_pause.png',
-  label: '',
+  label: 'NOT READY',
   type: 'normal',
   click: function() {
     if (paused) {post_start(socket);} else {post_pause(socket);}
@@ -51,8 +51,96 @@ pause_item = new gui.MenuItem({
 pause_item.enabled = false;
 menu.append(pause_item);
 
+// Menu actions contents
+var local_folder_menu = new gui.MenuItem({
+  label: 'Open local folder',
+  icon: 'images/folder.png',
+  enabled: false,
+  click: function () {
+    var dir = globals['settings']['directory'];
+    console.log('Open ' + dir);
+    gui.Shell.showItemInFolder(dir);
+  }
+})
+menu.append(local_folder_menu);
+
+var pithos_page_menu = new gui.MenuItem({
+  label: 'Launch Pithos+ page',
+  icon: 'images/pithos.png',
+  enabled: false,
+  click: function () {
+    var pithos_ui = globals['settings']['pithos_ui'];
+    console.log('Visit ' + pithos_ui);
+    gui.Shell.openExternal(pithos_ui);
+  }
+});
+menu.append(pithos_page_menu);
+
+// Settings and About
+menu.append(new gui.MenuItem({type: 'separator'}));
+var settings_menu = new gui.MenuItem({
+  label: 'Settings',
+  icon: 'images/settings.png',
+  enabled: false,
+  click: function () {
+    export_settings(globals.settings);
+    if (windows['settings']) windows['settings'].close();
+    windows['settings'] = gui.Window.open("settings.html", {
+      toolbar: false, focus: true,
+      width: 841, height: 520
+    });
+    windows['settings'].on('closed', function() {
+      new_settings = import_settings();
+      console.log('Settings windows is closed, PUT');
+      put_settings(socket, new_settings);
+      get_settings(socket);
+    });
+  },
+});
+menu.append(settings_menu);
+
+menu.append(new gui.MenuItem({
+  label: 'About',
+  icon: 'images/about.png',
+  click: function () {
+    if (windows['about']) windows['about'].close();
+    windows['about'] = gui.Window.open("about.html", {
+      toolbar: false, resizable: false, focus: true,
+      width: 679, height: 420
+    });
+  }
+}));
+
+// Quit
+menu.append(new gui.MenuItem({type: 'separator'}));
+menu.append(new gui.MenuItem({
+  label: 'Quit Agkyra',
+  icon: 'images/exit.png',
+  click: function() {post_shutdown(socket);}
+}));
+
+
 // Update progress
+var client_ready = false;
 window.setInterval(function() {
+  if (!client_ready) {
+    if (globals.authenticated) {
+      settings_menu.enabled = true;
+      client_ready = true;
+    } else return;
+  }
+
+  if (client_ready) {
+    if (!pithos_page_menu.enabled) {
+      // GET pithos page with tokenless operations
+    }
+    if (!local_folder_menu.enabled) {
+      if (globals.settings.directory) {
+        local_folder_menu.enabled = true;
+      }
+    }
+  }
+
   var status = globals['status'];
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
@@ -96,68 +184,6 @@ window.setInterval(function() {
   }
   get_status(socket);
 }, 1500);
-
-// Menu actions contents
-menu.append(new gui.MenuItem({
-  label: 'Open local folder',
-  icon: 'images/folder.png',
-  click: function () {
-    var dir = globals['settings']['directory'];
-    console.log('Open ' + dir);
-    gui.Shell.showItemInFolder(dir);
-  }
-}));
-
-menu.append(new gui.MenuItem({
-  label: 'Launch Pithos+ page',
-  icon: 'images/pithos.png',
-  click: function () {
-    var pithos_ui = globals['settings']['pithos_ui'];
-    console.log('Visit ' + pithos_ui);
-    gui.Shell.openExternal(pithos_ui);
-  }
-}));
-
-// Settings and About
-menu.append(new gui.MenuItem({type: 'separator'}));
-menu.append(new gui.MenuItem({
-  label: 'Settings',
-  icon: 'images/settings.png',
-  click: function () {
-    export_settings(globals.settings);
-    if (windows['settings']) windows['settings'].close();
-    windows['settings'] = gui.Window.open("settings.html", {
-      toolbar: false, focus: true,
-      width: 841, height: 520,
-    });
-    windows['settings'].on('closed', function() {
-      new_settings = import_settings();
-      console.log('Settings windows is closed, PUT');
-      put_settings(socket, new_settings);
-      get_settings(socket);
-    });
-  },
-}));
-
-menu.append(new gui.MenuItem({
-  label: 'About',
-  icon: 'images/about.png',
-  click: function () {
-    if (windows['about']) windows['about'].close();
-    windows['about'] = gui.Window.open("about.html", {
-      toolbar: false, resizable: false, focus: true,
-      width: 679, height: 420
-    });
-  }
-}));
-
-// Quit
-menu.append(new gui.MenuItem({type: 'separator'}));
-menu.append(new gui.MenuItem({
-  label: 'Quit Agkyra',
-  icon: 'images/exit.png',
-  click: function() {post_shutdown(socket);}
-}));
 
 tray.menu = menu;
 
