@@ -33,7 +33,7 @@ def heartbeat_event(settings, heartbeat, path):
                 break
             set_log()
             time.sleep(interval)
-            interval = min(2 * interval, max_interval)
+            interval = min(1.2 * interval, max_interval)
     thread = threading.Thread(target=go)
     thread.start()
     return event
