@@ -5,6 +5,7 @@ import datetime
 import threading
 import random
 import logging
+import re
 
 from agkyra.syncer import utils, common
 from agkyra.syncer.file_client import FileClient
@@ -134,6 +135,11 @@ class PithosSourceHandle(object):
             hb.delete(self.path)
 
 
+STAGED_FOR_DELETION_SUFFIX = ".pithos_staged_for_deletion"
+exclude_staged_regex = ".*" + STAGED_FOR_DELETION_SUFFIX + "$"
+exclude_pattern = re.compile(exclude_staged_regex)
+
+
 class PithosTargetHandle(object):
     def __init__(self, settings, target_state):
         self.settings = settings
@@ -146,7 +152,7 @@ class PithosTargetHandle(object):
     def mk_del_name(self, name):
         tstamp = datetime.datetime.now().strftime("%s")
         rand = str(random.getrandbits(64))
-        return "%s.%s.%s.deleted" % (name, tstamp, rand)
+        return "%s.%s.%s%s" % (name, tstamp, rand, STAGED_FOR_DELETION_SUFFIX)
 
     def safe_object_del(self, path, etag):
         container = self.endpoint.container
@@ -286,6 +292,10 @@ class PithosFileClient(FileClient):
                 }
 
     def start_probing_path(self, path, old_state, ref_state, callback=None):
+        if exclude_pattern.match(path):
+            logger.warning("Ignoring probe archive: %s, path: '%s'" %
+                           (old_state.archive, path))
+            return
         info = old_state.info
         obj = self.get_object(path)
         live_info = self.get_object_live_info(obj)
