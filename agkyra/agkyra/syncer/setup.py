@@ -12,9 +12,6 @@ from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.utils import https
 
-#### TODO: handle this
-https.patch_ignore_ssl()
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,6 +33,10 @@ class SyncerSettings():
         self.auth_url = auth_url
         self.auth_token = auth_token
         self.container = container
+
+        self.ignore_ssl = kwargs.get("ignore_ssl", False)
+        if self.ignore_ssl:
+            https.patch_ignore_ssl()
         self.endpoint = self._get_pithos_client(
             auth_url, auth_token, container)
 

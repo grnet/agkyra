@@ -319,12 +319,13 @@ class FileSyncer(object):
     #     deleted = master_deleted.intersection(client_deleted)
 
 
-def conf(instance, auth_url, auth_token, container, local_root_path):
+def conf(instance, auth_url, auth_token, container, local_root_path, **kwargs):
     settings = SyncerSettings(instance=instance,
                               auth_url=auth_url,
                               auth_token=auth_token,
                               container=container,
-                              local_root_path=local_root_path)
+                              local_root_path=local_root_path,
+                              **kwargs)
     master = PithosFileClient(settings)
     slave = LocalfsFileClient(settings)
     return FileSyncer(settings, master, slave)
