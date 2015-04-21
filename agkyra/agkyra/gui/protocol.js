@@ -16,11 +16,10 @@ var globals = {
     'url': null,
     'container': null,
     'directory': null,
-    'pithos_ui': null,
     'exclude': null
   },
   'status': {"progress": null, "paused": null},
-  'authenticated': false
+  'authenticated': false,
 }
 
 // Protocol: requests ::: responses
@@ -66,7 +65,7 @@ socket.onopen = function() {
 }
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
-  //console.log('RECV: ' + r['action'])
+  console.log('RECV: ' + r['action'])
   switch(r['action']) {
     case 'post gui_id':
       if (r['ACCEPTED'] === 202) {
@@ -87,7 +86,7 @@ socket.onmessage = function(e) {
       }
     break;
     case 'get settings':
-      console.log(r);
+      // console.log(r);
       globals['settings'] = r;
     break;
     case 'put settings':

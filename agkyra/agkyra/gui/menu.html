@@ -4,6 +4,7 @@
 <body>
     <script src="protocol.js"></script>
     <script src="settings.js"></script>
+    <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
     // Setup GUI
@@ -69,9 +70,8 @@ var pithos_page_menu = new gui.MenuItem({
   icon: 'images/pithos.png',
   enabled: false,
   click: function () {
-    var pithos_ui = globals['settings']['pithos_ui'];
-    console.log('Visit ' + pithos_ui);
-    gui.Shell.openExternal(pithos_ui);
+    console.log('Visit ' + get_pithos_ui());
+    gui.Shell.openExternal(get_pithos_ui());
   }
 });
 menu.append(pithos_page_menu);
@@ -123,6 +123,7 @@ menu.append(new gui.MenuItem({
 // Update progress
 var client_ready = false;
 window.setInterval(function() {
+  var menu_modified = false;
   if (!client_ready) {
     if (globals.authenticated) {
       settings_menu.enabled = true;
@@ -132,11 +133,18 @@ window.setInterval(function() {
 
   if (client_ready) {
     if (!pithos_page_menu.enabled) {
-      // GET pithos page with tokenless operations
+      if ((get_pithos_ui() == null) && (globals.settings.url)) {
+        refresh_endpoints(globals.settings.url);
+      }
+      if (get_pithos_ui() != null) {
+        pithos_page_menu.enabled = true;
+        tray.menu = menu;
+      }
     }
     if (!local_folder_menu.enabled) {
       if (globals.settings.directory) {
         local_folder_menu.enabled = true;
+        tray.menu = menu;
       }
     }
   }
@@ -144,7 +152,6 @@ window.setInterval(function() {
   var status = globals['status'];
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
-  var menu_modified = false;
   if (status['paused'] !== null) {
     switch(pause_item.label) {
       case pause_syncing: if (status['paused']) {

@@ -23,8 +23,7 @@
                         $('#exclude').val(
                             fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
-                var pithos_ui = get_setting('pithos_ui');
-                if (pithos_ui) {
+                if (get_pithos_ui()) {
                     $('#get_creds').show();
                 } else {
                     console.log('No pithos view, remove credential button');
@@ -48,14 +47,15 @@
             }
 
             var gui = require('nw.gui');
-            function extract_cookie(url) {
+            function get_credentials() {
                 var cookie_name = '_pithos2_a';
-                var logout_url = 'https://accounts.okeanos.grnet.gr/ui/logout'
-                var w = gui.Window.open(logout_url, {
+                var account_ui = get_account_ui()
+                var w = gui.Window.open(account_ui + '/logout', {
                     focus: false, width: 20, height: 20
                 });
                 w.close();
-                var w = gui.Window.open(logout_url, {
+                var next = get_pithos_ui();
+                var w = gui.Window.open(account_ui + '/login?next=' + next, {
                     focus: true, width: 520, height: 920
                 });
                 w.cookies.onChanged.addListener(function(info) {
@@ -65,11 +65,6 @@
                         w.close();
                     }
                 });
-            }
-
-            function get_credentials() {
-                var pithos_ui = get_setting('pithos_ui');
-                extract_cookie(pithos_ui);
             }
         </script>
     </head>
@@ -90,7 +85,7 @@
                                 </div>
                                 <div class="small-9 columns">
                                     <input type="text" id="cloud-url" placeholder="Authentication URL"
-                                    onchange="set_setting('url', $(this).val())">
+                                    onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val())">
                                     <small class="error" style="visibility: hidden">Invalid entry</small>
                                 </div>
                             </div>
