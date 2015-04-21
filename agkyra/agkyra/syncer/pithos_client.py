@@ -3,7 +3,6 @@ import time
 import os
 import datetime
 import threading
-import random
 import logging
 import re
 
@@ -163,24 +162,26 @@ class PithosTargetHandle(object):
         self.path = target_state.path
         self.heartbeat = settings.heartbeat
 
-    def mk_del_name(self, name):
-        tstamp = datetime.datetime.now().strftime("%s")
-        rand = str(random.getrandbits(64))
-        return "%s.%s.%s%s" % (name, tstamp, rand, STAGED_FOR_DELETION_SUFFIX)
+    def mk_del_name(self, name, etag):
+        return "%s.%s%s" % (name, etag, STAGED_FOR_DELETION_SUFFIX)
 
     def safe_object_del(self, path, etag):
         container = self.endpoint.container
-        del_name = self.mk_del_name(path)
+        del_name = self.mk_del_name(path, etag)
+        logger.info("Moving temporarily to '%s'" % del_name)
         try:
             self.endpoint.object_move(
                 path,
                 destination='/%s/%s' % (container, del_name),
                 if_etag_match=etag)
         except ClientError as e:
-            logger.warning("'%s' not found; already deleted?" % path)
             if e.status == 404:
-                return
-        self.endpoint.del_object(del_name)
+                logger.warning("'%s' not found; already moved?" % path)
+            else:
+                raise
+        finally:
+            self.endpoint.del_object(del_name)
+            logger.info("Deleted tmp '%s'" % del_name)
 
     def directory_put(self, path, etag):
         r = self.endpoint.object_put(
