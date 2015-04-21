@@ -246,18 +246,24 @@ class PithosFileClient(FileClient):
         db = self.get_db()
         objects = self.endpoint.list_objects()
         self.objects = objects
-        upstream_all_names = set(obj["name"] for obj in objects)
-        non_deleted_in_db = set(db.list_non_deleted_files(self.NAME))
-        newly_deleted = non_deleted_in_db.difference(upstream_all_names)
-        logger.debug("newly_deleted %s" % newly_deleted)
+        upstream_all = dict(
+            (obj["name"], self.get_object_live_info(obj))
+            for obj in objects)
+        upstream_all_names = set(upstream_all.keys())
         if last_modified is not None:
-            upstream_modified_names = set(
-                obj["name"] for obj in objects
-                if obj["last_modified"] > last_modified)
-            upstream_names = upstream_modified_names
+            upstream_modified_names = dict(
+                (k, v) for (k, v) in upstream_all.iteritems()
+                if v["last_modified"] > last_modified)
+            candidates = upstream_modified_names
         else:
-            upstream_names = upstream_all_names
-        candidates = upstream_names.union(newly_deleted)
+            candidates = upstream_all
+
+        non_deleted_in_db = set(db.list_non_deleted_files(self.NAME))
+        newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
+        logger.debug("newly_deleted %s" % newly_deleted_names)
+        newly_deleted = dict((name, {}) for name in newly_deleted_names)
+
+        candidates.update(newly_deleted)
         logger.info("Candidates: %s" % candidates)
         return candidates
 
@@ -271,9 +277,8 @@ class PithosFileClient(FileClient):
                     last_modified = last_tstamp.isoformat()
                     candidates = self.list_candidate_files(
                         last_modified=last_modified)
-                    if callback is not None:
-                        for candidate in candidates:
-                            callback(self.NAME, candidate)
+                    for (path, info) in candidates:
+                        callback(self.NAME, path, assumed_info=info)
                     time.sleep(interval)
 
         poll = PollPithos()
@@ -301,19 +306,26 @@ class PithosFileClient(FileClient):
         if obj is None:
             return {}
         p_type = common.T_DIR if object_isdir(obj) else common.T_FILE
-        obj_hash = obj["x-object-hash"]
+        obj_hash = obj.get("x-object-hash")
+        if obj_hash is None:
+            obj_hash = obj.get("x_object_hash")
         return {PITHOS_ETAG: obj_hash,
                 PITHOS_TYPE: p_type,
                 }
 
-    def start_probing_path(self, path, old_state, ref_state, callback=None):
+    def start_probing_path(self, path, old_state, ref_state,
+                           assumed_info=None,
+                           callback=None):
         if exclude_pattern.match(path):
             logger.warning("Ignoring probe archive: %s, path: '%s'" %
                            (old_state.archive, path))
             return
         info = old_state.info
-        obj = self.get_object(path)
-        live_info = self.get_object_live_info(obj)
+        if assumed_info is None:
+            obj = self.get_object(path)
+            live_info = self.get_object_live_info(obj)
+        else:
+            live_info = assumed_info
         if info != live_info:
             if callback is not None:
                 live_state = old_state.set(info=live_info)

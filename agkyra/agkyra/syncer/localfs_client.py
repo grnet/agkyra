@@ -480,33 +480,38 @@ class LocalfsFileClient(FileClient):
 
     def list_candidate_files(self):
         db = self.get_db()
-        candidates = []
+        candidates = {}
         for dirpath, dirnames, files in os.walk(self.ROOTPATH):
             rel_dirpath = os.path.relpath(dirpath, start=self.ROOTPATH)
             logger.debug("'%s' '%s'" % (dirpath, rel_dirpath))
             # if self.exclude_dir_exp.match(dirpath):
             #     continue
             if rel_dirpath != '.':
-                candidates.append(rel_dirpath)
+                candidates[rel_dirpath] = None
             for filename in files:
                 # if self.exclude_files_exp.match(filename) or \
                 #         self.exclude_dir_exp.match(filename):
                 #     continue
                 local_filename = utils.join_path(rel_dirpath, filename)
-                candidates.append(local_filename)
+                candidates[local_filename] = None
 
-        db_names = set(db.list_files(self.NAME))
-        return db_names.union(candidates)
+        db_cands = dict((name, None) for name in db.list_files(self.NAME))
+        candidates.update(db_cands)
+        logger.info("Candidates: %s" % candidates)
+        return candidates
 
     def _local_path_changes(self, path, state):
         local_path = utils.join_path(self.ROOTPATH, path)
         return local_path_changes(local_path, state)
 
-    def start_probing_path(self, path, old_state, ref_state, callback=None):
+    def start_probing_path(self, path, old_state, ref_state,
+                           assumed_info=None,
+                           callback=None):
         if old_state.serial != ref_state.serial:
             logger.warning("Serial mismatch in probing path '%s'" % path)
             return
-        live_info = self._local_path_changes(path, old_state)
+        live_info = (self._local_path_changes(path, old_state)
+                     if assumed_info is None else assumed_info)
         if live_info is None:
             return
         live_state = old_state.set(info=live_info)

@@ -77,7 +77,7 @@ class FileSyncer(object):
         return exclude_pattern.match(final_part)
 
     @transaction()
-    def probe_path(self, archive, path):
+    def probe_path(self, archive, path, assumed_info=None):
         if self.exclude_path(path):
             logger.warning("Ignoring probe archive: %s, path: %s" %
                            (archive, path))
@@ -92,6 +92,7 @@ class FileSyncer(object):
                            % (archive, path))
             return
         client.start_probing_path(path, db_state, ref_state,
+                                  assumed_info=assumed_info,
                                   callback=self.update_path)
 
     @transaction()
@@ -280,8 +281,9 @@ class FileSyncer(object):
 
     def probe_archive(self, archive):
         client = self.clients[archive]
-        for path in client.list_candidate_files():
-            self.probe_path(archive, path)
+        candidates = client.list_candidate_files()
+        for (path, info) in candidates.iteritems():
+            self.probe_path(archive, path, assumed_info=info)
 
     def decide_archive(self, archive):
         for path in self.list_deciding([archive]):
