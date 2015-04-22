@@ -2,7 +2,7 @@ from collections import namedtuple
 import threading
 
 FileStateTuple = namedtuple('FileStateTuple',
-                            ['archive', 'path', 'serial', 'info'])
+                            ['archive', 'objname', 'serial', 'info'])
 
 
 class FileState(FileStateTuple):

@@ -14,16 +14,16 @@ from agkyra.syncer.database import transaction
 logger = logging.getLogger(__name__)
 
 
-def heartbeat_event(settings, heartbeat, path):
+def heartbeat_event(settings, heartbeat, objname):
     event = threading.Event()
     max_interval = settings.action_max_wait / 2.0
 
     def set_log():
         with heartbeat.lock() as hb:
-            client, prev_tstamp = hb.get(path)
+            client, prev_tstamp = hb.get(objname)
             tpl = (client, utils.time_stamp())
-            hb.set(path, tpl)
-            logger.info("HEARTBEAT %s %s %s" % ((path,) + tpl))
+            hb.set(objname, tpl)
+            logger.info("HEARTBEAT '%s' %s %s" % ((objname,) + tpl))
 
     def go():
         interval = 0.2
@@ -42,10 +42,10 @@ def give_heartbeat(f):
     @wraps(f)
     def inner(*args, **kwargs):
         obj = args[0]
-        path = obj.path
+        objname = obj.objname
         heartbeat = obj.heartbeat
         settings = obj.settings
-        event = heartbeat_event(settings, heartbeat, path)
+        event = heartbeat_event(settings, heartbeat, objname)
         try:
             return f(*args, **kwargs)
         finally:
@@ -76,22 +76,23 @@ class PithosSourceHandle(object):
         self.cache_path = settings.cache_path
         self.get_db = settings.get_db
         self.source_state = source_state
-        self.path = source_state.path
+        self.objname = source_state.objname
         self.heartbeat = settings.heartbeat
         self.check_log()
 
     def check_log(self):
         with self.heartbeat.lock() as hb:
-            prev_log = hb.get(self.path)
+            prev_log = hb.get(self.objname)
             if prev_log is not None:
                 actionstate, ts = prev_log
                 if actionstate != self.NAME or \
                         utils.younger_than(ts, self.settings.action_max_wait):
-                    raise common.HandledError("Action mismatch in %s: %s %s" %
-                                              (self.NAME, self.path, prev_log))
+                    raise common.HandledError(
+                        "Action mismatch in %s: %s %s" %
+                        (self.NAME, self.objname, prev_log))
                 logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.NAME, self.path, prev_log))
-            hb.set(self.path, (self.NAME, utils.time_stamp()))
+                               (self.NAME, self.objname, prev_log))
+            hb.set(self.objname, (self.NAME, utils.time_stamp()))
 
     @transaction()
     def register_fetch_name(self, filename):
@@ -100,20 +101,20 @@ class PithosSourceHandle(object):
             datetime.datetime.now().strftime("%s")
         fetch_name = utils.join_path(self.cache_fetch_name, f)
         self.fetch_name = fetch_name
-        db.insert_cachepath(fetch_name, self.NAME, filename)
+        db.insert_cachename(fetch_name, self.NAME, filename)
         return utils.join_path(self.cache_path, fetch_name)
 
     @handle_client_errors
     @give_heartbeat
     def send_file(self, sync_state):
-        fetched_file = self.register_fetch_name(self.path)
+        fetched_file = self.register_fetch_name(self.objname)
         headers = dict()
         with open(fetched_file, mode='wb+') as fil:
             try:
-                logger.info("Downloading path: '%s', to: '%s'" %
-                            (self.path, fetched_file))
+                logger.info("Downloading object: '%s', to: '%s'" %
+                            (self.objname, fetched_file))
                 self.endpoint.download_object(
-                    self.path,
+                    self.objname,
                     fil,
                     headers=headers)
             except ClientError as e:
@@ -129,10 +130,12 @@ class PithosSourceHandle(object):
                                "pithos_type": actual_type}
             self.source_state = self.source_state.set(info=actual_info)
         if actual_info == {}:
-            logger.info("Downloading path: '%s', object is gone." % self.path)
+            logger.info("Downloading object: '%s', object is gone."
+                        % self.objname)
             os.unlink(fetched_file)
         elif actual_info["pithos_type"] == common.T_DIR:
-            logger.info("Downloading path: '%s', object is dir." % self.path)
+            logger.info("Downloading object: '%s', object is dir."
+                        % self.objname)
             os.unlink(fetched_file)
             os.mkdir(fetched_file)
         return fetched_file
@@ -145,7 +148,7 @@ class PithosSourceHandle(object):
 
     def clear_log(self):
         with self.heartbeat.lock() as hb:
-            hb.delete(self.path)
+            hb.delete(self.objname)
 
 
 STAGED_FOR_DELETION_SUFFIX = ".pithos_staged_for_deletion"
@@ -158,34 +161,34 @@ class PithosTargetHandle(object):
         self.settings = settings
         self.endpoint = settings.endpoint
         self.target_state = target_state
-        self.target_file = target_state.path
-        self.path = target_state.path
+        self.target_file = target_state.objname
+        self.objname = target_state.objname
         self.heartbeat = settings.heartbeat
 
     def mk_del_name(self, name, etag):
         return "%s.%s%s" % (name, etag, STAGED_FOR_DELETION_SUFFIX)
 
-    def safe_object_del(self, path, etag):
+    def safe_object_del(self, objname, etag):
         container = self.endpoint.container
-        del_name = self.mk_del_name(path, etag)
+        del_name = self.mk_del_name(objname, etag)
         logger.info("Moving temporarily to '%s'" % del_name)
         try:
             self.endpoint.object_move(
-                path,
+                objname,
                 destination='/%s/%s' % (container, del_name),
                 if_etag_match=etag)
         except ClientError as e:
             if e.status == 404:
-                logger.warning("'%s' not found; already moved?" % path)
+                logger.warning("'%s' not found; already moved?" % objname)
             else:
                 raise
         finally:
             self.endpoint.del_object(del_name)
             logger.info("Deleted tmp '%s'" % del_name)
 
-    def directory_put(self, path, etag):
+    def directory_put(self, objname, etag):
         r = self.endpoint.object_put(
-            path,
+            objname,
             content_type='application/directory',
             content_length=0,
             if_etag_match=etag)
@@ -278,26 +281,26 @@ class PithosFileClient(FileClient):
                     last_modified = last_tstamp.isoformat()
                     candidates = self.list_candidate_files(
                         last_modified=last_modified)
-                    for (path, info) in candidates:
-                        callback(self.NAME, path, assumed_info=info)
+                    for (objname, info) in candidates:
+                        callback(self.NAME, objname, assumed_info=info)
                     time.sleep(interval)
 
         poll = PollPithos()
         poll.daemon = True
         poll.start()
 
-    def get_object_from_cache(self, path):
+    def get_object_from_cache(self, objname):
         if self.objects is None:
             self.objects = self.endpoint.list_objects()
-        objs = [o for o in self.objects if o["name"] == path]
+        objs = [o for o in self.objects if o["name"] == objname]
         try:
             return objs[0]
         except IndexError:
             return None
 
-    def get_object(self, path):
+    def get_object(self, objname):
         try:
-            return self.endpoint.get_object_info(path)
+            return self.endpoint.get_object_info(objname)
         except ClientError as e:
             if e.status == 404:
                 return None
@@ -314,16 +317,16 @@ class PithosFileClient(FileClient):
                 PITHOS_TYPE: p_type,
                 }
 
-    def start_probing_path(self, path, old_state, ref_state,
+    def start_probing_file(self, objname, old_state, ref_state,
                            assumed_info=None,
                            callback=None):
-        if exclude_pattern.match(path):
-            logger.warning("Ignoring probe archive: %s, path: '%s'" %
-                           (old_state.archive, path))
+        if exclude_pattern.match(objname):
+            logger.warning("Ignoring probe archive: %s, object: '%s'" %
+                           (old_state.archive, objname))
             return
         info = old_state.info
         if assumed_info is None:
-            obj = self.get_object(path)
+            obj = self.get_object(objname)
             live_info = self.get_object_live_info(obj)
         else:
             live_info = assumed_info

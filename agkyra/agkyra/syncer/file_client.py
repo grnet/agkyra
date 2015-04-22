@@ -9,7 +9,7 @@ class FileClient(object):
     def list_candidate_files(self, archive):
         raise NotImplementedError
 
-    def start_probing_path(self, path, old_state, ref_state, callback=None):
+    def start_probing_file(self, objname, old_state, ref_state, callback=None):
         raise NotImplementedError
 
     def stage_file(self, source_state):

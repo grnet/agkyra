@@ -200,13 +200,13 @@ class LocalfsTargetHandle(object):
         self.cache_path = settings.cache_path
         self.get_db = settings.get_db
         self.target_state = target_state
-        self.path = target_state.path
-        self.local_path = utils.join_path(self.rootpath, self.path)
+        self.objname = target_state.objname
+        self.local_path = utils.join_path(self.rootpath, self.objname)
         self.hidden_filename = None
         self.hidden_path = None
 
-    def get_path_in_cache(self, path):
-        return utils.join_path(self.cache_path, path)
+    def get_path_in_cache(self, name):
+        return utils.join_path(self.cache_path, name)
 
     @transaction()
     def register_hidden_name(self, filename):
@@ -214,15 +214,15 @@ class LocalfsTargetHandle(object):
         f = utils.hash_string(filename)
         hide_filename = utils.join_path(self.cache_hide_name, f)
         self.hidden_filename = hide_filename
-        if db.get_cachepath(hide_filename):
+        if db.get_cachename(hide_filename):
             return False
-        db.insert_cachepath(hide_filename, self.NAME, filename)
+        db.insert_cachename(hide_filename, self.NAME, filename)
         return True
 
     @transaction()
     def unregister_hidden_name(self, hidden_filename):
         db = self.get_db()
-        db.delete_cachepath(hidden_filename)
+        db.delete_cachename(hidden_filename)
         self.hidden_filename = None
 
     def hide_file(self):
@@ -231,17 +231,17 @@ class LocalfsTargetHandle(object):
             raise common.BusyError("File '%s' is open. Aborting."
                                    % local_filename)
 
-        new_registered = self.register_hidden_name(self.path)
+        new_registered = self.register_hidden_name(self.objname)
         hidden_filename = self.hidden_filename
         hidden_path = self.get_path_in_cache(hidden_filename)
         self.hidden_path = hidden_path
 
         if not new_registered:
             logger.warning("Hiding already registered for file %s" %
-                           (self.path,))
+                           (self.objname,))
             if os.path.lexists(hidden_path):
                 logger.warning("File %s already hidden at %s" %
-                               (self.path, hidden_path))
+                               (self.objname, hidden_path))
                 return
         try:
             os.rename(local_filename, hidden_path)
@@ -288,10 +288,11 @@ class LocalfsTargetHandle(object):
                 self.stash_file()
 
     def stash_file(self):
-        stash_filename = mk_stash_name(self.local_path)
+        stash_name = mk_stash_name(self.objname)
+        stash_path = utils.join_path(self.rootpath, stash_name)
         logger.warning("Stashing file '%s' to '%s'" %
-                       (self.local_path, stash_filename))
-        os.rename(self.hidden_path, stash_filename)
+                       (self.objname, stash_name))
+        os.rename(self.hidden_path, stash_path)
 
     def finalize(self, filename, live_info):
         logger.info("Finalizing file '%s'" % filename)
@@ -333,19 +334,19 @@ class LocalfsSourceHandle(object):
         f = utils.hash_string(filename)
         stage_filename = utils.join_path(self.cache_stage_name, f)
         self.stage_filename = stage_filename
-        if db.get_cachepath(stage_filename):
+        if db.get_cachename(stage_filename):
             return False
-        db.insert_cachepath(stage_filename, self.NAME, filename)
+        db.insert_cachename(stage_filename, self.NAME, filename)
         return True
 
     @transaction()
     def unregister_stage_name(self, stage_filename):
         db = self.get_db()
-        db.delete_cachepath(stage_filename)
+        db.delete_cachename(stage_filename)
         self.stage_filename = None
 
-    def get_path_in_cache(self, path):
-        return utils.join_path(self.cache_path, path)
+    def get_path_in_cache(self, name):
+        return utils.join_path(self.cache_path, name)
 
     def lock_file(self, local_filename):
         if file_is_open(local_filename):
@@ -358,10 +359,10 @@ class LocalfsSourceHandle(object):
 
         if not new_registered:
             logger.warning("Staging already registered for file %s" %
-                           (self.path,))
+                           (self.objname,))
             if os.path.lexists(stage_path):
                 logger.warning("File %s already staged at %s" %
-                               (self.path, stage_path))
+                               (self.objname, stage_path))
                 return
         try:
             os.rename(local_filename, stage_path)
@@ -379,7 +380,7 @@ class LocalfsSourceHandle(object):
             os.rename(stage_path, local_filename)
             self.unregister_hidden_name(stage_filename)
             raise common.ConflictError("'%s' is non-empty" % local_filename)
-        logger.info("Staging file '%s' to '%s'" % (self.path, stage_path))
+        logger.info("Staging file '%s' to '%s'" % (self.objname, stage_path))
 
     def check_stable(self, interval=1, times=5):
         for i in range(times):
@@ -397,9 +398,8 @@ class LocalfsSourceHandle(object):
         self.cache_path = settings.cache_path
         self.get_db = settings.get_db
         self.source_state = source_state
-        path = source_state.path
-        self.path = path
-        local_filename = utils.join_path(self.rootpath, path)
+        self.objname = source_state.objname
+        local_filename = utils.join_path(self.rootpath, self.objname)
         self.local_path = local_filename
         self.isdir = self.info_is_dir()
         self.stage_filename = None
@@ -412,16 +412,17 @@ class LocalfsSourceHandle(object):
 
     def check_log(self):
         with self.heartbeat.lock() as hb:
-            prev_log = hb.get(self.path)
+            prev_log = hb.get(self.objname)
             if prev_log is not None:
                 actionstate, ts = prev_log
                 if actionstate != self.NAME or \
                         utils.younger_than(ts, 10):
-                    raise common.HandledError("Action mismatch in %s: %s %s" %
-                                              (self.NAME, self.path, prev_log))
+                    raise common.HandledError(
+                        "Action mismatch in %s: %s %s" %
+                        (self.NAME, self.objname, prev_log))
                 logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.NAME, self.path, prev_log))
-            hb.set(self.path, (self.NAME, utils.time_stamp()))
+                               (self.NAME, self.objname, prev_log))
+            hb.set(self.objname, (self.NAME, utils.time_stamp()))
 
     def get_synced_state(self):
         return self.source_state
@@ -452,7 +453,7 @@ class LocalfsSourceHandle(object):
 
     def clear_log(self):
         with self.heartbeat.lock() as hb:
-            hb.delete(self.path)
+            hb.delete(self.objname)
 
     def do_unstage(self):
         if self.stage_filename is None:
@@ -500,17 +501,17 @@ class LocalfsFileClient(FileClient):
         logger.info("Candidates: %s" % candidates)
         return candidates
 
-    def _local_path_changes(self, path, state):
-        local_path = utils.join_path(self.ROOTPATH, path)
+    def _local_path_changes(self, name, state):
+        local_path = utils.join_path(self.ROOTPATH, name)
         return local_path_changes(local_path, state)
 
-    def start_probing_path(self, path, old_state, ref_state,
+    def start_probing_file(self, objname, old_state, ref_state,
                            assumed_info=None,
                            callback=None):
         if old_state.serial != ref_state.serial:
-            logger.warning("Serial mismatch in probing path '%s'" % path)
+            logger.warning("Serial mismatch in probing path '%s'" % objname)
             return
-        live_info = (self._local_path_changes(path, old_state)
+        live_info = (self._local_path_changes(objname, old_state)
                      if assumed_info is None else assumed_info)
         if live_info is None:
             return

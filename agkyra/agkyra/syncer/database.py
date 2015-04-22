@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class FileStateDB(object):
 
-    def new_serial(self, path):
+    def new_serial(self, objname):
         raise NotImplementedError
 
     def list_files(self, archive):
@@ -21,7 +21,7 @@ class FileStateDB(object):
     def put_state(self, state):
         raise NotImplementedError
 
-    def get_state(self, archive, path):
+    def get_state(self, archive, objname):
         raise NotImplementedError
 
 
@@ -38,17 +38,17 @@ class SqliteFileStateDB(FileStateDB):
         db = self.db
 
         Q = ("create table if not exists "
-             "archives(archive text, path text, serial integer, "
-                      "info blob, primary key (archive, path))")
+             "archives(archive text, objname text, serial integer, "
+             "info blob, primary key (archive, objname))")
         db.execute(Q)
 
         Q = ("create table if not exists "
-             "serials(path text, nextserial bigint, primary key (path))")
+             "serials(objname text, nextserial bigint, primary key (objname))")
         db.execute(Q)
 
         Q = ("create table if not exists "
-             "cachepaths(cachepath text, client text, path text, "
-             "primary key (cachepath))")
+             "cachenames(cachename text, client text, objname text, "
+             "primary key (cachename))")
         db.execute(Q)
 
         self.commit()
@@ -62,43 +62,44 @@ class SqliteFileStateDB(FileStateDB):
     def rollback(self):
         self.db.rollback()
 
-    def get_cachepath(self, cachepath):
+    def get_cachename(self, cachename):
         db = self.db
-        Q = "select * from cachepaths where cachepath = ?"
-        c = db.execute(Q, (cachepath,))
+        Q = "select * from cachenames where cachename = ?"
+        c = db.execute(Q, (cachename,))
         r = c.fetchone()
         if r:
             return r
         else:
             return None
 
-    def insert_cachepath(self, cachepath, client, path):
+    def insert_cachename(self, cachename, client, objname):
         db = self.db
-        Q = "insert into cachepaths(cachepath, client, path) values (?, ?, ?)"
-        db.execute(Q, (cachepath, client, path))
+        Q = ("insert into cachenames(cachename, client, objname) "
+             "values (?, ?, ?)")
+        db.execute(Q, (cachename, client, objname))
 
-    def delete_cachepath(self, cachepath):
+    def delete_cachename(self, cachename):
         db = self.db
-        Q = "delete from cachepaths where cachepath = ?"
-        db.execute(Q, (cachepath,))
+        Q = "delete from cachenames where cachename = ?"
+        db.execute(Q, (cachename,))
 
-    def new_serial(self, path):
+    def new_serial(self, objname):
         db = self.db
-        Q = ("select nextserial from serials where path = ?")
-        c = db.execute(Q, (path,))
+        Q = ("select nextserial from serials where objname = ?")
+        c = db.execute(Q, (objname,))
         r = c.fetchone()
         if r:
             serial = r[0]
-            Q = "update serials set nextserial = ? where path = ?"
+            Q = "update serials set nextserial = ? where objname = ?"
         else:
             serial = 0
-            Q = "insert into serials(nextserial, path) values (?, ?)"
-        db.execute(Q, (serial + 1, path))
+            Q = "insert into serials(nextserial, objname) values (?, ?)"
+        db.execute(Q, (serial + 1, objname))
         return serial
 
     def list_files_with_info(self, archive, info):
-        Q = ("select path from archives where archive = ? and info = ?"
-             " order by path")
+        Q = ("select objname from archives where archive = ? and info = ?"
+             " order by objname")
         c = self.db.execute(Q, (archive, info))
         fetchone = c.fetchone
         while True:
@@ -108,8 +109,8 @@ class SqliteFileStateDB(FileStateDB):
             yield r[0]
 
     def list_non_deleted_files(self, archive):
-        Q = ("select path from archives where archive = ? and info != '{}'"
-             " order by path")
+        Q = ("select objname from archives where archive = ? and info != '{}'"
+             " order by objname")
         c = self.db.execute(Q, (archive,))
         fetchone = c.fetchone
         while True:
@@ -119,14 +120,14 @@ class SqliteFileStateDB(FileStateDB):
             yield r[0]
 
     def list_files(self, archive, prefix=None):
-        Q = "select path from archives where archive = ?"
+        Q = "select objname from archives where archive = ?"
         if prefix is not None:
-            Q += " and path like ?"
+            Q += " and objname like ?"
             tpl = (archive, prefix + '%')
         else:
             tpl = (archive,)
 
-        Q += " order by path"
+        Q += " order by objname"
         c = self.db.execute(Q, tpl)
         fetchone = c.fetchone
         while True:
@@ -140,9 +141,10 @@ class SqliteFileStateDB(FileStateDB):
             archive = archives[0]
             archives = (archive, archive)
         archives = tuple(archives)
-        Q = ("select client.path from archives client, archives sync "
+        Q = ("select client.objname from archives client, archives sync "
              "where client.archive in (?, ?) and sync.archive = ? "
-             "and client.path = sync.path and client.serial > sync.serial")
+             "and client.objname = sync.objname "
+             "and client.serial > sync.serial")
         c = self.db.execute(Q, archives + (sync,))
         fetchone = c.fetchone
         while True:
@@ -153,28 +155,28 @@ class SqliteFileStateDB(FileStateDB):
 
     def put_state(self, state):
         Q = ("insert or replace into "
-             "archives(archive, path, serial, info) "
+             "archives(archive, objname, serial, info) "
              "values (?, ?, ?, ?)")
-        args = (state.archive, state.path, state.serial,
+        args = (state.archive, state.objname, state.serial,
                 json.dumps(state.info))
         self.db.execute(Q, args)
 
-    def _get_state(self, archive, path):
-        Q = ("select archive, path, serial, info from archives "
-             "where archive = ? and path = ?")
-        c = self.db.execute(Q, (archive, path))
+    def _get_state(self, archive, objname):
+        Q = ("select archive, objname, serial, info from archives "
+             "where archive = ? and objname = ?")
+        c = self.db.execute(Q, (archive, objname))
         r = c.fetchone()
         if not r:
             return None
 
-        return common.FileState(archive=r[0], path=r[1], serial=r[2],
+        return common.FileState(archive=r[0], objname=r[1], serial=r[2],
                                 info=json.loads(r[3]))
 
-    def get_state(self, archive, path):
-        state = self._get_state(archive, path)
+    def get_state(self, archive, objname):
+        state = self._get_state(archive, objname)
         if state is None:
-            state = common.FileState(archive=archive, path=path, serial=-1,
-                                     info={})
+            state = common.FileState(
+                archive=archive, objname=objname, serial=-1, info={})
         return state
 
 
