@@ -6,7 +6,7 @@ import threading
 import logging
 import re
 
-from agkyra.syncer import utils, common
+from agkyra.syncer import utils, common, messaging
 from agkyra.syncer.file_client import FileClient
 from agkyra.syncer.setup import ClientError
 from agkyra.syncer.database import transaction
@@ -23,7 +23,7 @@ def heartbeat_event(settings, heartbeat, objname):
             client, prev_tstamp = hb.get(objname)
             tpl = (client, utils.time_stamp())
             hb.set(objname, tpl)
-            logger.info("HEARTBEAT '%s' %s %s" % ((objname,) + tpl))
+            logger.debug("HEARTBEAT '%s' %s %s" % ((objname,) + tpl))
 
     def go():
         interval = 0.2
@@ -200,27 +200,36 @@ class PithosTargetHandle(object):
 #        assert isinstance(source_handle, LocalfsSourceHandle)
         info = sync_state.info
         etag = info.get("pithos_etag")
-        if source_handle.info_is_deleted_or_unhandled():
-            if etag is not None:
-                logger.info("Deleting object '%s'" % self.target_objname)
-                self.safe_object_del(self.target_objname, etag)
-            live_info = {}
-        elif source_handle.info_is_dir():
-            logger.info("Creating dir '%s'" % self.target_objname)
-            r = self.directory_put(self.target_objname, etag)
-            synced_etag = r.headers["etag"]
-            live_info = {"pithos_etag": synced_etag,
-                         "pithos_type": common.T_DIR}
-        else:
-            with open(source_handle.staged_path, mode="rb") as fil:
-                r = self.endpoint.upload_object(
-                    self.target_objname,
-                    fil,
-                    if_etag_match=info.get("pithos_etag"))
-                synced_etag = r["etag"]
+        try:
+            if source_handle.info_is_deleted_or_unhandled():
+                if etag is not None:
+                    logger.info("Deleting object '%s'" % self.target_objname)
+                    self.safe_object_del(self.target_objname, etag)
+                live_info = {}
+            elif source_handle.info_is_dir():
+                logger.info("Creating dir '%s'" % self.target_objname)
+                r = self.directory_put(self.target_objname, etag)
+                synced_etag = r.headers["etag"]
                 live_info = {"pithos_etag": synced_etag,
-                             "pithos_type": common.T_FILE}
-        return self.target_state.set(info=live_info)
+                             "pithos_type": common.T_DIR}
+            else:
+                with open(source_handle.staged_path, mode="rb") as fil:
+                    r = self.endpoint.upload_object(
+                        self.target_objname,
+                        fil,
+                        if_etag_match=info.get("pithos_etag"))
+                    synced_etag = r["etag"]
+                live_info = {"pithos_etag": synced_etag,
+                             "pithos_type": common.T_DIR}
+            return self.target_state.set(info=live_info)
+        except ClientError as e:
+            if e.status == 412:  # Precondition failed
+                msg = messaging.CollisionMessage(
+                    objname=self.target_objname, etag=etag, logger=logger)
+                self.settings.messager.put(msg)
+                raise common.CollisionError(e)
+            else:
+                raise
 
 
 def object_isdir(obj):

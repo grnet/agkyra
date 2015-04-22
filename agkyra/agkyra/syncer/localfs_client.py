@@ -9,7 +9,7 @@ from watchdog.events import FileSystemEventHandler
 import logging
 
 from agkyra.syncer.file_client import FileClient
-from agkyra.syncer import utils, common
+from agkyra.syncer import utils, common, messaging
 from agkyra.syncer.database import transaction
 
 logger = logging.getLogger(__name__)
@@ -192,6 +192,7 @@ def is_info_eq(info1, info2):
 
 class LocalfsTargetHandle(object):
     def __init__(self, settings, target_state):
+        self.settings = settings
         self.SIGNATURE = "LocalfsTargetHandle"
         self.rootpath = settings.local_root_path
         self.cache_hide_name = settings.cache_hide_name
@@ -289,8 +290,9 @@ class LocalfsTargetHandle(object):
     def stash_file(self):
         stash_name = mk_stash_name(self.objname)
         stash_path = utils.join_path(self.rootpath, stash_name)
-        logger.warning("Stashing file '%s' to '%s'" %
-                       (self.objname, stash_name))
+        msg = messaging.ConflictStashMessage(
+            objname=self.objname, stash_name=stash_name, logger=logger)
+        self.settings.messager.put(msg)
         os.rename(self.hidden_path, stash_path)
 
     def finalize(self, filename, live_info):
@@ -382,6 +384,7 @@ class LocalfsSourceHandle(object):
         logger.info("Staging file '%s' to '%s'" % (self.objname, stage_path))
 
     def __init__(self, settings, source_state):
+        self.settings = settings
         self.SIGNATURE = "LocalfsSourceHandle"
         self.rootpath = settings.local_root_path
         self.cache_stage_name = settings.cache_stage_name

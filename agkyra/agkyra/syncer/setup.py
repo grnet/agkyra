@@ -5,6 +5,7 @@ import logging
 from agkyra.syncer.utils import join_path
 from agkyra.syncer.database import SqliteFileStateDB
 from agkyra.syncer.heartbeat import HeartBeat
+from agkyra.syncer.messaging import Messager
 
 from kamaki.clients import ClientError
 
@@ -77,6 +78,7 @@ class SyncerSettings():
         self.heartbeat = HeartBeat()
         self.action_max_wait = kwargs.get("action_max_wait",
                                           DEFAULT_ACTION_MAX_WAIT)
+        self.messager = Messager()
 
     def get_db(self, initialize=False):
         dbs = getattr(thread_local_data, "dbs", None)

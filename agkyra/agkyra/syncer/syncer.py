@@ -8,6 +8,7 @@ from agkyra.syncer.setup import SyncerSettings
 from agkyra.syncer.database import transaction
 from agkyra.syncer.localfs_client import LocalfsFileClient
 from agkyra.syncer.pithos_client import PithosFileClient
+from agkyra.syncer import messaging
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +44,7 @@ class FileSyncer(object):
         self.clients = {self.MASTER: master, self.SLAVE: slave}
         self.decide_event = None
         self.failed_serials = common.LockedDict()
+        self.messager = settings.messager
 
     @property
     def paused(self):
@@ -66,6 +68,9 @@ class FileSyncer(object):
     def pause_decide(self):
         if self.decide_event is not None:
             self.decide_event.clear()
+
+    def get_next_message(self):
+        return self.messager.get(block=False)
 
     def exclude_file(self, objname):
         parts = objname.split(common.OBJECT_DIRSEP)
@@ -104,8 +109,9 @@ class FileSyncer(object):
             logger.warning("Ignoring update archive: %s, object: %s" %
                            (archive, objname))
             return
-        logger.info("Updating archive: %s, object: '%s', serial: %s" %
-                    (archive, objname, serial))
+        msg = messaging.UpdateMessage(
+            archive=archive, objname=objname, serial=serial, logger=logger)
+        self.messager.put(msg)
         db_state = db.get_state(archive, objname)
         if db_state and db_state.serial != serial:
             logger.warning(
@@ -190,10 +196,12 @@ class FileSyncer(object):
         db.put_state(new_decision_state)
 
     def sync_file(self, source_state, target_state, sync_state):
-        logger.info("Syncing archive: %s, object: '%s', serial: %s" %
-                    (source_state.archive,
-                     source_state.objname,
-                     source_state.serial))
+        msg = messaging.SyncMessage(
+            objname=source_state.objname,
+            archive=source_state.archive,
+            serial=source_state.serial,
+            logger=logger)
+        self.messager.put(msg)
         thread = threading.Thread(
             target=self._sync_file,
             args=(source_state, target_state, sync_state))
@@ -234,9 +242,10 @@ class FileSyncer(object):
         objname = synced_source_state.objname
         source = synced_source_state.archive
         target = synced_target_state.archive
-        logger.info("Acking archive: %s, object: '%s', serial: %s" %
-                    (target, objname, serial))
-
+        msg = messaging.AckSyncMessage(
+            archive=target, objname=objname, serial=serial,
+            logger=logger)
+        self.messager.put(msg)
         decision_state = db.get_state(self.DECISION, objname)
         sync_state = db.get_state(self.SYNC, objname)
 
