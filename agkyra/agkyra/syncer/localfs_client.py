@@ -193,7 +193,7 @@ def is_info_eq(info1, info2):
 
 class LocalfsTargetHandle(object):
     def __init__(self, settings, target_state):
-        self.NAME = "LocalfsTargetHandle"
+        self.SIGNATURE = "LocalfsTargetHandle"
         self.rootpath = settings.local_root_path
         self.cache_hide_name = settings.cache_hide_name
         self.cache_hide_path = settings.cache_hide_path
@@ -216,7 +216,7 @@ class LocalfsTargetHandle(object):
         self.hidden_filename = hide_filename
         if db.get_cachename(hide_filename):
             return False
-        db.insert_cachename(hide_filename, self.NAME, filename)
+        db.insert_cachename(hide_filename, self.SIGNATURE, filename)
         return True
 
     @transaction()
@@ -336,7 +336,7 @@ class LocalfsSourceHandle(object):
         self.stage_filename = stage_filename
         if db.get_cachename(stage_filename):
             return False
-        db.insert_cachename(stage_filename, self.NAME, filename)
+        db.insert_cachename(stage_filename, self.SIGNATURE, filename)
         return True
 
     @transaction()
@@ -391,7 +391,7 @@ class LocalfsSourceHandle(object):
         return True
 
     def __init__(self, settings, source_state):
-        self.NAME = "LocalfsSourceHandle"
+        self.SIGNATURE = "LocalfsSourceHandle"
         self.rootpath = settings.local_root_path
         self.cache_stage_name = settings.cache_stage_name
         self.cache_stage_path = settings.cache_stage_path
@@ -415,14 +415,14 @@ class LocalfsSourceHandle(object):
             prev_log = hb.get(self.objname)
             if prev_log is not None:
                 actionstate, ts = prev_log
-                if actionstate != self.NAME or \
+                if actionstate != self.SIGNATURE or \
                         utils.younger_than(ts, 10):
                     raise common.HandledError(
                         "Action mismatch in %s: %s %s" %
-                        (self.NAME, self.objname, prev_log))
+                        (self.SIGNATURE, self.objname, prev_log))
                 logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.NAME, self.objname, prev_log))
-            hb.set(self.objname, (self.NAME, utils.time_stamp()))
+                               (self.SIGNATURE, self.objname, prev_log))
+            hb.set(self.objname, (self.SIGNATURE, utils.time_stamp()))
 
     def get_synced_state(self):
         return self.source_state
@@ -472,7 +472,7 @@ class LocalfsSourceHandle(object):
 class LocalfsFileClient(FileClient):
     def __init__(self, settings):
         self.settings = settings
-        self.NAME = "LocalfsFileClient"
+        self.SIGNATURE = "LocalfsFileClient"
         self.ROOTPATH = settings.local_root_path
         self.CACHEPATH = settings.cache_path
         self.get_db = settings.get_db
@@ -496,7 +496,7 @@ class LocalfsFileClient(FileClient):
                 local_filename = utils.join_path(rel_dirpath, filename)
                 candidates[local_filename] = None
 
-        db_cands = dict((name, None) for name in db.list_files(self.NAME))
+        db_cands = dict((name, None) for name in db.list_files(self.SIGNATURE))
         candidates.update(db_cands)
         logger.info("Candidates: %s" % candidates)
         return candidates
@@ -529,7 +529,7 @@ class LocalfsFileClient(FileClient):
         def handle_path(path):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             if callback is not None:
-                callback(self.NAME, rel_path)
+                callback(self.SIGNATURE, rel_path)
 
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):

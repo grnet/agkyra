@@ -38,8 +38,8 @@ class FileSyncer(object):
         self.slave = slave
         self.DECISION = 'DECISION'
         self.SYNC = 'SYNC'
-        self.MASTER = master.NAME
-        self.SLAVE = slave.NAME
+        self.MASTER = master.SIGNATURE
+        self.SLAVE = slave.SIGNATURE
         self.get_db = settings.get_db
         self.clients = {self.MASTER: master, self.SLAVE: slave}
         self.decide_event = None

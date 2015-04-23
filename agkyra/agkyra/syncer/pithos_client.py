@@ -68,7 +68,7 @@ def handle_client_errors(f):
 
 class PithosSourceHandle(object):
     def __init__(self, settings, source_state):
-        self.NAME = "PithosSourceHandle"
+        self.SIGNATURE = "PithosSourceHandle"
         self.settings = settings
         self.endpoint = settings.endpoint
         self.cache_fetch_name = settings.cache_fetch_name
@@ -85,14 +85,14 @@ class PithosSourceHandle(object):
             prev_log = hb.get(self.objname)
             if prev_log is not None:
                 actionstate, ts = prev_log
-                if actionstate != self.NAME or \
+                if actionstate != self.SIGNATURE or \
                         utils.younger_than(ts, self.settings.action_max_wait):
                     raise common.HandledError(
                         "Action mismatch in %s: %s %s" %
-                        (self.NAME, self.objname, prev_log))
+                        (self.SIGNATURE, self.objname, prev_log))
                 logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.NAME, self.objname, prev_log))
-            hb.set(self.objname, (self.NAME, utils.time_stamp()))
+                               (self.SIGNATURE, self.objname, prev_log))
+            hb.set(self.objname, (self.SIGNATURE, utils.time_stamp()))
 
     @transaction()
     def register_fetch_name(self, filename):
@@ -101,7 +101,7 @@ class PithosSourceHandle(object):
             datetime.datetime.now().strftime("%s")
         fetch_name = utils.join_path(self.cache_fetch_name, f)
         self.fetch_name = fetch_name
-        db.insert_cachename(fetch_name, self.NAME, filename)
+        db.insert_cachename(fetch_name, self.SIGNATURE, filename)
         return utils.join_path(self.cache_path, fetch_name)
 
     @handle_client_errors
@@ -239,7 +239,7 @@ PITHOS_ETAG = "pithos_etag"
 class PithosFileClient(FileClient):
     def __init__(self, settings):
         self.settings = settings
-        self.NAME = "PithosFileClient"
+        self.SIGNATURE = "PithosFileClient"
         self.auth_url = settings.auth_url
         self.auth_token = settings.auth_token
         self.container = settings.container
@@ -262,7 +262,7 @@ class PithosFileClient(FileClient):
         else:
             candidates = upstream_all
 
-        non_deleted_in_db = set(db.list_non_deleted_files(self.NAME))
+        non_deleted_in_db = set(db.list_non_deleted_files(self.SIGNATURE))
         newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
         logger.debug("newly_deleted %s" % newly_deleted_names)
         newly_deleted = dict((name, {}) for name in newly_deleted_names)
@@ -282,7 +282,7 @@ class PithosFileClient(FileClient):
                     candidates = self.list_candidate_files(
                         last_modified=last_modified)
                     for (objname, info) in candidates:
-                        callback(self.NAME, objname, assumed_info=info)
+                        callback(self.SIGNATURE, objname, assumed_info=info)
                     time.sleep(interval)
 
         poll = PollPithos()
