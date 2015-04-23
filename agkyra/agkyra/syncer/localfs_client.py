@@ -1,4 +1,5 @@
 import os
+import stat
 import re
 import time
 import datetime
@@ -78,15 +79,13 @@ def eq_float(f1, f2):
 
 def files_equal(f1, f2):
     logger.info("Comparing files: '%s', '%s'" % (f1, f2))
-    st1 = path_status(f1)
-    st2 = path_status(f2)
+    stats1, st1 = get_local_status(f1)
+    stats2, st2 = get_local_status(f2)
     if st1 != st2:
         return False
     if st1 != LOCAL_FILE:
         return True
-    (mtime1, msize1) = stat_file(f1)
-    (mtime2, msize2) = stat_file(f2)
-    if msize1 != msize2:
+    if stats1[stat.ST_SIZE] != stats2[stat.ST_SIZE]:
         return False
     hash1 = utils.hash_file(f1)
     hash2 = utils.hash_file(f2)
@@ -108,19 +107,15 @@ def local_path_changes(path, state):
 def get_live_info(path):
     if path is None:
         return {}
-    status = path_status(path)
+    stats, status = get_local_status(path)
     if status == LOCAL_MISSING:
         return {}
     if status in [LOCAL_SOFTLINK, LOCAL_OTHER]:
         return {LOCALFS_TYPE: common.T_UNHANDLED}
     if status in [LOCAL_EMPTY_DIR, LOCAL_NONEMPTY_DIR]:
         return {LOCALFS_TYPE: common.T_DIR}
-    stats = stat_file(path)
-    if stats is None:
-        return {}
-    (st_mtime, st_size) = stats
-    live_info = {LOCALFS_MTIME: st_mtime,
-                 LOCALFS_SIZE: st_size,
+    live_info = {LOCALFS_MTIME: stats[stat.ST_MTIME],
+                 LOCALFS_SIZE: stats[stat.ST_SIZE],
                  LOCALFS_TYPE: common.T_FILE,
                  }
     return live_info
@@ -128,12 +123,11 @@ def get_live_info(path):
 
 def stat_file(path):
     try:
-        file_stats = os.lstat(path)
+        return os.lstat(path)
     except OSError as e:
         if e.errno == OS_NO_FILE_OR_DIR:
             return None
         raise
-    return (file_stats.st_mtime, file_stats.st_size)
 
 
 LOCALFS_TYPE = "localfs_type"
@@ -151,20 +145,36 @@ def status_of_info(info):
     return LOCAL_FILE
 
 
-def path_status(path):
-    if os.path.islink(path):
-        return LOCAL_SOFTLINK
+def get_local_status(path, attempt=0):
+    stats = stat_file(path)
     try:
-        contents = os.listdir(path)
-        return LOCAL_NONEMPTY_DIR if contents else LOCAL_EMPTY_DIR
+        status = _get_local_status_from_stats(stats, path)
     except OSError as e:
-        if e.errno == OS_NOT_A_DIR:
-            if os.path.isfile(path):
-                return LOCAL_FILE
-            else:
-                return LOCAL_OTHER
-        if e.errno == OS_NO_FILE_OR_DIR:
-            return LOCAL_MISSING
+        logger.warning("Got error '%s' while listing dir '%s'" % (e, path))
+        if attempt > 2:
+            raise
+        return get_local_status(path, attempt + 1)
+    return stats, status
+
+
+def _get_local_status_from_stats(stats, path):
+    if stats is None:
+        return LOCAL_MISSING
+    mode = stats[stat.ST_MODE]
+    if stat.S_ISLNK(mode):
+        return LOCAL_SOFTLINK
+    if stat.S_ISREG(mode):
+        return LOCAL_FILE
+    if stat.S_ISDIR(mode):
+        if os.listdir(path):
+            return LOCAL_NONEMPTY_DIR
+        return LOCAL_EMPTY_DIR
+    return LOCAL_OTHER
+
+
+def path_status(path):
+    stats, status = get_local_status(path)
+    return status
 
 
 def is_info_eq(info1, info2):
