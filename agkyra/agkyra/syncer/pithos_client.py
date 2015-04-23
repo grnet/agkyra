@@ -107,12 +107,12 @@ class PithosSourceHandle(object):
     @handle_client_errors
     @give_heartbeat
     def send_file(self, sync_state):
-        fetched_file = self.register_fetch_name(self.objname)
+        fetched_fspath = self.register_fetch_name(self.objname)
         headers = dict()
-        with open(fetched_file, mode='wb+') as fil:
+        with open(fetched_fspath, mode='wb+') as fil:
             try:
                 logger.info("Downloading object: '%s', to: '%s'" %
-                            (self.objname, fetched_file))
+                            (self.objname, fetched_fspath))
                 self.endpoint.download_object(
                     self.objname,
                     fil,
@@ -132,13 +132,13 @@ class PithosSourceHandle(object):
         if actual_info == {}:
             logger.info("Downloading object: '%s', object is gone."
                         % self.objname)
-            os.unlink(fetched_file)
+            os.unlink(fetched_fspath)
         elif actual_info["pithos_type"] == common.T_DIR:
             logger.info("Downloading object: '%s', object is dir."
                         % self.objname)
-            os.unlink(fetched_file)
-            os.mkdir(fetched_file)
-        return fetched_file
+            os.unlink(fetched_fspath)
+            os.mkdir(fetched_fspath)
+        return fetched_fspath
 
     def get_synced_state(self):
         return self.source_state
@@ -161,7 +161,7 @@ class PithosTargetHandle(object):
         self.settings = settings
         self.endpoint = settings.endpoint
         self.target_state = target_state
-        self.target_file = target_state.objname
+        self.target_objname = target_state.objname
         self.objname = target_state.objname
         self.heartbeat = settings.heartbeat
 
@@ -202,19 +202,19 @@ class PithosTargetHandle(object):
         etag = info.get("pithos_etag")
         if source_handle.info_is_deleted_or_unhandled():
             if etag is not None:
-                logger.info("Deleting object '%s'" % self.target_file)
-                self.safe_object_del(self.target_file, etag)
+                logger.info("Deleting object '%s'" % self.target_objname)
+                self.safe_object_del(self.target_objname, etag)
             live_info = {}
         elif source_handle.info_is_dir():
-            logger.info("Creating dir '%s'" % source_handle.path)
-            r = self.directory_put(source_handle.path, etag)
+            logger.info("Creating dir '%s'" % self.target_objname)
+            r = self.directory_put(self.target_objname, etag)
             synced_etag = r.headers["etag"]
             live_info = {"pithos_etag": synced_etag,
                          "pithos_type": common.T_DIR}
         else:
             with open(source_handle.staged_path, mode="rb") as fil:
                 r = self.endpoint.upload_object(
-                    self.target_file,
+                    self.target_objname,
                     fil,
                     if_etag_match=info.get("pithos_etag"))
                 synced_etag = r["etag"]
