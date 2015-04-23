@@ -1,16 +1,20 @@
 import cmd
 import sys
 import logging
-import json
-from titanic import setup, syncer
-from titanic.pithos_client import PithosFileClient
-from titanic.localfs_client import FilesystemFileClient
-import config
+from agkyra.syncer import setup, syncer
+from agkyra.syncer.pithos_client import PithosFileClient
+from agkyra.syncer.localfs_client import LocalfsFileClient
+from agkyra import config
 # from config import AgkyraConfig
 
 
-logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
+LOG.addHandler(logging.FileHandler('%s/agkyra.log' % config.AGKYRA_DIR))
+LOG.setLevel(logging.CRITICAL)
+
+SYNCER_LOG = logging.getLogger('agkyra.syncer')
+SYNCER_LOG.addHandler(logging.FileHandler('%s/agkyra.log' % config.AGKYRA_DIR))
+SYNCER_LOG.setLevel(logging.CRITICAL)
 
 setup.GLOBAL_SETTINGS_NAME = config.AGKYRA_DIR
 
@@ -41,11 +45,12 @@ class AgkyraCLI(cmd.Cmd):
 
         # Init syncer
         master = PithosFileClient(self.settings)
-        slave = FilesystemFileClient(self.settings)
+        slave = LocalfsFileClient(self.settings)
         self.syncer = syncer.FileSyncer(self.settings, master, slave)
 
     def preloop(self):
         """This runs when the shell loads"""
+        print 'Loading Agkyra (sometimes this takes a while)'
         if not self.is_shell:
             self.is_shell = True
             self.prompt = '\xe2\x9a\x93 '
@@ -128,14 +133,20 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_start(self, line):
         """Start syncing"""
-        self.syncer.run()
+        if not getattr(self, '_syncer_initialized', False):
+            self.syncer.probe_and_sync_all()
+            self._syncer_initialized = True
+        if self.syncer.paused:
+            self.syncer.start_decide()
 
     def do_pause(self, line):
         """Pause syncing"""
+        if not self.syncer.paused:
+            self.syncer.pause_decide()
 
     def do_status(self, line):
         """Get current status (running/paused, progress)"""
-        print 'I have no idea'
+        print 'paused' if self.syncer.paused else 'running'
 
     # def do_shell(self, line):
     #     """Run system, shell commands"""
@@ -181,4 +192,4 @@ class AgkyraCLI(cmd.Cmd):
 # AgkyraCLI().run_onecmd(sys.argv)
 
 # or run a shell with
-AgkyraCLI().cmdloop()
+# AgkyraCLI().cmdloop()

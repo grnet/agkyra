@@ -9,6 +9,7 @@
         <script type="text/javascript">
             var fs = require('fs');
             var exclude = null;
+            remove_tokens = null;
             $(document).ready(function() {
                 var url = get_setting('url');
                 if (url) $('#cloud-url').val(url);
@@ -18,16 +19,11 @@
                 if (container) $('#container').val(container);
                 var directory = get_setting('directory');
                 if (directory) $('#directory').html(directory);
-                exclude = get_setting('exclude');
-                if (exclude) $('#exclude').val(
-                    fs.readFileSync(exclude, encoding='utf-8'));
-                var pithos_ui = get_setting('pithos_ui');
-                if (pithos_ui) {
-                    $('#get_creds').show();
-                } else {
-                    console.log('No pithos view, remove credential button');
-                    $('#get_creds').hide();
-                }
+                var exclude = get_setting('exclude');
+                if (exclude) try {
+                        $('#exclude').val(
+                            fs.readFileSync(exclude, encoding='utf-8'));
+                } catch (err) {console.log(err);}
             });
 
             function update_exclude(new_content) {
@@ -45,30 +41,79 @@
                 //set_setting('token', $(this).val())
             }
 
+            function remove_cookies(win, url) {
+                var removed_at_least_one = false
+                win.cookies.getAll({url: url}, function(cookies) {
+                    $.each(cookies, function(i, cookie) {
+                        console.log('I have a cookie to remove ' + cookie.name + ', ' + cookie.domain);
+                        win.cookies.remove({url: url, name: cookie.name} );
+                        removed_at_least_one = true;
+                    });
+                });
+                return removed_at_least_one;
+            }
+
             var gui = require('nw.gui');
-            function extract_cookie(url) {
+            var cred_win = null;
+            var logout_win = null;
+            var can_close_cred = false;
+            var got_cookie = false;
+            var can_close_logout = false;
+            var show_creds = true;
+            function get_credentials() {
                 var cookie_name = '_pithos2_a';
-                var logout_url = 'https://accounts.okeanos.grnet.gr/ui/logout'
-                var w = gui.Window.open(logout_url, {
-                    focus: false, width: 20, height: 20
+                var lurl = get_account_ui() + '/logout?next=' + get_pithos_ui()
+
+                show_creds = false;
+                $('#get_creds').hide();
+
+                got_cookie = false;
+                cred_win = gui.Window.open(lurl, {
+                    focus: true, width: 820, height: 580, toolbar: false
                 });
-                w.close();
-                var w = gui.Window.open(logout_url, {
-                    focus: true, width: 520, height: 920
-                });
-                w.cookies.onChanged.addListener(function(info) {
+
+                cred_win.cookies.onChanged.addListener(function(info) {
                     if (info.cookie.name === cookie_name) {
                         console.log('Succesfully logged in');
                         extract_credentials(info.cookie);
-                        w.close();
+                        got_cookie = true;
                     }
+                });
+                cred_win.on('loaded', function() {
+                    if (got_cookie) can_close_cred = true;
+                });
+
+                cred_win.on('closed', function() {
+                    logout_win = gui.Window.open(
+                        get_account_ui() + '/logout',
+                        {focus: true, width:20, height: 20 });
+                    logout_win.hide();
+                    logout_win.on('loaded', function() {
+                        while(
+                            remove_cookies(logout_win, get_account_ui()) ||
+                            remove_cookies(logout_win, get_pithos_ui())) {}
+                        can_close_logout = true;
+                    });
                 });
             }
 
-            function get_credentials() {
-                var pithos_ui = get_setting('pithos_ui');
-                extract_cookie(pithos_ui);
-            }
+            window.setInterval(function() {
+                // Refresh get_creds visibility, until refresh_endpoints
+                // changes are in effect
+                if (get_pithos_ui() && show_creds) {
+                    $('#get_creds').show();
+                } else {$('#get_creds').hide(); }
+                // Garbage collector
+                if (can_close_logout) {
+                    can_close_logout = false;
+                    logout_win.close();
+                    show_creds = true;
+                }
+                else if (can_close_cred) {
+                    can_close_cred = false;
+                    cred_win.close();
+                }
+            }, 500);
         </script>
     </head>
     <body>
@@ -88,7 +133,7 @@
                                 </div>
                                 <div class="small-9 columns">
                                     <input type="text" id="cloud-url" placeholder="Authentication URL"
-                                    onchange="set_setting('url', $(this).val())">
+                                    onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val());">
                                     <small class="error" style="visibility: hidden">Invalid entry</small>
                                 </div>
                             </div>
@@ -107,7 +152,7 @@
                             <div class="clearfix">
                                <a id="get_creds"
                                     class="button right" style="display: none;"
-                                    onclick="get_credentials();">Get credentials</a>
+                                    onclick="get_credentials();">Login to get credentials</a>
                             </div>
 
                         </fieldset>

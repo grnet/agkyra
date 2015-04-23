@@ -2,10 +2,8 @@ from ws4py.websocket import WebSocket
 import json
 import logging
 from os.path import abspath
-from titanic import syncer
-from config import AgkyraConfig
-from kamaki.clients.astakos import AstakosClient
-from kamaki.clients.pithos import PithosClient
+from agkyra.syncer import syncer
+from agkyra.config import AgkyraConfig
 
 
 LOG = logging.getLogger(__name__)
@@ -72,33 +70,30 @@ class WebSocketProtocol(WebSocket):
     cnf = AgkyraConfig()
 
     def _load_settings(self):
+        LOG.debug('Start loading settings')
         sync = self.cnf.get('global', 'default_sync')
         cloud = self.cnf.get_sync(sync, 'cloud')
 
-        url = self.cnf.get_cloud(cloud, 'url')
-        token = self.cnf.get_cloud(cloud, 'token')
-
-        astakos = AstakosClient(url, token)
-        self.settings['url'], self.settings['token'] = url, token
-
         try:
-            endpoints = astakos.get_endpoints()['access']['serviceCatalog']
-            for endpoint in endpoints:
-                if endpoint['type'] == PithosClient.service_type:
-                    pithos_ui = endpoint['endpoints'][0]['SNF:uiURL']
-                    self.settings['pithos_ui'] = pithos_ui
-                    break
-        except Exception as e:
-            LOG.debug('Failed to retrieve pithos_ui: %s' % e)
+            self.settings['url'] = self.cnf.get_cloud(cloud, 'url')
+        except Exception:
+            self.settings['url'] = None
+        try:
+            self.settings['token'] = self.cnf.get_cloud(cloud, 'token')
+        except Exception:
+            self.settings['url'] = None
 
         for option in ('container', 'directory', 'exclude'):
             self.settings[option] = self.cnf.get_sync(sync, option)
 
+        LOG.debug('Finished loading settings')
+
     def _dump_settings(self):
+        LOG.debug('Saving settings')
         sync = self.cnf.get('global', 'default_sync')
         cloud = self.cnf.get_sync(sync, 'cloud')
 
-        old_url = self.cnf.get_cloud(cloud, 'url')
+        old_url = self.cnf.get_cloud(cloud, 'url') or ''
         while old_url != self.settings['url']:
             cloud = '%s_%s' % (cloud, sync)
             try:
@@ -113,6 +108,9 @@ class WebSocketProtocol(WebSocket):
         for option in ('directory', 'container', 'exclude'):
             self.cnf.set_sync(sync, option, self.settings[option])
 
+        self.cnf.write()
+        LOG.debug('Settings saved')
+
     # Syncer-related methods
     def get_status(self):
         from random import randint
@@ -121,7 +119,6 @@ class WebSocketProtocol(WebSocket):
         return self.status
 
     def get_settings(self):
-        self._load_settings()
         return self.settings
 
     def set_settings(self, new_settings):
@@ -137,7 +134,6 @@ class WebSocketProtocol(WebSocket):
     # WebSocket connection methods
     def opened(self):
         LOG.debug('Helper: connection established')
-        self._load_settings()
 
     def closed(self, *args):
         LOG.debug('Helper: connection closed')
@@ -149,7 +145,6 @@ class WebSocketProtocol(WebSocket):
     # Protocol handling methods
     def _post(self, r):
         """Handle POST requests"""
-        LOG.debug('CALLED with %s' % r)
         if self.accepted:
             action = r['path']
             if action == 'shutdown':
@@ -161,6 +156,7 @@ class WebSocketProtocol(WebSocket):
             }[action]()
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['gui_id'] == self.gui_id:
+            self._load_settings()
             self.accepted = True
             self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
         else:
@@ -170,16 +166,16 @@ class WebSocketProtocol(WebSocket):
 
     def _put(self, r):
         """Handle PUT requests"""
-        if not self.accepted:
-            action = r['path']
-            self.send_json({'UNAUTHORIZED': 401, 'action': 'put %s' % action})
-            self.terminate()
-        else:
+        if self.accepted:
             LOG.debug('put %s' % r)
             action = r.pop('path')
             self.set_settings(r)
             r.update({'CREATED': 201, 'action': 'put %s' % action})
             self.send_json(r)
+        else:
+            action = r['path']
+            self.send_json({'UNAUTHORIZED': 401, 'action': 'put %s' % action})
+            self.terminate()
 
     def _get(self, r):
         """Handle GET requests"""

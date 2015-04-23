@@ -1,6 +1,6 @@
 from wsgiref.simple_server import make_server
 # from ws4py.websocket import EchoWebSocket
-from protocol import WebSocketProtocol
+from agkyra.protocol import WebSocketProtocol
 from ws4py.server.wsgirefserver import WSGIServer, WebSocketWSGIRequestHandler
 from ws4py.server.wsgiutils import WebSocketWSGIApplication
 from ws4py.client import WebSocketBaseClient
@@ -20,11 +20,10 @@ LOG = logging.getLogger(__name__)
 class GUI(WebSocketBaseClient):
     """Launch the GUI when the helper server is ready"""
 
-    def __init__(self, addr, gui_exec_path, gui_id):
+    def __init__(self, addr, gui_id):
         """Initialize the GUI Launcher"""
         super(GUI, self).__init__(addr)
         self.addr = addr
-        self.gui_exec_path = gui_exec_path
         self.gui_id = gui_id
         self.start = self.connect
 
@@ -39,11 +38,10 @@ class GUI(WebSocketBaseClient):
         with NamedTemporaryFile(delete=False) as fp:
             json.dump(dict(gui_id=self.gui_id, address=self.addr), fp)
         # subprocess.call blocks the execution
-        LOG.debug('RUN: %s %s' % (self.gui_exec_path, fp.name))
+        LOG.debug('RUN: %s' % (fp.name))
         subprocess.call([
-            '/home/saxtouri/node-webkit-v0.11.6-linux-x64/nw',
-            # self.gui_exec_path,
-            abspath('gui/gui.nw'),
+            abspath('agkyra/nwjs/nw'),
+            abspath('agkyra/gui.nw'),
             fp.name,
             '--data-path', abspath('~/.agkyra')])
         LOG.debug('GUI process closed, remove temp file')
@@ -85,11 +83,11 @@ class HelperServer(object):
         t.join()
 
 
-def run(gui_exec_path):
+def run():
     """Prepare helper and GUI and run them in the proper order"""
     server = HelperServer()
     addr = 'ws://localhost:%s' % server.port
-    gui = GUI(addr, gui_exec_path, server.gui_id)
+    gui = GUI(addr, server.gui_id)
 
     LOG.info('Start helper server')
     server.start()
