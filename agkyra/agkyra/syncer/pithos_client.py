@@ -289,15 +289,6 @@ class PithosFileClient(FileClient):
         poll.daemon = True
         poll.start()
 
-    def get_object_from_cache(self, objname):
-        if self.objects is None:
-            self.objects = self.endpoint.list_objects()
-        objs = [o for o in self.objects if o["name"] == objname]
-        try:
-            return objs[0]
-        except IndexError:
-            return None
-
     def get_object(self, objname):
         try:
             return self.endpoint.get_object_info(objname)

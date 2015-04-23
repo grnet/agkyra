@@ -167,17 +167,6 @@ def path_status(path):
             return LOCAL_MISSING
 
 
-def old_path_status(path):
-    try:
-        contents = os.listdir(path)
-        return LOCAL_NONEMPTY_DIR if contents else LOCAL_EMPTY_DIR
-    except OSError as e:
-        if e.errno == OS_NOT_A_DIR:
-            return LOCAL_FILE
-        if e.errno == OS_NO_FILE_OR_DIR:
-            return LOCAL_MISSING
-
-
 def is_info_eq(info1, info2):
     if {} in [info1, info2]:
         return info1 == info2
@@ -382,14 +371,6 @@ class LocalfsSourceHandle(object):
             raise common.ConflictError("'%s' is non-empty" % fspath)
         logger.info("Staging file '%s' to '%s'" % (self.objname, stage_path))
 
-    def check_stable(self, interval=1, times=5):
-        for i in range(times):
-            live_info = local_path_changes(self.staged_file, self.source_state)
-            if live_info is not None:
-                return False
-            time.sleep(interval)
-        return True
-
     def __init__(self, settings, source_state):
         self.SIGNATURE = "LocalfsSourceHandle"
         self.rootpath = settings.local_root_path
@@ -407,7 +388,6 @@ class LocalfsSourceHandle(object):
         self.check_log()
         if not self.isdir:
             self.lock_file(self.fspath)
-            # self.check_stable()
 
     def check_log(self):
         with self.heartbeat.lock() as hb:
