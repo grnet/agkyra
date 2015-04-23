@@ -467,12 +467,16 @@ class LocalfsFileClient(FileClient):
             # if self.exclude_dir_exp.match(dirpath):
             #     continue
             if rel_dirpath != '.':
-                candidates[rel_dirpath] = None
+                candidates[utils.to_standard_sep(rel_dirpath)] = None
             for filename in files:
                 # if self.exclude_files_exp.match(filename) or \
                 #         self.exclude_dir_exp.match(filename):
                 #     continue
-                objname = utils.join_path(rel_dirpath, filename)
+                if rel_dirpath == '.':
+                    prefix = ""
+                else:
+                    prefix = utils.to_standard_sep(rel_dirpath)
+                objname = utils.join_objname(prefix, filename)
                 candidates[objname] = None
 
         db_cands = dict((name, None) for name in db.list_files(self.SIGNATURE))
@@ -507,8 +511,9 @@ class LocalfsFileClient(FileClient):
     def notifier(self, callback=None):
         def handle_path(path):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
+            objname = utils.to_standard_sep(rel_path)
             if callback is not None:
-                callback(self.SIGNATURE, rel_path)
+                callback(self.SIGNATURE, objname)
 
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):

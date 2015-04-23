@@ -1,6 +1,9 @@
 from collections import namedtuple
 import threading
 
+OBJECT_DIRSEP = '/'
+
+
 FileStateTuple = namedtuple('FileStateTuple',
                             ['archive', 'objname', 'serial', 'info'])
 

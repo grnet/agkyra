@@ -2,13 +2,27 @@ import os
 import hashlib
 import datetime
 
+from agkyra.syncer.common import OBJECT_DIRSEP
+
 BUF_SIZE = 65536
 
 
+def to_local_sep(filename):
+    return filename.replace(OBJECT_DIRSEP, os.path.sep)
+
+
+def to_standard_sep(filename):
+    return filename.replace(os.path.sep, OBJECT_DIRSEP)
+
+
 def join_path(dirpath, filename):
-    if dirpath == ".":
-        dirpath = ""
-    return os.path.join(dirpath, filename)
+    return os.path.join(dirpath, to_local_sep(filename))
+
+
+def join_objname(prefix, filename):
+    if prefix != "":
+        prefix = prefix.rstrip(OBJECT_DIRSEP) + OBJECT_DIRSEP
+    return prefix + filename
 
 
 def hash_string(s):

@@ -2,7 +2,6 @@ import time
 import threading
 import logging
 import re
-import os
 
 from agkyra.syncer import common
 from agkyra.syncer.setup import SyncerSettings
@@ -69,7 +68,7 @@ class FileSyncer(object):
             self.decide_event.clear()
 
     def exclude_file(self, objname):
-        parts = objname.split(os.path.sep)
+        parts = objname.split(common.OBJECT_DIRSEP)
         init_part = parts[0]
         if init_part in [self.settings.cache_name]:
             return True
