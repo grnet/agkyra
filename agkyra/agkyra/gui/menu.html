@@ -93,6 +93,7 @@ var settings_menu = new gui.MenuItem({
       new_settings = import_settings();
       console.log('Settings windows is closed, PUT');
       put_settings(socket, new_settings);
+      get_status(socket);
       get_settings(socket);
     });
   },
@@ -125,21 +126,21 @@ var client_ready = false;
 window.setInterval(function() {
   var menu_modified = false;
   if (!client_ready) {
-    if (globals.authenticated) {
-      settings_menu.enabled = true;
-      client_ready = true;
-    } else return;
+    if (!globals.authenticated) return;
+    client_ready = true;
   }
 
   if (client_ready) {
-    if (!pithos_page_menu.enabled) {
-      if ((get_pithos_ui() == null) && (globals.settings.url)) {
-        refresh_endpoints(globals.settings.url);
-      }
+    if (!settings_menu.enabled) {
+      if (globals.settings.url) refresh_endpoints(globals.settings.url);
+      settings_menu.enabled = true;
+      tray.menu = menu;
+    }
+    if (globals.settings.url && !pithos_page_menu.enabled) {
       if (get_pithos_ui() != null) {
         pithos_page_menu.enabled = true;
         tray.menu = menu;
-      }
+      } else { refresh_endpoints(globals.settings.url); }
     }
     if (!local_folder_menu.enabled) {
       if (globals.settings.directory) {
@@ -152,27 +153,31 @@ window.setInterval(function() {
   var status = globals['status'];
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
-  if (status['paused'] !== null) {
+  if (!status.can_sync) {
+    new_progress = 'Incomplete settings'
+    new_pause = 'inactive'
+    pause_item.enabled = false;
+  } else if (status.paused !== null) {
     switch(pause_item.label) {
-      case pause_syncing: if (status['paused']) {
+      case pause_syncing: if (status.paused) {
           // Update to "Paused - start syncing"
           paused = true;
           new_pause = start_syncing;
           menu_modified = true;
         } // else continue syncing
-        new_progress = status['progress'] + '%' + ' synced';
+        new_progress = status.progress + '%' + ' synced';
       break;
-      case start_syncing: if (status['paused']) return;
+      case start_syncing: if (status.paused) return;
         // else update to "Syncing - pause syncing"
         paused = false;
         new_pause = pause_syncing;
-        new_progress = status['progress'] + '%' + ' synced';
+        new_progress = status.progress + '%' + ' synced';
         menu_modified = true;
       break;
       default:
-        if (status['paused']) {new_pause = start_syncing; paused=true;}
+        if (status.paused) {new_pause = start_syncing; paused=true;}
         else {new_pause = pause_syncing; paused=false;}
-        new_progress = status['progress'] + '%' + ' synced';
+        new_progress = status.progress + '%' + ' synced';
         pause_item.enabled = true;
         menu_modified = true;
     }

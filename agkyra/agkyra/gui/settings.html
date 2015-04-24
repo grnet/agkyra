@@ -9,6 +9,7 @@
         <script type="text/javascript">
             var fs = require('fs');
             var exclude = null;
+            remove_tokens = null;
             $(document).ready(function() {
                 var url = get_setting('url');
                 if (url) $('#cloud-url').val(url);
@@ -23,12 +24,6 @@
                         $('#exclude').val(
                             fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
-                if (get_pithos_ui()) {
-                    $('#get_creds').show();
-                } else {
-                    console.log('No pithos view, remove credential button');
-                    $('#get_creds').hide();
-                }
             });
 
             function update_exclude(new_content) {
@@ -46,26 +41,65 @@
                 //set_setting('token', $(this).val())
             }
 
+            function remove_cookies(win, url) {
+                var removed_at_least_one = false
+                win.cookies.getAll({url: url}, function(cookies) {
+                    $.each(cookies, function(i, cookie) {
+                        win.cookies.remove({url: url, name: cookie.name} );
+                        removed_at_least_one = true;
+                    });
+                });
+                return removed_at_least_one;
+            }
+
             var gui = require('nw.gui');
+            var cred_win = null;
+            var logout_win = null;
+            var got_cookie = false;
+            var show_creds = true;
             function get_credentials() {
                 var cookie_name = '_pithos2_a';
-                var account_ui = get_account_ui()
-                var w = gui.Window.open(account_ui + '/logout', {
-                    focus: false, width: 20, height: 20
+                var lurl = get_account_ui() + '/logout?next=' + get_pithos_ui()
+
+                show_creds = false;
+                $('#get_creds').hide();
+
+                got_cookie = false;
+                cred_win = gui.Window.open(lurl, {
+                    focus: true, width: 820, height: 580, toolbar: false
                 });
-                w.close();
-                var next = get_pithos_ui();
-                var w = gui.Window.open(account_ui + '/login?next=' + next, {
-                    focus: true, width: 520, height: 920
-                });
-                w.cookies.onChanged.addListener(function(info) {
+
+                cred_win.cookies.onChanged.addListener(function(info) {
                     if (info.cookie.name === cookie_name) {
                         console.log('Succesfully logged in');
                         extract_credentials(info.cookie);
-                        w.close();
+                        got_cookie = true;
                     }
                 });
+                cred_win.on('loaded', function() {
+                    if (got_cookie) cred_win.close();
+                });
+
+                cred_win.on('closed', function() {
+                    logout_win = gui.Window.open(
+                        get_account_ui() + '/logout',
+                        {focus: true, width:20, height: 20 });
+                    logout_win.hide();
+                    logout_win.on('loaded', function() {
+                        while(remove_cookies(logout_win, get_pithos_ui())) {}
+                        logout_win.close();
+                        show_creds = true;
+                    });
+                });
             }
+
+            window.setInterval(function() {
+                // Refresh get_creds visibility, until refresh_endpoints
+                // changes are in effect
+                if (get_pithos_ui() && show_creds) {
+                    $('#get_creds').show();
+                } else {$('#get_creds').hide(); }
+            }, 500);
         </script>
     </head>
     <body>
@@ -85,7 +119,7 @@
                                 </div>
                                 <div class="small-9 columns">
                                     <input type="text" id="cloud-url" placeholder="Authentication URL"
-                                    onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val())">
+                                    onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val());">
                                     <small class="error" style="visibility: hidden">Invalid entry</small>
                                 </div>
                             </div>
@@ -104,7 +138,7 @@
                             <div class="clearfix">
                                <a id="get_creds"
                                     class="button right" style="display: none;"
-                                    onclick="get_credentials();">Get credentials</a>
+                                    onclick="get_credentials();">Login to get credentials</a>
                             </div>
 
                         </fieldset>

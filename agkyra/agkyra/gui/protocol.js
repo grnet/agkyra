@@ -18,7 +18,7 @@ var globals = {
     'directory': null,
     'exclude': null
   },
-  'status': {"progress": null, "paused": null},
+  'status': {"progress": null, "paused": null, "can_sync": false},
   'authenticated': false,
 }
 
