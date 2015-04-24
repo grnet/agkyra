@@ -24,7 +24,8 @@ from kamaki.cli.utils import escape_ctrl_chars
 CLOUD_PREFIX = config.CLOUD_PREFIX
 config.HEADER = '# Agkyra configuration file version XXX\n'
 AGKYRA_DIR = os.environ.get('AGKYRA_DIR', os.path.expanduser('~/.agkyra'))
-config.CONFIG_PATH = '%s%sconfig.rc' % (AGKYRA_DIR, os.path.sep)
+CONFIG_PATH = '%s%sconfig.rc' % (AGKYRA_DIR, os.path.sep)
+config.CONFIG_PATH = CONFIG_PATH
 # neutralize kamaki CONFIG_ENV for this session
 config.CONFIG_ENV = ''
 
