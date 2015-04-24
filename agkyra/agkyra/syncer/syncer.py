@@ -235,17 +235,25 @@ class FileSyncer(object):
         # here we could do any checks needed on the old state,
         # perhaps triggering a probe
 
-    @transaction()
     def ack_file_sync(self, synced_source_state, synced_target_state):
-        db = self.get_db()
+        self._ack_file_sync(synced_source_state, synced_target_state)
         serial = synced_source_state.serial
         objname = synced_source_state.objname
-        source = synced_source_state.archive
         target = synced_target_state.archive
         msg = messaging.AckSyncMessage(
             archive=target, objname=objname, serial=serial,
             logger=logger)
         self.messager.put(msg)
+
+    @transaction()
+    def _ack_file_sync(self, synced_source_state, synced_target_state):
+        db = self.get_db()
+        serial = synced_source_state.serial
+        objname = synced_source_state.objname
+        source = synced_source_state.archive
+        target = synced_target_state.archive
+        logger.info("Acking archive: %s, object: '%s', serial: %s" %
+                    (target, objname, serial))
         decision_state = db.get_state(self.DECISION, objname)
         sync_state = db.get_state(self.SYNC, objname)
 

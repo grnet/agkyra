@@ -50,7 +50,7 @@ class AckSyncMessage(Message):
         self.objname = kwargs["objname"]
         self.archive = kwargs["archive"]
         self.serial = kwargs["serial"]
-        self.logger.info("Acking archive: %s, object: '%s', serial: %s" %
+        self.logger.info("Acked archive: %s, object: '%s', serial: %s" %
                          (self.archive, self.objname, self.serial))
 
 
