@@ -69,8 +69,8 @@ class FileSyncer(object):
         if self.decide_event is not None:
             self.decide_event.clear()
 
-    def get_next_message(self):
-        return self.messager.get(block=False)
+    def get_next_message(self, block=False):
+        return self.messager.get(block=block)
 
     def exclude_file(self, objname):
         parts = objname.split(common.OBJECT_DIRSEP)
