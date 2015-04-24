@@ -64,15 +64,42 @@ class WebSocketProtocol(WebSocket):
     settings = dict(
         token=None, url=None,
         container=None, directory=None,
-        exclude=None, pithos_ui=None)
+        exclude=None)
     status = dict(progress=0, paused=True)
     file_syncer = None
     cnf = AgkyraConfig()
 
+    def _get_default_sync(self):
+        """Get global.default_sync or pick the first sync as default
+        If there are no syncs, create a 'default' sync.
+        """
+        sync = self.cnf.get('global', 'default_sync')
+        if not sync:
+            for sync in self.cnf.keys('sync'):
+                break
+            self.cnf.set('global', 'default_sync', sync or 'default')
+        return sync or 'default'
+
+    def _get_sync_cloud(self, sync):
+        """Get the <sync>.cloud or pick the first cloud and use it
+        In case of cloud picking, set the cloud as the <sync>.cloud for future
+        sessions.
+        If no clouds are found, create a 'default' cloud, with an empty url.
+        """
+        try:
+            cloud = self.cnf.get_sync(sync, 'cloud')
+        except KeyError:
+            cloud = None
+        if not cloud:
+            for cloud in self.cnf.keys('cloud'):
+                break
+            self.cnf.set_sync(sync, 'cloud', cloud or 'default')
+        return cloud or 'default'
+
     def _load_settings(self):
         LOG.debug('Start loading settings')
-        sync = self.cnf.get('global', 'default_sync')
-        cloud = self.cnf.get_sync(sync, 'cloud')
+        sync = self._get_default_sync()
+        cloud = self._get_sync_cloud(sync)
 
         try:
             self.settings['url'] = self.cnf.get_cloud(cloud, 'url')
@@ -84,16 +111,27 @@ class WebSocketProtocol(WebSocket):
             self.settings['url'] = None
 
         for option in ('container', 'directory', 'exclude'):
-            self.settings[option] = self.cnf.get_sync(sync, option)
+            try:
+                self.settings[option] = self.cnf.get_sync(sync, option)
+            except KeyError:
+                LOG.debug('No %s is set' % option)
 
         LOG.debug('Finished loading settings')
 
     def _dump_settings(self):
         LOG.debug('Saving settings')
-        sync = self.cnf.get('global', 'default_sync')
-        cloud = self.cnf.get_sync(sync, 'cloud')
+        if not self.settings.get('url', None):
+            LOG.debug('No settings to save')
+            return
 
-        old_url = self.cnf.get_cloud(cloud, 'url') or ''
+        sync = self._get_default_sync()
+        cloud = self._get_sync_cloud(sync)
+
+        try:
+            old_url = self.cnf.get_cloud(cloud, 'url') or ''
+        except KeyError:
+            old_url = self.settings['url']
+
         while old_url != self.settings['url']:
             cloud = '%s_%s' % (cloud, sync)
             try:
@@ -102,11 +140,11 @@ class WebSocketProtocol(WebSocket):
                 break
 
         self.cnf.set_cloud(cloud, 'url', self.settings['url'])
-        self.cnf.set_cloud(cloud, 'token', self.settings['token'])
+        self.cnf.set_cloud(cloud, 'token', self.settings['token'] or '')
         self.cnf.set_sync(sync, 'cloud', cloud)
 
         for option in ('directory', 'container', 'exclude'):
-            self.cnf.set_sync(sync, option, self.settings[option])
+            self.cnf.set_sync(sync, option, self.settings[option] or '')
 
         self.cnf.write()
         LOG.debug('Settings saved')

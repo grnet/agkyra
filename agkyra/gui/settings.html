@@ -45,7 +45,6 @@
                 var removed_at_least_one = false
                 win.cookies.getAll({url: url}, function(cookies) {
                     $.each(cookies, function(i, cookie) {
-                        console.log('I have a cookie to remove ' + cookie.name + ', ' + cookie.domain);
                         win.cookies.remove({url: url, name: cookie.name} );
                         removed_at_least_one = true;
                     });
@@ -56,9 +55,7 @@
             var gui = require('nw.gui');
             var cred_win = null;
             var logout_win = null;
-            var can_close_cred = false;
             var got_cookie = false;
-            var can_close_logout = false;
             var show_creds = true;
             function get_credentials() {
                 var cookie_name = '_pithos2_a';
@@ -80,7 +77,7 @@
                     }
                 });
                 cred_win.on('loaded', function() {
-                    if (got_cookie) can_close_cred = true;
+                    if (got_cookie) cred_win.close();
                 });
 
                 cred_win.on('closed', function() {
@@ -89,10 +86,9 @@
                         {focus: true, width:20, height: 20 });
                     logout_win.hide();
                     logout_win.on('loaded', function() {
-                        while(
-                            remove_cookies(logout_win, get_account_ui()) ||
-                            remove_cookies(logout_win, get_pithos_ui())) {}
-                        can_close_logout = true;
+                        while(remove_cookies(logout_win, get_pithos_ui())) {}
+                        logout_win.close();
+                        show_creds = true;
                     });
                 });
             }
@@ -103,16 +99,6 @@
                 if (get_pithos_ui() && show_creds) {
                     $('#get_creds').show();
                 } else {$('#get_creds').hide(); }
-                // Garbage collector
-                if (can_close_logout) {
-                    can_close_logout = false;
-                    logout_win.close();
-                    show_creds = true;
-                }
-                else if (can_close_cred) {
-                    can_close_cred = false;
-                    cred_win.close();
-                }
             }, 500);
         </script>
     </head>
