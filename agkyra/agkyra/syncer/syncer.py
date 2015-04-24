@@ -284,8 +284,8 @@ class FileSyncer(object):
         db = self.get_db()
         if archives is None:
             archives = (self.MASTER, self.SLAVE)
-        return list(db.list_deciding(archives=archives,
-                                     sync=self.SYNC))
+        return set(db.list_deciding(archives=archives,
+                                    sync=self.SYNC))
 
     def probe_archive(self, archive):
         client = self.clients[archive]
