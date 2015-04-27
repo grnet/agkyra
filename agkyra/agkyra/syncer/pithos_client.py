@@ -264,10 +264,12 @@ class PithosFileClient(FileClient):
             for obj in objects)
         upstream_all_names = set(upstream_all.keys())
         if last_modified is not None:
-            upstream_modified_names = dict(
-                (k, v) for (k, v) in upstream_all.iteritems()
-                if v["last_modified"] > last_modified)
-            candidates = upstream_modified_names
+            upstream_modified = {}
+            for obj in objects:
+                name = obj["name"]
+                if obj["last_modified"] > last_modified:
+                    upstream_modified[name] = upstream_all[name]
+            candidates = upstream_modified
         else:
             candidates = upstream_all
 
