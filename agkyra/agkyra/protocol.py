@@ -2,7 +2,7 @@ from ws4py.websocket import WebSocket
 import json
 import logging
 from os.path import abspath
-from agkyra.syncer import syncer
+from agkyra.syncer import syncer, setup, pithos_client, localfs_client
 from agkyra.config import AgkyraConfig
 
 
@@ -71,6 +71,7 @@ class WebSocketProtocol(WebSocket):
     status = dict(progress=0, paused=True, can_sync=False)
     file_syncer = None
     cnf = AgkyraConfig()
+    essentials = ('url', 'token', 'container', 'directory')
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
@@ -154,14 +155,31 @@ class WebSocketProtocol(WebSocket):
 
     def can_sync(self):
         """Check if settings are enough to setup a syncing proccess"""
-        return all([self.settings.get(key, False) for key in (
-            'url', 'token', 'directory', 'container')])
+        return all([self.settings[e] for e in self.essentials])
+
+    def _essentials_changed(self, new_settings):
+        """Check if essential settings have changed in new_settings"""
+        return all([
+            self.settings[e] == self.settings[e] for e in self.essentials])
+
+    def init_sync(self):
+        """Initialize syncer"""
+        sync = self._get_default_sync()
+        syncer_settings = setup.SyncerSettings(
+            sync,
+            self.settings['url'], self.settings['token'],
+            self.settings['container'], self.settings['directory'],
+            ignore_ssl=True)
+        master = pithos_client.PithosFileClient(syncer_settings)
+        slave = localfs_client.LocalfsFileClient(syncer_settings)
+        self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
+        self.syncer_settings = syncer_settings
+        self.syncer.probe_and_sync_all()
 
     # Syncer-related methods
     def get_status(self):
-        from random import randint
-        if self.status['progress'] < 100:
-            self.status['progress'] += 0 if randint(0, 2) else 1
+        self.status['paused'] = self.syncer.paused
+        self.status['progress'] = 50
         self.status['can_sync'] = self.can_sync()
         return self.status
 
@@ -169,17 +187,29 @@ class WebSocketProtocol(WebSocket):
         return self.settings
 
     def set_settings(self, new_settings):
+        # Prepare setting save
+        could_sync = self.can_sync()
+        was_active = not self.syncer.paused
+        if could_sync and was_active:
+            self.pause_sync()
+        must_reset_syncing = self._essentials_changed(new_settings)
+
+        # save settings
         self.settings = new_settings
         self._dump_settings()
 
+        # Restart
+        if self.can_sync():
+            if must_reset_syncing or not could_sync:
+                self.init_sync()
+            elif was_active:
+                self.start_sync()
+
     def pause_sync(self):
-        self.status['paused'] = True
+        self.syncer.pause_decide()
 
     def start_sync(self):
-        if self.can_sync():
-            self.status['paused'] = False
-        else:
-            self.status['paused'] = True
+        self.syncer.start_decide()
 
     # WebSocket connection methods
     def opened(self):
@@ -207,6 +237,9 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['gui_id'] == self.gui_id:
             self._load_settings()
+            if self.can_sync():
+                self.init_sync()
+                self.pause_sync()
             self.accepted = True
             self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
         else:

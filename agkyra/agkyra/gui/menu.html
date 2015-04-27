@@ -85,16 +85,24 @@ var settings_menu = new gui.MenuItem({
   click: function () {
     export_settings(globals.settings);
     if (windows['settings']) windows['settings'].close();
+    var old_settings = {};
+    $.each(globals.settings, function(key, val) {old_settings[key]=val;});
     windows['settings'] = gui.Window.open("settings.html", {
       toolbar: false, focus: true,
       width: 841, height: 520
     });
     windows['settings'].on('closed', function() {
-      new_settings = import_settings();
-      console.log('Settings windows is closed, PUT');
-      put_settings(socket, new_settings);
-      get_status(socket);
-      get_settings(socket);
+      console.log('Settings windows is closed');
+      var new_settings = import_settings();
+      $.each(new_settings, function(key, setting) {
+        if (old_settings[key] !== setting) {
+          console.log('Settings have been modified - updating...');
+          put_settings(socket, new_settings);
+          get_status(socket);
+          get_settings(socket);
+          return false;
+        }
+      });
     });
   },
 });
