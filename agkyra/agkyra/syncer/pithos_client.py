@@ -292,7 +292,7 @@ class PithosFileClient(FileClient):
                     last_modified = last_tstamp.isoformat()
                     candidates = self.list_candidate_files(
                         last_modified=last_modified)
-                    for (objname, info) in candidates:
+                    for (objname, info) in candidates.iteritems():
                         callback(self.SIGNATURE, objname, assumed_info=info)
                     time.sleep(interval)
 
