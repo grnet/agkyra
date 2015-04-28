@@ -174,8 +174,7 @@ class WebSocketProtocol(WebSocket):
         slave = localfs_client.LocalfsFileClient(syncer_settings)
         self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
         self.syncer_settings = syncer_settings
-        self.syncer.probe_and_sync_all()
-        self.syncer.launch_daemons()
+        self.syncer.initiate_probe()
 
     # Syncer-related methods
     def get_status(self):
