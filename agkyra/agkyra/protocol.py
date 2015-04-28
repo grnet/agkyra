@@ -175,9 +175,12 @@ class WebSocketProtocol(WebSocket):
         self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
         self.syncer_settings = syncer_settings
         self.syncer.probe_and_sync_all()
+        self.syncer.launch_daemons()
 
     # Syncer-related methods
     def get_status(self):
+        if (self.can_sync()):
+            LOG.debug('::::::::: %s' % self.syncer.get_next_message())
         self.status['paused'] = self.syncer.paused
         self.status['progress'] = 50
         self.status['can_sync'] = self.can_sync()
