@@ -283,22 +283,17 @@ class PithosFileClient(FileClient):
         return candidates
 
     def notifier(self, callback=None, interval=10):
-        class PollPithos(threading.Thread):
-            def run(this):
-                while True:
-                    utcnow = datetime.datetime.utcnow()
-                    last_tstamp = (utcnow -
-                                   datetime.timedelta(seconds=interval))
-                    last_modified = last_tstamp.isoformat()
-                    candidates = self.list_candidate_files(
-                        last_modified=last_modified)
-                    for (objname, info) in candidates.iteritems():
-                        callback(self.SIGNATURE, objname, assumed_info=info)
-                    time.sleep(interval)
-
-        poll = PollPithos()
-        poll.daemon = True
-        poll.start()
+        class PollPithosThread(utils.StoppableThread):
+            def run_body(this):
+                utcnow = datetime.datetime.utcnow()
+                last_tstamp = (utcnow - datetime.timedelta(seconds=interval))
+                last_modified = last_tstamp.isoformat()
+                candidates = self.list_candidate_files(
+                    last_modified=last_modified)
+                for (objname, info) in candidates.iteritems():
+                    callback(self.SIGNATURE, objname, assumed_info=info)
+                time.sleep(interval)
+        return utils.start_daemon(PollPithosThread)
 
     def get_object(self, objname):
         try:

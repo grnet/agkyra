@@ -1,6 +1,7 @@
 import os
 import hashlib
 import datetime
+import watchdog.utils
 
 from agkyra.syncer.common import OBJECT_DIRSEP
 
@@ -49,3 +50,24 @@ def younger_than(tstamp, seconds):
     ts = datetime.datetime.fromtimestamp(int(float(tstamp)))
     delta = now - ts
     return delta < datetime.timedelta(seconds=seconds)
+
+
+BaseStoppableThread = watchdog.utils.BaseThread
+
+
+class StoppableThread(BaseStoppableThread):
+    def run_body(self):
+        raise NotImplementedError()
+
+    def run(self):
+        while True:
+            if not self.should_keep_running():
+                return
+            self.run_body()
+
+
+def start_daemon(threadClass):
+    thread = threadClass()
+    thread.daemon = True
+    thread.start()
+    return thread
