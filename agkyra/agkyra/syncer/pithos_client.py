@@ -254,14 +254,19 @@ class PithosFileClient(FileClient):
         self.container = settings.container
         self.get_db = settings.get_db
         self.endpoint = settings.endpoint
+        self.last_modification = "0000-00-00"
 
     def list_candidate_files(self, last_modified=None):
         db = self.get_db()
         objects = self.endpoint.list_objects()
         self.objects = objects
-        upstream_all = dict(
-            (obj["name"], self.get_object_live_info(obj))
-            for obj in objects)
+        upstream_all = {}
+        for obj in objects:
+            name = obj["name"]
+            upstream_all[name] = self.get_object_live_info(obj)
+            obj_last_modified = obj["last_modified"]
+            if obj_last_modified > self.last_modification:
+                self.last_modification = obj_last_modified
         upstream_all_names = set(upstream_all.keys())
         if last_modified is not None:
             upstream_modified = {}
@@ -279,17 +284,15 @@ class PithosFileClient(FileClient):
         newly_deleted = dict((name, {}) for name in newly_deleted_names)
 
         candidates.update(newly_deleted)
-        logger.info("Candidates: %s" % candidates)
+        logger.info("Candidates since %s: %s" %
+                    (last_modified, candidates))
         return candidates
 
     def notifier(self, callback=None, interval=10):
         class PollPithosThread(utils.StoppableThread):
             def run_body(this):
-                utcnow = datetime.datetime.utcnow()
-                last_tstamp = (utcnow - datetime.timedelta(seconds=interval))
-                last_modified = last_tstamp.isoformat()
                 candidates = self.list_candidate_files(
-                    last_modified=last_modified)
+                    last_modified=self.last_modification)
                 for (objname, info) in candidates.iteritems():
                     callback(self.SIGNATURE, objname, assumed_info=info)
                 time.sleep(interval)
