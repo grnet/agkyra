@@ -208,7 +208,7 @@ class WebSocketProtocol(WebSocket):
                 self.start_sync()
 
     def pause_sync(self):
-        self.syncer.pause_decide()
+        self.syncer.stop_decide()
 
     def start_sync(self):
         self.syncer.start_decide()

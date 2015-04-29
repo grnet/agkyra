@@ -142,7 +142,7 @@ class AgkyraCLI(cmd.Cmd):
     def do_pause(self, line):
         """Pause syncing"""
         if not self.syncer.paused:
-            self.syncer.pause_decide()
+            self.syncer.stop_decide()
 
     def do_status(self, line):
         """Get current status (running/paused, progress)"""
