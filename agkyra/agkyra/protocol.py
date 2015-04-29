@@ -2,7 +2,8 @@ from ws4py.websocket import WebSocket
 import json
 import logging
 from os.path import abspath
-from agkyra.syncer import syncer, setup, pithos_client, localfs_client
+from agkyra.syncer import (
+    syncer, setup, pithos_client, localfs_client, messaging)
 from agkyra.config import AgkyraConfig
 
 
@@ -68,7 +69,7 @@ class WebSocketProtocol(WebSocket):
         token=None, url=None,
         container=None, directory=None,
         exclude=None)
-    status = dict(progress=0, paused=True, can_sync=False)
+    status = dict(progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
     file_syncer = None
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
@@ -153,14 +154,37 @@ class WebSocketProtocol(WebSocket):
         self.cnf.write()
         LOG.debug('Settings saved')
 
-    def can_sync(self):
-        """Check if settings are enough to setup a syncing proccess"""
-        return all([self.settings[e] for e in self.essentials])
-
     def _essentials_changed(self, new_settings):
         """Check if essential settings have changed in new_settings"""
         return all([
             self.settings[e] == self.settings[e] for e in self.essentials])
+
+    def _update_statistics(self):
+        """Update statistics by consuming and understanding syncer messages"""
+        if self.can_sync():
+            msg = self.syncer.get_next_message()
+            if not msg:
+                if self.status['unsynced'] == self.status['synced']:
+                    self.status['unsynced'] = 0
+                    self.status['synced'] = 0
+            while (msg):
+                if isinstance(msg, messaging.SyncMessage):
+                    LOG.info('Start syncing "%s"' % msg.objname)
+                    self.status['unsynced'] += 1
+                elif isinstance(msg, messaging.AckSyncMessage):
+                    LOG.info('Finished syncing "%s"' % msg.objname)
+                    self.status['synced'] += 1
+                elif isinstance(msg, messaging.CollisionMessage):
+                    LOG.info('Collision for "%s"' % msg.objname)
+                elif isinstance(msg, messaging.ConflictStashMessage):
+                    LOG.info('Conflict for "%s"' % msg.objname)
+                else:
+                    LOG.debug('Consumed msg %s' % msg)
+                msg = self.syncer.get_next_message()
+
+    def can_sync(self):
+        """Check if settings are enough to setup a syncing proccess"""
+        return all([self.settings[e] for e in self.essentials])
 
     def init_sync(self):
         """Initialize syncer"""
@@ -178,10 +202,8 @@ class WebSocketProtocol(WebSocket):
 
     # Syncer-related methods
     def get_status(self):
-        if (self.can_sync()):
-            LOG.debug('::::::::: %s' % self.syncer.get_next_message())
+        self._update_statistics()
         self.status['paused'] = self.syncer.paused
-        self.status['progress'] = 50
         self.status['can_sync'] = self.can_sync()
         return self.status
 
@@ -230,6 +252,8 @@ class WebSocketProtocol(WebSocket):
         if self.accepted:
             action = r['path']
             if action == 'shutdown':
+                if self.can_sync():
+                    self.syncer.stop_all_daemons()
                 self.close()
                 return
             {

@@ -19,7 +19,6 @@ function closeWindows() {
 
 // GUI components
 var tray = new gui.Tray({
-  // tooltip: 'Paused (0% synced)',
   title: 'Agkyra syncs with Pithos+',
   icon: 'images/tray.png'
 });
@@ -165,30 +164,31 @@ window.setInterval(function() {
     new_progress = 'Incomplete settings'
     new_pause = 'inactive'
     pause_item.enabled = false;
-  } else if (status.paused !== null) {
-    switch(pause_item.label) {
-      case pause_syncing: if (status.paused) {
-          // Update to "Paused - start syncing"
-          paused = true;
-          new_pause = start_syncing;
+  } else {
+    if (status.paused !== null) {
+      switch(pause_item.label) {
+        case pause_syncing: if (status.paused) {
+            // Update to "Paused - start syncing"
+            paused = true;
+            new_pause = start_syncing;
+            menu_modified = true;
+          } // else continue syncing
+        break;
+        case start_syncing: if (!status.paused) {
+            //update to "Syncing - pause syncing"
+            paused = false;
+            new_pause = pause_syncing;
+            menu_modified = true;
+          }
+        break;
+        default:
+          if (status.paused) {new_pause = start_syncing; paused=true;}
+          else {new_pause = pause_syncing; paused=false;}
+          pause_item.enabled = true;
           menu_modified = true;
-        } // else continue syncing
-        new_progress = status.progress + '%' + ' synced';
-      break;
-      case start_syncing: if (status.paused) return;
-        // else update to "Syncing - pause syncing"
-        paused = false;
-        new_pause = pause_syncing;
-        new_progress = status.progress + '%' + ' synced';
-        menu_modified = true;
-      break;
-      default:
-        if (status.paused) {new_pause = start_syncing; paused=true;}
-        else {new_pause = pause_syncing; paused=false;}
-        new_progress = status.progress + '%' + ' synced';
-        pause_item.enabled = true;
-        menu_modified = true;
+      }
     }
+    new_progress = status.synced + ' of ' + status.unsynced + ' synced';
   }
   if (new_pause != pause_item.label) {
     pause_item.label = new_pause;

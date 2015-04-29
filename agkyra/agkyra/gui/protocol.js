@@ -18,7 +18,7 @@ var globals = {
     'directory': null,
     'exclude': null
   },
-  'status': {"progress": null, "paused": null, "can_sync": false},
+  'status': {"synced": 0, "unsynced": 0, "paused": null, "can_sync": false},
   'authenticated': false,
 }
 
@@ -54,7 +54,7 @@ function put_settings(socket, new_settings) {
 
 function get_status(socket) {
   send_json(socket, {'method': 'get', 'path': 'status'});
-} // expected response {"progress": ..., "paused": ...}
+} // expected response {"synced":.., "unsynced":.., "paused":.., "can_sync":..}
 
 
 // Connect to helper
