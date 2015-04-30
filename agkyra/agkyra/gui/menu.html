@@ -133,6 +133,11 @@ menu.append(new gui.MenuItem({
 // Update progress
 var client_ready = false;
 window.setInterval(function() {
+  if (globals.open_settings) {
+    globals.open_settings = false;
+    settings_menu.click();
+  }
+
   var menu_modified = false;
   if (!client_ready) {
     if (!globals.authenticated) return;

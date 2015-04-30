@@ -21,6 +21,7 @@ var globals = {
   },
   'status': {"synced": 0, "unsynced": 0, "paused": null, "can_sync": false},
   'authenticated': false,
+  'just_opened': false, 'open_settings': false
 }
 
 // Protocol: requests ::: responses
@@ -73,6 +74,7 @@ socket.onmessage = function(e) {
         get_settings(this);
         get_status(this);
         globals.authenticated = true;
+        globals.just_opened = true;
       } else {
         if (DEBUG) console.log('Helper: ' + JSON.stringify(r));
         closeWindows();
@@ -100,6 +102,10 @@ socket.onmessage = function(e) {
     break;
     case 'get status':
       globals['status'] = r;
+      if (globals.just_opened) {
+        globals.just_opened = false;
+        globals.open_settings = !r.can_sync;
+      }
     break;
     default:
       console.log('Incomprehensible response ' + r);
