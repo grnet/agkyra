@@ -59,8 +59,25 @@ class LockedDict(object):
         self._Dict[key] = value
         self._Lock.release()
 
-    def get(self, key):
+    def get(self, key, default=None):
         self._Lock.acquire()
-        value = self._Dict.get(key)
+        value = self._Dict.get(key, default=default)
+        self._Lock.release()
+        return value
+
+    def pop(self, key, d=None):
+        self._Lock.acquire()
+        value = self._Dict.pop(key, d)
+        self._Lock.release()
+        return value
+
+    def update(self, d):
+        self._Lock.acquire()
+        self._Dict.update(d)
+        self._Lock.release()
+
+    def keys(self):
+        self._Lock.acquire()
+        value = self._Dict.keys()
         self._Lock.release()
         return value

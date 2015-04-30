@@ -62,7 +62,7 @@ class FileSyncer(object):
 
     def initiate_probe(self):
         self.start_notifiers()
-        self.probe_all()
+        self.probe_all(forced=True)
 
     def start_notifiers(self):
         for signature, client in self.clients.iteritems():
@@ -173,7 +173,7 @@ class FileSyncer(object):
 
     @transaction()
     def _decide_file_sync(self, objname, master, slave):
-        states = self._decide_file_sync(objname, master, slave)
+        states = self._do_decide_file_sync(objname, master, slave)
         if states is not None:
             with self.heartbeat.lock() as hb:
                 hb.set(objname, utils.time_stamp())
@@ -191,7 +191,7 @@ class FileSyncer(object):
         sync_serial = sync_state.serial
         decision_serial = decision_state.serial
 
-         with self.heartbeat.lock() as hb:
+        with self.heartbeat.lock() as hb:
             prev_log = hb.get(objname)
             logger.info("object: %s heartbeat: %s" %
                         (objname, prev_log))
@@ -355,11 +355,11 @@ class FileSyncer(object):
         return set(db.list_deciding(archives=archives,
                                     sync=self.SYNC))
 
-    def probe_archive(self, archive):
+    def probe_archive(self, archive, forced=False):
         client = self.clients[archive]
-        candidates = client.list_candidate_files()
-        for (objname, info) in candidates.iteritems():
-            self.probe_file(archive, objname, assumed_info=info)
+        candidates = client.list_candidate_files(forced=forced)
+        for objname in candidates:
+            self.probe_file(archive, objname)
 
     def decide_archive(self, archive):
         for objname in self.list_deciding([archive]):
@@ -367,17 +367,13 @@ class FileSyncer(object):
 
     def decide_all_archives(self):
         logger.info("Checking candidates to sync")
-        for objname in self.list_deciding():
-            self.decide_file_sync(objname)
-
-    def probe_all(self):
-        self.probe_archive(self.MASTER)
-        self.probe_archive(self.SLAVE)
-
-    def probe_and_sync_all(self):
         self.probe_all()
         for objname in self.list_deciding():
             self.decide_file_sync(objname)
+
+    def probe_all(self, forced=False):
+        self.probe_archive(self.MASTER, forced=forced)
+        self.probe_archive(self.SLAVE, forced=forced)
 
     def _poll_decide(self, interval=3):
         class DecideThread(utils.StoppableThread):

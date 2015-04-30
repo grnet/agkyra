@@ -20,7 +20,6 @@ def heartbeat_event(settings, heartbeat, objname):
 
     def set_log():
         with heartbeat.lock() as hb:
-            client, prev_tstamp = hb.get(objname)
             tstamp = utils.time_stamp()
             hb.set(objname, tstamp)
             logger.debug("HEARTBEAT '%s' %s" % (objname, tstamp))
@@ -235,8 +234,15 @@ class PithosFileClient(FileClient):
         self.get_db = settings.get_db
         self.endpoint = settings.endpoint
         self.last_modification = "0000-00-00"
+        self.probe_candidates = common.LockedDict()
 
-    def list_candidate_files(self, last_modified=None):
+    def list_candidate_files(self, forced=False):
+        if forced:
+            candidates = self.get_pithos_candidates()
+            self.probe_candidates.update(candidates)
+        return self.probe_candidates.keys()
+
+    def get_pithos_candidates(self, last_modified=None):
         db = self.get_db()
         objects = self.endpoint.list_objects()
         self.objects = objects
@@ -268,13 +274,12 @@ class PithosFileClient(FileClient):
                     (last_modified, candidates))
         return candidates
 
-    def notifier(self, callback=None, interval=10):
+    def notifier(self, callback=None, interval=2):
         class PollPithosThread(utils.StoppableThread):
             def run_body(this):
-                candidates = self.list_candidate_files(
+                candidates = self.get_pithos_candidates(
                     last_modified=self.last_modification)
-                for (objname, info) in candidates.iteritems():
-                    callback(self.SIGNATURE, objname, assumed_info=info)
+                self.probe_candidates.update(candidates)
                 time.sleep(interval)
         return utils.start_daemon(PollPithosThread)
 
@@ -305,11 +310,12 @@ class PithosFileClient(FileClient):
                            (old_state.archive, objname))
             return
         info = old_state.info
-        if assumed_info is None:
+        cached_info = self.probe_candidates.pop(objname)
+        if cached_info is None:
             obj = self.get_object(objname)
             live_info = self.get_object_live_info(obj)
         else:
-            live_info = assumed_info
+            live_info = cached_info
         if info != live_info:
             if callback is not None:
                 live_state = old_state.set(info=live_info)

@@ -1,7 +1,6 @@
 import os
 import stat
 import re
-import time
 import datetime
 import psutil
 from watchdog.observers import Observer
@@ -450,8 +449,15 @@ class LocalfsFileClient(FileClient):
         self.get_db = settings.get_db
         self.exclude_files_exp = re.compile('.*\.tmp$')
         self.exclude_dir_exp = re.compile(self.CACHEPATH)
+        self.probe_candidates = common.LockedDict()
 
-    def list_candidate_files(self):
+    def list_candidate_files(self, forced=False):
+        if forced:
+            candidates = self.walk_filesystem()
+            self.probe_candidates.update(candidates)
+        return self.probe_candidates.keys()
+
+    def walk_filesystem(self):
         db = self.get_db()
         candidates = {}
         for dirpath, dirnames, files in os.walk(self.ROOTPATH):
@@ -487,8 +493,9 @@ class LocalfsFileClient(FileClient):
         if old_state.serial != ref_state.serial:
             logger.warning("Serial mismatch in probing path '%s'" % objname)
             return
+        cached_info = self.probe_candidates.pop(objname)
         live_info = (self._local_path_changes(objname, old_state)
-                     if assumed_info is None else assumed_info)
+                     if cached_info is None else cached_info)
         if live_info is None:
             return
         live_state = old_state.set(info=live_info)
@@ -505,8 +512,7 @@ class LocalfsFileClient(FileClient):
         def handle_path(path):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
-            if callback is not None:
-                callback(self.SIGNATURE, objname)
+            self.probe_candidates.put(objname, None)
 
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):
