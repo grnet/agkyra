@@ -398,26 +398,8 @@ class LocalfsSourceHandle(object):
         self.stage_filename = None
         self.staged_path = None
         self.heartbeat = settings.heartbeat
-        self.check_log()
         if not self.isdir:
             self.lock_file(self.fspath)
-
-    def check_log(self):
-        with self.heartbeat.lock() as hb:
-            prev_log = hb.get(self.objname)
-            logger.info("object: %s heartbeat: %s" %
-                        (self.objname, prev_log))
-            if prev_log is not None:
-                actionstate, ts = prev_log
-                if actionstate != self.SIGNATURE or \
-                        utils.younger_than(ts, 10):
-                    raise common.HandledError(
-                        "Action mismatch in %s: %s %s" %
-                        (self.SIGNATURE, self.objname, prev_log))
-                logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.SIGNATURE, self.objname, prev_log))
-            hb.set(self.objname, (self.SIGNATURE, utils.time_stamp()))
-            print "LOG", self.heartbeat._LOG
 
     def get_synced_state(self):
         return self.source_state
@@ -444,12 +426,6 @@ class LocalfsSourceHandle(object):
     def unstage_file(self):
         self.do_unstage()
         self.unregister_stage_name(self.stage_filename)
-        self.clear_log()
-
-    def clear_log(self):
-        with self.heartbeat.lock() as hb:
-            hb.delete(self.objname)
-            logger.info("DELETED %s" % self.objname)
 
     def do_unstage(self):
         if self.stage_filename is None:

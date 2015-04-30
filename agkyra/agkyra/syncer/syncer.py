@@ -47,6 +47,7 @@ class FileSyncer(object):
         self.sync_threads = []
         self.failed_serials = common.LockedDict()
         self.messager = settings.messager
+        self.heartbeat = self.settings.heartbeat
 
     def thread_is_active(self, t):
         return t and t.is_alive()
@@ -114,6 +115,14 @@ class FileSyncer(object):
         client = self.clients[archive]
         db_state = db.get_state(archive, objname)
         ref_state = db.get_state(self.SYNC, objname)
+        with self.heartbeat.lock() as hb:
+            beat = hb.get(objname)
+            if beat is not None:
+                if utils.younger_than(
+                    beat, self.settings.action_max_wait):
+                    logger.warning("Object '%s' already handled; "
+                                   "Probe aborted." % objname)
+                    return
         if db_state.serial != ref_state.serial:
             logger.warning("Serial mismatch in probing archive: %s, "
                            "object: '%s'" % (archive, objname))
@@ -164,6 +173,13 @@ class FileSyncer(object):
 
     @transaction()
     def _decide_file_sync(self, objname, master, slave):
+        states = self._decide_file_sync(objname, master, slave)
+        if states is not None:
+            with self.heartbeat.lock() as hb:
+                hb.set(objname, utils.time_stamp())
+        return states
+
+    def _do_decide_file_sync(self, objname, master, slave):
         db = self.get_db()
         logger.info("Deciding object: '%s'" % objname)
         master_state = db.get_state(master, objname)
@@ -174,6 +190,19 @@ class FileSyncer(object):
         slave_serial = slave_state.serial
         sync_serial = sync_state.serial
         decision_serial = decision_state.serial
+
+         with self.heartbeat.lock() as hb:
+            prev_log = hb.get(objname)
+            logger.info("object: %s heartbeat: %s" %
+                        (objname, prev_log))
+            if prev_log is not None:
+                if utils.younger_than(
+                        prev_log, self.settings.action_max_wait):
+                    logger.warning("Object '%s' already handled; aborting." %
+                                   objname)
+                    return None
+                logger.warning("Ignoring previous run: %s %s" %
+                               (objname, prev_log))
 
         if decision_serial != sync_serial:
             failed_sync = self.failed_serials.get((decision_serial, objname))
@@ -252,6 +281,8 @@ class FileSyncer(object):
         logger.warning(
             "Marking failed serial %s for archive: %s, object: '%s'" %
             (serial, state.archive, objname))
+        with self.heartbeat.lock() as hb:
+            hb.delete(objname)
         self.failed_serials.put((serial, objname), state)
 
     def update_state(self, old_state, new_state):
@@ -265,6 +296,8 @@ class FileSyncer(object):
         serial = synced_source_state.serial
         objname = synced_source_state.objname
         target = synced_target_state.archive
+        with self.heartbeat.lock() as hb:
+            hb.delete(objname)
         msg = messaging.AckSyncMessage(
             archive=target, objname=objname, serial=serial,
             logger=logger)

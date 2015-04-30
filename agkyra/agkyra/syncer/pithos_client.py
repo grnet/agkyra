@@ -21,9 +21,9 @@ def heartbeat_event(settings, heartbeat, objname):
     def set_log():
         with heartbeat.lock() as hb:
             client, prev_tstamp = hb.get(objname)
-            tpl = (client, utils.time_stamp())
-            hb.set(objname, tpl)
-            logger.debug("HEARTBEAT '%s' %s %s" % ((objname,) + tpl))
+            tstamp = utils.time_stamp()
+            hb.set(objname, tstamp)
+            logger.debug("HEARTBEAT '%s' %s" % (objname, tstamp))
 
     def go():
         interval = 0.2
@@ -78,23 +78,6 @@ class PithosSourceHandle(object):
         self.source_state = source_state
         self.objname = source_state.objname
         self.heartbeat = settings.heartbeat
-        self.check_log()
-
-    def check_log(self):
-        with self.heartbeat.lock() as hb:
-            prev_log = hb.get(self.objname)
-            logger.info("object: %s heartbeat: %s" %
-                        (self.objname, prev_log))
-            if prev_log is not None:
-                actionstate, ts = prev_log
-                if actionstate != self.SIGNATURE or \
-                        utils.younger_than(ts, self.settings.action_max_wait):
-                    raise common.HandledError(
-                        "Action mismatch in %s: %s %s" %
-                        (self.SIGNATURE, self.objname, prev_log))
-                logger.warning("Ignoring previous run in %s: %s %s" %
-                               (self.SIGNATURE, self.objname, prev_log))
-            hb.set(self.objname, (self.SIGNATURE, utils.time_stamp()))
 
     @transaction()
     def register_fetch_name(self, filename):
@@ -146,12 +129,7 @@ class PithosSourceHandle(object):
         return self.source_state
 
     def unstage_file(self):
-        self.clear_log()
-
-    def clear_log(self):
-        with self.heartbeat.lock() as hb:
-            hb.delete(self.objname)
-            logger.info("DELETED %s" % self.objname)
+        pass
 
 STAGED_FOR_DELETION_SUFFIX = ".pithos_staged_for_deletion"
 exclude_staged_regex = ".*" + STAGED_FOR_DELETION_SUFFIX + "$"
