@@ -231,6 +231,8 @@ class WebSocketProtocol(WebSocket):
 
     def pause_sync(self):
         self.syncer.stop_decide()
+        LOG.debug('Wait open syncs to complete')
+        self.syncer.wait_sync_threads()
 
     def start_sync(self):
         self.syncer.start_decide()
@@ -254,6 +256,8 @@ class WebSocketProtocol(WebSocket):
             if action == 'shutdown':
                 if self.can_sync():
                     self.syncer.stop_all_daemons()
+                    LOG.debug('Wait open syncs to complete')
+                    self.syncer.wait_sync_threads()
                 self.close()
                 return
             {
@@ -263,11 +267,11 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['gui_id'] == self.gui_id:
             self._load_settings()
+            self.accepted = True
+            self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
             if self.can_sync():
                 self.init_sync()
                 self.pause_sync()
-            self.accepted = True
-            self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
         else:
             action = r.get('path', 'gui_id')
             self.send_json({'REJECTED': 401, 'action': 'post %s' % action})
