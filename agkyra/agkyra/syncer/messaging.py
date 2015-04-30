@@ -40,8 +40,10 @@ class SyncMessage(Message):
         self.objname = kwargs["objname"]
         self.archive = kwargs["archive"]
         self.serial = kwargs["serial"]
-        self.logger.info("Syncing archive: %s, object: '%s', serial: %s" %
-                         (self.archive, self.objname, self.serial))
+        self.info = kwargs["info"]
+        self.logger.info("Syncing archive: %s, object: '%s', serial: %s "
+                         "info: %s" %
+                         (self.archive, self.objname, self.serial, self.info))
 
 
 class AckSyncMessage(Message):

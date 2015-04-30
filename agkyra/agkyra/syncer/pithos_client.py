@@ -83,6 +83,8 @@ class PithosSourceHandle(object):
     def check_log(self):
         with self.heartbeat.lock() as hb:
             prev_log = hb.get(self.objname)
+            logger.info("object: %s heartbeat: %s" %
+                        (self.objname, prev_log))
             if prev_log is not None:
                 actionstate, ts = prev_log
                 if actionstate != self.SIGNATURE or \
@@ -149,7 +151,7 @@ class PithosSourceHandle(object):
     def clear_log(self):
         with self.heartbeat.lock() as hb:
             hb.delete(self.objname)
-
+            logger.info("DELETED %s" % self.objname)
 
 STAGED_FOR_DELETION_SUFFIX = ".pithos_staged_for_deletion"
 exclude_staged_regex = ".*" + STAGED_FOR_DELETION_SUFFIX + "$"

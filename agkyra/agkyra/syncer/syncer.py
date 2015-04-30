@@ -223,6 +223,7 @@ class FileSyncer(object):
             objname=source_state.objname,
             archive=source_state.archive,
             serial=source_state.serial,
+            info=source_state.info,
             logger=logger)
         self.messager.put(msg)
         thread = threading.Thread(
@@ -276,8 +277,10 @@ class FileSyncer(object):
         objname = synced_source_state.objname
         source = synced_source_state.archive
         target = synced_target_state.archive
-        logger.info("Acking archive: %s, object: '%s', serial: %s" %
-                    (target, objname, serial))
+        tinfo = synced_target_state.info
+        logger.info("Acking archive: %s, object: '%s', serial: %s "
+                    "info: %s" %
+                    (target, objname, serial, tinfo))
         decision_state = db.get_state(self.DECISION, objname)
         sync_state = db.get_state(self.SYNC, objname)
 
