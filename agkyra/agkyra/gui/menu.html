@@ -7,7 +7,9 @@
     <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
-    // Setup GUI
+var DEBUG = false;
+
+// Setup GUI
 var windows = {
   "settings": null,
   "about": null,
@@ -58,7 +60,7 @@ var local_folder_menu = new gui.MenuItem({
   enabled: false,
   click: function () {
     var dir = globals['settings']['directory'];
-    console.log('Open ' + dir);
+    if (DEBUG) console.log('Open ' + dir);
     gui.Shell.showItemInFolder(dir);
   }
 })
@@ -69,7 +71,7 @@ var pithos_page_menu = new gui.MenuItem({
   icon: 'images/pithos.png',
   enabled: false,
   click: function () {
-    console.log('Visit ' + get_pithos_ui());
+    if (DEBUG) console.log('Visit ' + get_pithos_ui());
     gui.Shell.openExternal(get_pithos_ui());
   }
 });
@@ -91,11 +93,11 @@ var settings_menu = new gui.MenuItem({
       width: 841, height: 520
     });
     windows['settings'].on('closed', function() {
-      console.log('Settings windows is closed');
+      if (DEBUG) console.log('Settings windows is closed');
       var new_settings = import_settings();
       $.each(new_settings, function(key, setting) {
         if (old_settings[key] !== setting) {
-          console.log('Settings have been modified - updating...');
+          if (DEBUG) console.log('Settings have been modified - updating...');
           put_settings(socket, new_settings);
           get_status(socket);
           get_settings(socket);
