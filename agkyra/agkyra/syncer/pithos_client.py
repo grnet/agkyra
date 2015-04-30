@@ -220,7 +220,7 @@ class PithosTargetHandle(object):
                         if_etag_match=info.get("pithos_etag"))
                     synced_etag = r["etag"]
                 live_info = {"pithos_etag": synced_etag,
-                             "pithos_type": common.T_DIR}
+                             "pithos_type": common.T_FILE}
             return self.target_state.set(info=live_info)
         except ClientError as e:
             if e.status == 412:  # Precondition failed
