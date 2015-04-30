@@ -69,7 +69,8 @@ class WebSocketProtocol(WebSocket):
         token=None, url=None,
         container=None, directory=None,
         exclude=None)
-    status = dict(progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
+    status = dict(
+        progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
     file_syncer = None
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
@@ -202,9 +203,13 @@ class WebSocketProtocol(WebSocket):
 
     # Syncer-related methods
     def get_status(self):
-        self._update_statistics()
-        self.status['paused'] = self.syncer.paused
-        self.status['can_sync'] = self.can_sync()
+        if self.can_sync():
+            self._update_statistics()
+            self.status['paused'] = self.syncer.paused
+            self.status['can_sync'] = self.can_sync()
+        else:
+            self.status = dict(
+                progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
         return self.status
 
     def get_settings(self):
@@ -213,8 +218,9 @@ class WebSocketProtocol(WebSocket):
     def set_settings(self, new_settings):
         # Prepare setting save
         could_sync = self.can_sync()
-        was_active = not self.syncer.paused
-        if could_sync and was_active:
+        was_active = False
+        if could_sync and not self.syncer.paused:
+            was_active = True
             self.pause_sync()
         must_reset_syncing = self._essentials_changed(new_settings)
 
