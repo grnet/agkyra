@@ -7,12 +7,13 @@ from ws4py.client import WebSocketBaseClient
 from tempfile import NamedTemporaryFile
 import subprocess
 import json
-from os.path import abspath
+from os.path import abspath, join
 from threading import Thread
 from hashlib import sha1
 import os
 import logging
 
+CURPATH = os.path.dirname(os.path.abspath(__file__))
 
 LOG = logging.getLogger(__name__)
 
@@ -40,8 +41,8 @@ class GUI(WebSocketBaseClient):
         # subprocess.call blocks the execution
         LOG.debug('RUN: %s' % (fp.name))
         subprocess.call([
-            abspath('agkyra/nwjs/nw'),
-            abspath('agkyra/gui.nw'),
+            os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'),
+            os.path.join(CURPATH, 'gui.nw'),
             fp.name,
             '--data-path', abspath('~/.agkyra')])
         LOG.debug('GUI process closed, remove temp file')
