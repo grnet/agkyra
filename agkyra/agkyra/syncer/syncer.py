@@ -11,17 +11,6 @@ from agkyra.syncer.pithos_client import PithosFileClient
 from agkyra.syncer import messaging, utils
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-
-class IgnoreKamakiInfo(logging.Filter):
-    def filter(self, record):
-        return not (record.name.startswith('kamaki') and
-                    record.levelno <= logging.INFO)
-
-for handler in logging.root.handlers:
-    handler.addFilter(IgnoreKamakiInfo())
-
 
 exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
 exclude_pattern = re.compile('|'.join(exclude_regexes))
