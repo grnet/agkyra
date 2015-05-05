@@ -13,5 +13,5 @@
     "web": "http://www.synnefo.org"
     }],
   "licences": [{"type": "GPLv3"}],
-  "chromium-args": "--incognito"
+  "page-cache": false
 }

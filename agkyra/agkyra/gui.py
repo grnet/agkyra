@@ -22,26 +22,28 @@ from ws4py.client import WebSocketBaseClient
 from tempfile import NamedTemporaryFile
 import subprocess
 import json
-from os.path import abspath, join
+from os.path import abspath
 from threading import Thread
 from hashlib import sha1
 import os
 import logging
 
 CURPATH = os.path.dirname(os.path.abspath(__file__))
-
 LOG = logging.getLogger(__name__)
 
 
 class GUI(WebSocketBaseClient):
     """Launch the GUI when the helper server is ready"""
 
-    def __init__(self, addr, gui_id):
+    def __init__(self, addr, gui_id, **kwargs):
         """Initialize the GUI Launcher"""
         super(GUI, self).__init__(addr)
         self.addr = addr
         self.gui_id = gui_id
         self.start = self.connect
+        self.nw = kwargs.get(
+            'nw', os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'))
+        self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'gui.nw'))
 
     def run_gui(self):
         """Launch the GUI and keep it running, clean up afterwards.
@@ -55,11 +57,7 @@ class GUI(WebSocketBaseClient):
             json.dump(dict(gui_id=self.gui_id, address=self.addr), fp)
         # subprocess.call blocks the execution
         LOG.debug('RUN: %s' % (fp.name))
-        subprocess.call([
-            os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'),
-            os.path.join(CURPATH, 'gui.nw'),
-            fp.name,
-            '--data-path', abspath('~/.agkyra')])
+        subprocess.call([self.nw, self.gui_code, fp.name])
         LOG.debug('GUI process closed, remove temp file')
         os.remove(fp.name)
 
