@@ -76,7 +76,7 @@ class LockedDict(object):
 
     def get(self, key, default=None):
         self._Lock.acquire()
-        value = self._Dict.get(key, default=default)
+        value = self._Dict.get(key, default)
         self._Lock.release()
         return value
 
