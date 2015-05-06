@@ -262,7 +262,11 @@ class PithosFileClient(FileClient):
 
     def get_pithos_candidates(self, last_modified=None):
         db = self.get_db()
-        objects = self.endpoint.list_objects()
+        try:
+            objects = self.endpoint.list_objects()
+        except ClientError as e:
+            logger.error(e)
+            return {}
         self.objects = objects
         upstream_all = {}
         for obj in objects:
@@ -292,7 +296,8 @@ class PithosFileClient(FileClient):
                     (last_modified, candidates))
         return candidates
 
-    def notifier(self, callback=None, interval=2):
+    def notifier(self, callback=None):
+        interval = self.settings.pithos_list_interval
         class PollPithosThread(utils.StoppableThread):
             def run_body(this):
                 candidates = self.get_pithos_candidates(

@@ -38,6 +38,8 @@ DEFAULT_CACHE_FETCH_NAME = 'fetched'
 GLOBAL_SETTINGS_NAME = '.agkyra'
 DEFAULT_DBNAME = "syncer.db"
 DEFAULT_ACTION_MAX_WAIT = 10
+DEFAULT_PITHOS_LIST_INTERVAL = 5
+DEFAULT_CONNECTION_RETRY_LIMIT = 3
 
 thread_local_data = threading.local()
 
@@ -95,6 +97,13 @@ class SyncerSettings():
         self.heartbeat = HeartBeat()
         self.action_max_wait = kwargs.get("action_max_wait",
                                           DEFAULT_ACTION_MAX_WAIT)
+        self.pithos_list_interval = kwargs.get("pithos_list_interval",
+                                               DEFAULT_PITHOS_LIST_INTERVAL)
+
+        self.connection_retry_limit = kwargs.get(
+            "connection_retry_limit", DEFAULT_CONNECTION_RETRY_LIMIT)
+        self.endpoint.CONNECTION_RETRY_LIMIT = self.connection_retry_limit
+
         self.messager = Messager()
 
     def get_db(self, initialize=False):
