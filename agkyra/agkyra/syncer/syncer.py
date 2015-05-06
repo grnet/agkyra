@@ -107,7 +107,7 @@ class FileSyncer(object):
             beat = hb.get(objname)
             if beat is not None:
                 if utils.younger_than(
-                    beat["tstamp"], self.settings.action_max_wait):
+                        beat["tstamp"], self.settings.action_max_wait):
                     logger.warning("Object '%s' already handled; "
                                    "Probe aborted." % objname)
                     return
@@ -371,7 +371,6 @@ class FileSyncer(object):
                 self.decide_all_archives()
                 time.sleep(interval)
         return utils.start_daemon(DecideThread)
-
 
     # TODO cleanup db of objects deleted in all clients
     # def cleanup(self):

@@ -194,7 +194,7 @@ class PithosTargetHandle(object):
     @handle_client_errors
     @give_heartbeat
     def pull(self, source_handle, sync_state):
-#        assert isinstance(source_handle, LocalfsSourceHandle)
+        # assert isinstance(source_handle, LocalfsSourceHandle)
         info = sync_state.info
         etag = info.get("pithos_etag")
         try:
