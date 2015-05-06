@@ -56,9 +56,11 @@ class SyncerSettings():
         self.endpoint = self._get_pithos_client(
             auth_url, auth_token, container)
 
-        self.home_dir = os.path.expanduser('~')
-        self.settings_path = join_path(self.home_dir, GLOBAL_SETTINGS_NAME)
+        home_dir = os.path.expanduser('~')
+        default_settings_path = join_path(home_dir, GLOBAL_SETTINGS_NAME)
+        self.settings_path = kwargs.get("agkyra_path", default_settings_path)
         self.create_dir(self.settings_path)
+
         self.instance_path = join_path(self.settings_path, instance)
         self.create_dir(self.instance_path)
 
@@ -69,7 +71,7 @@ class SyncerSettings():
         self.local_root_path = local_root_path
         self.create_dir(self.local_root_path)
 
-        self.cache_name = kwargs.get("cache_path", DEFAULT_CACHE_NAME)
+        self.cache_name = kwargs.get("cache_name", DEFAULT_CACHE_NAME)
         self.cache_path = join_path(self.local_root_path, self.cache_name)
         self.create_dir(self.cache_path)
 

@@ -38,8 +38,19 @@ from kamaki.cli.utils import escape_ctrl_chars
 
 CLOUD_PREFIX = config.CLOUD_PREFIX
 config.HEADER = '# Agkyra configuration file version XXX\n'
-AGKYRA_DIR = os.environ.get('AGKYRA_DIR', os.path.expanduser('~/.agkyra'))
-CONFIG_PATH = '%s%sconfig.rc' % (AGKYRA_DIR, os.path.sep)
+
+HOME_DIR = os.path.expanduser('~')
+DEFAULT_AGKYRA_DIR = os.path.join(HOME_DIR, ".agkyra")
+AGKYRA_DIR = os.environ.get('AGKYRA_DIR', DEFAULT_AGKYRA_DIR)
+AGKYRA_DIR = os.path.abspath(AGKYRA_DIR)
+
+if os.path.exists(AGKYRA_DIR):
+    if not os.path.isdir(AGKYRA_DIR):
+        raise Exception("Cannot create dir '%s'; file exists" % AGKYRA_DIR)
+else:
+    os.mkdir(AGKYRA_DIR)
+
+CONFIG_PATH = os.path.join(AGKYRA_DIR, 'config.rc')
 config.CONFIG_PATH = CONFIG_PATH
 # neutralize kamaki CONFIG_ENV for this session
 config.CONFIG_ENV = ''

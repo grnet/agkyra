@@ -19,7 +19,7 @@ import logging
 from os.path import abspath
 from agkyra.syncer import (
     syncer, setup, pithos_client, localfs_client, messaging)
-from agkyra.config import AgkyraConfig
+from agkyra.config import AgkyraConfig, AGKYRA_DIR
 
 
 LOG = logging.getLogger(__name__)
@@ -209,6 +209,7 @@ class WebSocketProtocol(WebSocket):
             sync,
             self.settings['url'], self.settings['token'],
             self.settings['container'], self.settings['directory'],
+            agkyra_path=AGKYRA_DIR,
             ignore_ssl=True)
         master = pithos_client.PithosFileClient(syncer_settings)
         slave = localfs_client.LocalfsFileClient(syncer_settings)

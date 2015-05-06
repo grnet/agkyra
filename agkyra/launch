@@ -16,10 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-CURPATH = os.path.dirname(os.path.abspath(__file__))
+
+from agkyra import config
+AGKYRA_DIR = config.AGKYRA_DIR
 
 import logging
-logfile = os.path.join(CURPATH, 'agkyra.log')
+logfile = os.path.join(AGKYRA_DIR, 'agkyra.log')
 logger = logging.getLogger('agkyra')
 handler = logging.FileHandler(logfile)
 formatter = logging.Formatter("%(levelname)s:%(asctime)s:%(message)s")
