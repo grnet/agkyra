@@ -13,18 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from wsgiref.simple_server import make_server
-# from ws4py.websocket import EchoWebSocket
-from agkyra.protocol import WebSocketProtocol
-from ws4py.server.wsgirefserver import WSGIServer, WebSocketWSGIRequestHandler
-from ws4py.server.wsgiutils import WebSocketWSGIApplication
 from ws4py.client import WebSocketBaseClient
+from agkyra.protocol import HelperServer
 from tempfile import NamedTemporaryFile
 import subprocess
 import json
-from os.path import abspath
-from threading import Thread
-from hashlib import sha1
 import os
 import logging
 
@@ -68,40 +61,10 @@ class GUI(WebSocketBaseClient):
         self.close()
 
 
-class HelperServer(object):
-    """Agkyra Helper Server sets a WebSocket server with the Helper protocol
-    It also provided methods for running and killing the Helper server
-    :param gui_id: Only the GUI with this ID is allowed to chat with the Helper
-    """
-
-    def __init__(self, port=0):
-        """Setup the helper server"""
-        self.gui_id = sha1(os.urandom(128)).hexdigest()
-        WebSocketProtocol.gui_id = self.gui_id
-        server = make_server(
-            '', port,
-            server_class=WSGIServer,
-            handler_class=WebSocketWSGIRequestHandler,
-            app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
-        server.initialize_websockets_manager()
-        self.server, self.port = server, server.server_port
-
-    def start(self):
-        """Start the helper server in a thread"""
-        Thread(target=self.server.serve_forever).start()
-
-    def shutdown(self):
-        """Shutdown the server (needs another thread) and join threads"""
-        t = Thread(target=self.server.shutdown)
-        t.start()
-        t.join()
-
-
 def run():
     """Prepare helper and GUI and run them in the proper order"""
     server = HelperServer()
-    addr = 'ws://localhost:%s' % server.port
-    gui = GUI(addr, server.gui_id)
+    gui = GUI(server.addr, server.gui_id)
 
     LOG.info('Start helper server')
     server.start()
@@ -117,4 +80,4 @@ def run():
 
 if __name__ == '__main__':
     logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)
-    run(abspath('gui/app'))
+    run(os.path.abspath('gui/app'))
