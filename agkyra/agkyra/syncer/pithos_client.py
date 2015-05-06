@@ -296,7 +296,7 @@ class PithosFileClient(FileClient):
                     (last_modified, candidates))
         return candidates
 
-    def notifier(self, callback=None):
+    def notifier(self):
         interval = self.settings.pithos_list_interval
         class PollPithosThread(utils.StoppableThread):
             def run_body(this):

@@ -68,8 +68,7 @@ class FileSyncer(object):
         for signature, client in self.clients.iteritems():
             notifier = self.notifiers.get(signature)
             if not self.thread_is_active(notifier):
-                self.notifiers[signature] = \
-                    client.notifier(callback=self.probe_file)
+                self.notifiers[signature] = client.notifier()
             else:
                 logger.info("Notifier %s already up" % signature)
 

@@ -526,7 +526,7 @@ class LocalfsFileClient(FileClient):
     def prepare_target(self, target_state):
         return LocalfsTargetHandle(self.settings, target_state)
 
-    def notifier(self, callback=None):
+    def notifier(self):
         def handle_path(path):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
