@@ -16,7 +16,6 @@
 import time
 import threading
 import logging
-import re
 
 from agkyra.syncer import common
 from agkyra.syncer.setup import SyncerSettings
@@ -26,9 +25,6 @@ from agkyra.syncer.pithos_client import PithosFileClient
 from agkyra.syncer import messaging, utils
 
 logger = logging.getLogger(__name__)
-
-exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
-exclude_pattern = re.compile('|'.join(exclude_regexes))
 
 
 class FileSyncer(object):
@@ -100,20 +96,8 @@ class FileSyncer(object):
     def get_next_message(self, block=False):
         return self.messager.get(block=block)
 
-    def exclude_file(self, objname):
-        parts = objname.split(common.OBJECT_DIRSEP)
-        init_part = parts[0]
-        if init_part in [self.settings.cache_name]:
-            return True
-        final_part = parts[-1]
-        return exclude_pattern.match(final_part)
-
     @transaction()
     def probe_file(self, archive, objname, assumed_info=None):
-        if self.exclude_file(objname):
-            logger.warning("Ignoring probe archive: %s, object: %s" %
-                           (archive, objname))
-            return
         logger.info("Probing archive: %s, object: '%s'" % (archive, objname))
         db = self.get_db()
         client = self.clients[archive]
@@ -141,10 +125,6 @@ class FileSyncer(object):
         archive = live_state.archive
         objname = live_state.objname
         serial = live_state.serial
-        if self.exclude_file(objname):
-            logger.warning("Ignoring update archive: %s, object: %s" %
-                           (archive, objname))
-            return
         msg = messaging.UpdateMessage(
             archive=archive, objname=objname, serial=serial, logger=logger)
         self.messager.put(msg)

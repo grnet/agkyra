@@ -40,6 +40,10 @@ OS_NOT_A_DIR = 20
 OS_NO_FILE_OR_DIR = 2
 
 
+exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
+exclude_pattern = re.compile('|'.join(exclude_regexes))
+
+
 class DirMissing(BaseException):
     pass
 
@@ -462,8 +466,6 @@ class LocalfsFileClient(FileClient):
         self.ROOTPATH = settings.local_root_path
         self.CACHEPATH = settings.cache_path
         self.get_db = settings.get_db
-        self.exclude_files_exp = re.compile('.*\.tmp$')
-        self.exclude_dir_exp = re.compile(self.CACHEPATH)
         self.probe_candidates = common.LockedDict()
 
     def list_candidate_files(self, forced=False):
@@ -478,14 +480,9 @@ class LocalfsFileClient(FileClient):
         for dirpath, dirnames, files in os.walk(self.ROOTPATH):
             rel_dirpath = os.path.relpath(dirpath, start=self.ROOTPATH)
             logger.debug("'%s' '%s'" % (dirpath, rel_dirpath))
-            # if self.exclude_dir_exp.match(dirpath):
-            #     continue
             if rel_dirpath != '.':
                 candidates[utils.to_standard_sep(rel_dirpath)] = None
             for filename in files:
-                # if self.exclude_files_exp.match(filename) or \
-                #         self.exclude_dir_exp.match(filename):
-                #     continue
                 if rel_dirpath == '.':
                     prefix = ""
                 else:
@@ -502,13 +499,23 @@ class LocalfsFileClient(FileClient):
         local_path = utils.join_path(self.ROOTPATH, name)
         return local_path_changes(local_path, state)
 
+    def exclude_file(self, objname):
+        parts = objname.split(common.OBJECT_DIRSEP)
+        init_part = parts[0]
+        if init_part in [self.settings.cache_name]:
+            return True
+        final_part = parts[-1]
+        return exclude_pattern.match(final_part)
+
     def start_probing_file(self, objname, old_state, ref_state,
                            assumed_info=None,
                            callback=None):
-        if old_state.serial != ref_state.serial:
-            logger.warning("Serial mismatch in probing path '%s'" % objname)
-            return
         cached_info = self.probe_candidates.pop(objname)
+        if self.exclude_file(objname):
+            logger.warning("Ignoring probe archive: %s, object: %s" %
+                           (old_state.archive, objname))
+            return
+
         live_info = (self._local_path_changes(objname, old_state)
                      if cached_info is None else cached_info)
         if live_info is None:

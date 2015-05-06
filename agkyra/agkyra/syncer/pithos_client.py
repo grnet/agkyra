@@ -323,12 +323,12 @@ class PithosFileClient(FileClient):
     def start_probing_file(self, objname, old_state, ref_state,
                            assumed_info=None,
                            callback=None):
+        info = old_state.info
+        cached_info = self.probe_candidates.pop(objname)
         if exclude_pattern.match(objname):
             logger.warning("Ignoring probe archive: %s, object: '%s'" %
                            (old_state.archive, objname))
             return
-        info = old_state.info
-        cached_info = self.probe_candidates.pop(objname)
         if cached_info is None:
             obj = self.get_object(objname)
             live_info = self.get_object_live_info(obj)
