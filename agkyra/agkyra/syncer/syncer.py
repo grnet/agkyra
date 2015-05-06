@@ -71,7 +71,7 @@ class FileSyncer(object):
                 self.notifiers[signature] = \
                     client.notifier(callback=self.probe_file)
             else:
-                print 'ignoring %s' % signature
+                logger.info("Notifier %s already up" % signature)
 
     def stop_notifiers(self):
         for notifier in self.notifiers.values():

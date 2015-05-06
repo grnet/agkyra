@@ -300,7 +300,6 @@ class LocalfsTargetHandle(object):
     def prepare(self, fetched_file, sync_state):
         self.hide_file()
         info_changed = local_path_changes(self.hidden_path, sync_state)
-        print 'info changed', info_changed
         if info_changed is not None and info_changed != {}:
             if not files_equal(self.hidden_path, fetched_file):
                 self.stash_file()
@@ -453,7 +452,6 @@ class LocalfsSourceHandle(object):
         staged_path = self.staged_path
         try:
             link_file(staged_path, self.fspath)
-            print "Unlinking", staged_path
             os.unlink(staged_path)
         except common.ConflictError:
             self.stash_staged_file()
