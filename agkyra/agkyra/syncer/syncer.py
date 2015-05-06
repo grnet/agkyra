@@ -97,7 +97,7 @@ class FileSyncer(object):
         return self.messager.get(block=block)
 
     @transaction()
-    def probe_file(self, archive, objname, assumed_info=None):
+    def probe_file(self, archive, objname):
         logger.info("Probing archive: %s, object: '%s'" % (archive, objname))
         db = self.get_db()
         client = self.clients[archive]
@@ -116,7 +116,6 @@ class FileSyncer(object):
                            "object: '%s'" % (archive, objname))
             return
         client.start_probing_file(objname, db_state, ref_state,
-                                  assumed_info=assumed_info,
                                   callback=self.update_file_state)
 
     @transaction()

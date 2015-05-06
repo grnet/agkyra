@@ -325,9 +325,7 @@ class PithosFileClient(FileClient):
                 PITHOS_TYPE: p_type,
                 }
 
-    def start_probing_file(self, objname, old_state, ref_state,
-                           assumed_info=None,
-                           callback=None):
+    def start_probing_file(self, objname, old_state, ref_state, callback=None):
         info = old_state.info
         cached_info = self.probe_candidates.pop(objname)
         if exclude_pattern.match(objname):

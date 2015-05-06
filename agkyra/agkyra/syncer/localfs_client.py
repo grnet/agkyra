@@ -505,9 +505,7 @@ class LocalfsFileClient(FileClient):
         final_part = parts[-1]
         return exclude_pattern.match(final_part)
 
-    def start_probing_file(self, objname, old_state, ref_state,
-                           assumed_info=None,
-                           callback=None):
+    def start_probing_file(self, objname, old_state, ref_state, callback=None):
         cached_info = self.probe_candidates.pop(objname)
         if self.exclude_file(objname):
             logger.warning("Ignoring probe archive: %s, object: %s" %
