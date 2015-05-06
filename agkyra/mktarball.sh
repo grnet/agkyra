@@ -60,4 +60,9 @@ fi
 rm $file
 
 cd $TMPDIR
-tar czf $CURPWD/agkyra-snapshot-${os}.tar.gz agkyra
+ARCHIVENAME=$CURPWD/agkyra-snapshot-${os}
+if [[ "$os" =~ ^(linux64|linux32)$ ]]; then
+    tar czf ${ARCHIVENAME}.tar.gz agkyra
+else
+    zip -r ${ARCHIVENAME}.zip agkyra
+fi
