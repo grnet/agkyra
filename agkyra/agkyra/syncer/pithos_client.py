@@ -130,7 +130,7 @@ class PithosSourceHandle(object):
                                else common.T_FILE)
                 actual_info = {"pithos_etag": actual_etag,
                                "pithos_type": actual_type}
-            self.source_state = self.source_state.set(info=actual_info)
+            self.check_update_source_state(actual_info)
         if actual_info == {}:
             logger.info("Downloading object: '%s', object is gone."
                         % self.objname)
@@ -141,6 +141,19 @@ class PithosSourceHandle(object):
             os.unlink(fetched_fspath)
             os.mkdir(fetched_fspath)
         return fetched_fspath
+
+    @transaction()
+    def update_state(self, state):
+        db = self.get_db()
+        db.put_state(state)
+
+    def check_update_source_state(self, actual_info):
+        if actual_info != self.source_state.info:
+            logger.warning("Actual info differs in %s for object: '%s'; "
+                           "updating..." % (self.SIGNATURE, self.objname))
+            new_state = self.source_state.set(info=actual_info)
+            self.update_state(new_state)
+            self.source_state = new_state
 
     def get_synced_state(self):
         return self.source_state
