@@ -114,10 +114,10 @@ def info_is_unhandled(info):
     return info != {} and info[LOCALFS_TYPE] == common.T_UNHANDLED
 
 
-def local_path_changes(path, state):
+def local_path_changes(path, state, unhandled_equal=True):
     live_info = get_live_info(path)
     info = state.info
-    if is_info_eq(live_info, info):
+    if is_info_eq(live_info, info, unhandled_equal):
         return None
     return live_info
 
@@ -195,13 +195,13 @@ def path_status(path):
     return status
 
 
-def is_info_eq(info1, info2):
+def is_info_eq(info1, info2, unhandled_equal=True):
     if {} in [info1, info2]:
         return info1 == info2
     if info1[LOCALFS_TYPE] != info2[LOCALFS_TYPE]:
         return False
     if info1[LOCALFS_TYPE] == common.T_UNHANDLED:
-        return False
+        return unhandled_equal
     if info1[LOCALFS_TYPE] == common.T_DIR:
         return True
     return eq_float(info1[LOCALFS_MTIME], info2[LOCALFS_MTIME]) \
@@ -299,7 +299,8 @@ class LocalfsTargetHandle(object):
 
     def prepare(self, fetched_file, sync_state):
         self.hide_file()
-        info_changed = local_path_changes(self.hidden_path, sync_state)
+        info_changed = local_path_changes(
+            self.hidden_path, sync_state, unhandled_equal=False)
         if info_changed is not None and info_changed != {}:
             if not files_equal(self.hidden_path, fetched_file):
                 self.stash_file()
