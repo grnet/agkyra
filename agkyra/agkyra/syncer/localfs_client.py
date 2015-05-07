@@ -532,7 +532,7 @@ class LocalfsFileClient(FileClient):
         final_part = parts[-1]
         return exclude_pattern.match(final_part)
 
-    def start_probing_file(self, objname, old_state, ref_state, callback=None):
+    def probe_file(self, objname, old_state, ref_state):
         with self.probe_candidates.lock() as d:
             cached_info = d.pop(objname, None)
         if self.exclude_file(objname):
@@ -545,8 +545,7 @@ class LocalfsFileClient(FileClient):
         if live_info is None:
             return
         live_state = old_state.set(info=live_info)
-        if callback is not None:
-            callback(live_state)
+        return live_state
 
     def stage_file(self, source_state):
         return LocalfsSourceHandle(self.settings, source_state)

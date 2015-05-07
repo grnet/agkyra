@@ -340,7 +340,7 @@ class PithosFileClient(FileClient):
                 PITHOS_TYPE: p_type,
                 }
 
-    def start_probing_file(self, objname, old_state, ref_state, callback=None):
+    def probe_file(self, objname, old_state, ref_state):
         info = old_state.info
         with self.probe_candidates.lock() as d:
             cached_info = d.pop(objname, None)
@@ -354,9 +354,8 @@ class PithosFileClient(FileClient):
         else:
             live_info = cached_info
         if info != live_info:
-            if callback is not None:
-                live_state = old_state.set(info=live_info)
-                callback(live_state)
+            live_state = old_state.set(info=live_info)
+            return live_state
 
     def stage_file(self, source_state):
         return PithosSourceHandle(self.settings, source_state)
