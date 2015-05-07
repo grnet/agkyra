@@ -39,7 +39,7 @@ def heartbeat_event(settings, heartbeat, objname):
             assert beat is not None
             new_beat = {"ident": beat["ident"],
                         "tstamp": utils.time_stamp()}
-            hb.set(objname, new_beat)
+            hb[objname] = new_beat
             logger.debug("HEARTBEAT '%s' %s" % (objname, new_beat))
 
     def go():
@@ -252,13 +252,14 @@ class PithosFileClient(FileClient):
         self.get_db = settings.get_db
         self.endpoint = settings.endpoint
         self.last_modification = "0000-00-00"
-        self.probe_candidates = common.LockedDict()
+        self.probe_candidates = utils.ThreadSafeDict()
 
     def list_candidate_files(self, forced=False):
-        if forced:
-            candidates = self.get_pithos_candidates()
-            self.probe_candidates.update(candidates)
-        return self.probe_candidates.keys()
+        with self.probe_candidates.lock() as d:
+            if forced:
+                candidates = self.get_pithos_candidates()
+                d.update(candidates)
+            return d.keys()
 
     def get_pithos_candidates(self, last_modified=None):
         db = self.get_db()
@@ -302,7 +303,8 @@ class PithosFileClient(FileClient):
             def run_body(this):
                 candidates = self.get_pithos_candidates(
                     last_modified=self.last_modification)
-                self.probe_candidates.update(candidates)
+                with self.probe_candidates.lock() as d:
+                    d.update(candidates)
                 time.sleep(interval)
         return utils.start_daemon(PollPithosThread)
 
@@ -327,7 +329,8 @@ class PithosFileClient(FileClient):
 
     def start_probing_file(self, objname, old_state, ref_state, callback=None):
         info = old_state.info
-        cached_info = self.probe_candidates.pop(objname)
+        with self.probe_candidates.lock() as d:
+            cached_info = d.pop(objname, None)
         if exclude_pattern.match(objname):
             logger.warning("Ignoring probe archive: %s, object: '%s'" %
                            (old_state.archive, objname))

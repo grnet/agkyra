@@ -464,13 +464,14 @@ class LocalfsFileClient(FileClient):
         self.ROOTPATH = settings.local_root_path
         self.CACHEPATH = settings.cache_path
         self.get_db = settings.get_db
-        self.probe_candidates = common.LockedDict()
+        self.probe_candidates = utils.ThreadSafeDict()
 
     def list_candidate_files(self, forced=False):
-        if forced:
-            candidates = self.walk_filesystem()
-            self.probe_candidates.update(candidates)
-        return self.probe_candidates.keys()
+        with self.probe_candidates.lock() as d:
+            if forced:
+                candidates = self.walk_filesystem()
+                d.update(candidates)
+            return d.keys()
 
     def walk_filesystem(self):
         db = self.get_db()
@@ -506,7 +507,8 @@ class LocalfsFileClient(FileClient):
         return exclude_pattern.match(final_part)
 
     def start_probing_file(self, objname, old_state, ref_state, callback=None):
-        cached_info = self.probe_candidates.pop(objname)
+        with self.probe_candidates.lock() as d:
+            cached_info = d.pop(objname, None)
         if self.exclude_file(objname):
             logger.warning("Ignoring probe archive: %s, object: %s" %
                            (old_state.archive, objname))
@@ -530,7 +532,8 @@ class LocalfsFileClient(FileClient):
         def handle_path(path):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
-            self.probe_candidates.put(objname, None)
+            with self.probe_candidates.lock() as d:
+                d[objname] = None
 
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):

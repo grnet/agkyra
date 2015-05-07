@@ -45,7 +45,7 @@ class FileSyncer(object):
         self.notifiers = {}
         self.decide_thread = None
         self.sync_threads = []
-        self.failed_serials = common.LockedDict()
+        self.failed_serials = utils.ThreadSafeDict()
         self.messager = settings.messager
         self.heartbeat = self.settings.heartbeat
 
@@ -160,7 +160,7 @@ class FileSyncer(object):
         if states is not None:
             with self.heartbeat.lock() as hb:
                 beat = {"ident": ident, "tstamp": utils.time_stamp()}
-                hb.set(objname, beat)
+                hb[objname] = beat
         return states
 
     def _do_decide_file_sync(self, objname, master, slave, ident):
@@ -193,7 +193,8 @@ class FileSyncer(object):
                                    (objname, beat))
 
         if decision_serial != sync_serial:
-            failed_sync = self.failed_serials.get((decision_serial, objname))
+            with self.failed_serials.lock() as d:
+                failed_sync = d.get((decision_serial, objname))
             if failed_sync is None:
                 logger.warning(
                     "Already decided: '%s', decision: %s, sync: %s" %
@@ -270,8 +271,9 @@ class FileSyncer(object):
             "Marking failed serial %s for archive: %s, object: '%s'" %
             (serial, state.archive, objname))
         with self.heartbeat.lock() as hb:
-            hb.delete(objname)
-        self.failed_serials.put((serial, objname), state)
+            hb.pop(objname)
+        with self.failed_serials.lock() as d:
+            d[(serial, objname)] = state
 
     def update_state(self, old_state, new_state):
         db = self.get_db()
@@ -285,7 +287,7 @@ class FileSyncer(object):
         objname = synced_source_state.objname
         target = synced_target_state.archive
         with self.heartbeat.lock() as hb:
-            hb.delete(objname)
+            hb.pop(objname)
         msg = messaging.AckSyncMessage(
             archive=target, objname=objname, serial=serial,
             logger=logger)

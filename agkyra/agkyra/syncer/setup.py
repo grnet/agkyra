@@ -17,9 +17,8 @@ import os
 import threading
 import logging
 
-from agkyra.syncer.utils import join_path
+from agkyra.syncer.utils import join_path, ThreadSafeDict
 from agkyra.syncer.database import SqliteFileStateDB
-from agkyra.syncer.heartbeat import HeartBeat
 from agkyra.syncer.messaging import Messager
 
 from kamaki.clients import ClientError
@@ -94,7 +93,7 @@ class SyncerSettings():
                                           self.cache_fetch_name)
         self.create_dir(self.cache_fetch_path)
 
-        self.heartbeat = HeartBeat()
+        self.heartbeat = ThreadSafeDict()
         self.action_max_wait = kwargs.get("action_max_wait",
                                           DEFAULT_ACTION_MAX_WAIT)
         self.pithos_list_interval = kwargs.get("pithos_list_interval",

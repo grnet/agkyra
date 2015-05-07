@@ -16,6 +16,7 @@
 import os
 import hashlib
 import datetime
+import threading
 import watchdog.utils
 
 from agkyra.syncer.common import OBJECT_DIRSEP
@@ -86,3 +87,21 @@ def start_daemon(threadClass):
     thread.daemon = True
     thread.start()
     return thread
+
+
+class ThreadSafeDict(object):
+    def __init__(self, *args, **kwargs):
+        self._DICT = {}
+        self._LOCK = threading.Lock()
+
+    def lock(self):
+        class Lock(object):
+            def __enter__(this):
+                self._LOCK.acquire()
+                return self._DICT
+
+            def __exit__(this, exctype, value, traceback):
+                self._LOCK.release()
+                if value is not None:
+                    raise value
+        return Lock()

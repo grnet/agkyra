@@ -14,7 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
-import threading
 
 OBJECT_DIRSEP = '/'
 
@@ -62,37 +61,3 @@ class HardSyncError(SyncError):
 
 class CollisionError(HardSyncError):
     pass
-
-
-class LockedDict(object):
-    def __init__(self, *args, **kwargs):
-        self._Dict = {}
-        self._Lock = threading.Lock()
-
-    def put(self, key, value):
-        self._Lock.acquire()
-        self._Dict[key] = value
-        self._Lock.release()
-
-    def get(self, key, default=None):
-        self._Lock.acquire()
-        value = self._Dict.get(key, default)
-        self._Lock.release()
-        return value
-
-    def pop(self, key, d=None):
-        self._Lock.acquire()
-        value = self._Dict.pop(key, d)
-        self._Lock.release()
-        return value
-
-    def update(self, d):
-        self._Lock.acquire()
-        self._Dict.update(d)
-        self._Lock.release()
-
-    def keys(self):
-        self._Lock.acquire()
-        value = self._Dict.keys()
-        self._Lock.release()
-        return value
