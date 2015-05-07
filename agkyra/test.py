@@ -197,3 +197,68 @@ print m
 assert isinstance(m, messaging.AckSyncMessage)
 
 assert s.get_next_message() is None
+s.stop_notifiers()
+
+########################################
+
+# Check sym links
+ln1 = "f1.link"
+ln1_path = os.path.join(LOCAL_ROOT_PATH, ln1)
+os.symlink(f1_path, ln1_path)
+s.probe_file(s.SLAVE, ln1)
+state = db.get_state(slave.SIGNATURE, ln1)
+assert state.serial == 0
+assert state.info == {"localfs_type": "unhandled"}
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.UpdateMessage)
+
+s.decide_file_sync(ln1)
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.SyncMessage)
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.AckSyncMessage)
+
+# Put file upstream to cause conflict
+upstream_ln1_content = "regular"
+r1 = pithos.upload_from_string(
+    ln1, upstream_ln1_content)
+s.probe_file(s.MASTER, ln1)
+s.probe_file(s.SLAVE, ln1)
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.UpdateMessage)
+
+s.decide_file_sync(ln1)
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.SyncMessage)
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.ConflictStashMessage)
+stashed_ln1 = m.stash_name
+
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.AckSyncMessage)
+
+assert s.get_next_message() is None
+
+s.probe_file(s.SLAVE, stashed_ln1)
+m = s.get_next_message(block=True)
+print m
+assert isinstance(m, messaging.UpdateMessage)
+assert m.objname == stashed_ln1
+
+state = db.get_state(slave.SIGNATURE, stashed_ln1)
+assert state.serial == 0
+assert state.info == {"localfs_type": "unhandled"}
+
+print "FINISHED"
