@@ -70,7 +70,7 @@ etag1 = r1['etag']
 
 # check pithos state
 pithos_cands = master.get_pithos_candidates()
-info1 = pithos_cands[f1]
+info1 = pithos_cands[f1]["info"]
 assert etag1 == info1["pithos_etag"]
 
 db = s.get_db()

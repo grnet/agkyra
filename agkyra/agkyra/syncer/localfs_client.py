@@ -492,12 +492,25 @@ class LocalfsFileClient(FileClient):
         self.get_db = settings.get_db
         self.probe_candidates = utils.ThreadSafeDict()
 
+    def remove_candidates(self, objnames, ident):
+        with self.probe_candidates.lock() as d:
+            for objname in objnames:
+                try:
+                    cached = d.pop(objname)
+                    if cached["ident"] != ident:
+                        d[objname] = cached
+                except KeyError:
+                    pass
+
     def list_candidate_files(self, forced=False):
         with self.probe_candidates.lock() as d:
             if forced:
                 candidates = self.walk_filesystem()
                 d.update(candidates)
             return d.keys()
+
+    def none_info(self):
+        return {"ident": None, "info": None}
 
     def walk_filesystem(self):
         db = self.get_db()
@@ -506,16 +519,18 @@ class LocalfsFileClient(FileClient):
             rel_dirpath = os.path.relpath(dirpath, start=self.ROOTPATH)
             logger.debug("'%s' '%s'" % (dirpath, rel_dirpath))
             if rel_dirpath != '.':
-                candidates[utils.to_standard_sep(rel_dirpath)] = None
+                objname = utils.to_standard_sep(rel_dirpath)
+                candidates[objname] = self.none_info()
             for filename in files:
                 if rel_dirpath == '.':
                     prefix = ""
                 else:
                     prefix = utils.to_standard_sep(rel_dirpath)
                 objname = utils.join_objname(prefix, filename)
-                candidates[objname] = None
+                candidates[objname] = self.none_info()
 
-        db_cands = dict((name, None) for name in db.list_files(self.SIGNATURE))
+        db_cands = dict((name, self.none_info())
+                        for name in db.list_files(self.SIGNATURE))
         candidates.update(db_cands)
         logger.info("Candidates: %s" % candidates)
         return candidates
@@ -532,9 +547,15 @@ class LocalfsFileClient(FileClient):
         final_part = parts[-1]
         return exclude_pattern.match(final_part)
 
-    def probe_file(self, objname, old_state, ref_state):
+    def probe_file(self, objname, old_state, ref_state, ident):
         with self.probe_candidates.lock() as d:
-            cached_info = d.pop(objname, None)
+            try:
+                cached = d[objname]
+                cached_info = cached["info"]
+                cached["ident"] = ident
+            except KeyError:
+                cached_info = None
+
         if self.exclude_file(objname):
             logger.warning("Ignoring probe archive: %s, object: %s" %
                            (old_state.archive, objname))
@@ -558,7 +579,7 @@ class LocalfsFileClient(FileClient):
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
             with self.probe_candidates.lock() as d:
-                d[objname] = None
+                d[objname] = self.none_info()
 
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):

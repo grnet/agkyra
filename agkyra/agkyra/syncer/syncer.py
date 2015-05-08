@@ -95,11 +95,18 @@ class FileSyncer(object):
     def get_next_message(self, block=False):
         return self.messager.get(block=block)
 
-    @transaction()
     def probe_file(self, archive, objname):
-        return self._probe_file(archive, objname)
+        ident = utils.time_stamp()
+        self._probe_files(archive, [objname], ident)
+        client = self.clients[archive]
+        client.remove_candidates([objname], ident)
 
-    def _probe_file(self, archive, objname):
+    @transaction()
+    def _probe_files(self, archive, objnames, ident):
+        for objname in objnames:
+            self._do_probe_file(archive, objname, ident)
+
+    def _do_probe_file(self, archive, objname, ident):
         logger.info("Probing archive: %s, object: '%s'" % (archive, objname))
         db = self.get_db()
         client = self.clients[archive]
@@ -117,7 +124,7 @@ class FileSyncer(object):
             logger.warning("Serial mismatch in probing archive: %s, "
                            "object: '%s'" % (archive, objname))
             return
-        live_state = client.probe_file(objname, db_state, ref_state)
+        live_state = client.probe_file(objname, db_state, ref_state, ident)
         if live_state is not None:
             self.update_file_state(live_state)
 
@@ -348,12 +355,12 @@ class FileSyncer(object):
         return set(db.list_deciding(archives=archives,
                                     sync=self.SYNC))
 
-    @transaction()
     def probe_archive(self, archive, forced=False):
+        ident = utils.time_stamp()
         client = self.clients[archive]
         candidates = client.list_candidate_files(forced=forced)
-        for objname in candidates:
-            self._probe_file(archive, objname)
+        self._probe_files(archive, candidates, ident)
+        client.remove_candidates(candidates, ident)
 
     def decide_archive(self, archive):
         for objname in self.list_deciding([archive]):

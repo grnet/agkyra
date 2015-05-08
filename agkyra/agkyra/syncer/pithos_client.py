@@ -267,6 +267,16 @@ class PithosFileClient(FileClient):
         self.last_modification = "0000-00-00"
         self.probe_candidates = utils.ThreadSafeDict()
 
+    def remove_candidates(self, objnames, ident):
+        with self.probe_candidates.lock() as d:
+            for objname in objnames:
+                try:
+                    cached = d.pop(objname)
+                    if cached["ident"] != ident:
+                        d[objname] = cached
+                except KeyError:
+                    pass
+
     def list_candidate_files(self, forced=False):
         with self.probe_candidates.lock() as d:
             if forced:
@@ -285,7 +295,10 @@ class PithosFileClient(FileClient):
         upstream_all = {}
         for obj in objects:
             name = obj["name"]
-            upstream_all[name] = self.get_object_live_info(obj)
+            upstream_all[name] = {
+                "ident": None,
+                "info": self.get_object_live_info(obj)
+            }
             obj_last_modified = obj["last_modified"]
             if obj_last_modified > self.last_modification:
                 self.last_modification = obj_last_modified
@@ -303,7 +316,8 @@ class PithosFileClient(FileClient):
         non_deleted_in_db = set(db.list_non_deleted_files(self.SIGNATURE))
         newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
         logger.debug("newly_deleted %s" % newly_deleted_names)
-        newly_deleted = dict((name, {}) for name in newly_deleted_names)
+        newly_deleted = dict((name, {"ident": None, "info": {}})
+                             for name in newly_deleted_names)
 
         candidates.update(newly_deleted)
         logger.info("Candidates since %s: %s" %
@@ -340,10 +354,15 @@ class PithosFileClient(FileClient):
                 PITHOS_TYPE: p_type,
                 }
 
-    def probe_file(self, objname, old_state, ref_state):
+    def probe_file(self, objname, old_state, ref_state, ident):
         info = old_state.info
         with self.probe_candidates.lock() as d:
-            cached_info = d.pop(objname, None)
+            try:
+                cached = d[objname]
+                cached_info = cached["info"]
+                cached["ident"] = ident
+            except KeyError:
+                cached_info = None
         if exclude_pattern.match(objname):
             logger.warning("Ignoring probe archive: %s, object: '%s'" %
                            (old_state.archive, objname))
