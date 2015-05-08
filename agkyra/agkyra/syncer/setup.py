@@ -113,8 +113,8 @@ class SyncerSettings():
             db = None
 
         if db is None:
-            logger.info("Connecting db: '%s', thread: %s" %
-                        (self.full_dbname, threading.current_thread().ident))
+            logger.debug("Connecting db: '%s', thread: %s" %
+                         (self.full_dbname, threading.current_thread().ident))
             db = SqliteFileStateDB(self.full_dbname, initialize=initialize)
             if dbs is None:
                 thread_local_data.dbs = {}

@@ -96,7 +96,7 @@ def eq_float(f1, f2):
 
 
 def files_equal(f1, f2):
-    logger.info("Comparing files: '%s', '%s'" % (f1, f2))
+    logger.debug("Comparing files: '%s', '%s'" % (f1, f2))
     stats1, st1 = get_local_status(f1)
     stats2, st2 = get_local_status(f2)
     if st1 != st2:
