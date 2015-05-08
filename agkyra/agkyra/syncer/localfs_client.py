@@ -393,6 +393,8 @@ class LocalfsSourceHandle(object):
             if e.errno == OS_NO_FILE_OR_DIR:
                 logger.info("Source does not exist: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
+                self.check_update_source_state()
+                return
             else:
                 raise e
         if file_is_open(stage_path):
