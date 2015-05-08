@@ -285,7 +285,6 @@ class PithosFileClient(FileClient):
             return d.keys()
 
     def get_pithos_candidates(self, last_modified=None):
-        db = self.get_db()
         try:
             objects = self.endpoint.list_objects()
         except ClientError as e:
@@ -313,7 +312,7 @@ class PithosFileClient(FileClient):
         else:
             candidates = upstream_all
 
-        non_deleted_in_db = set(db.list_non_deleted_files(self.SIGNATURE))
+        non_deleted_in_db = set(self.list_non_deleted_files())
         newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
         logger.debug("newly_deleted %s" % newly_deleted_names)
         newly_deleted = dict((name, {"ident": None, "info": {}})
@@ -323,6 +322,11 @@ class PithosFileClient(FileClient):
         logger.info("Candidates since %s: %s" %
                     (last_modified, candidates))
         return candidates
+
+    @transaction()
+    def list_non_deleted_files(self):
+        db = self.get_db()
+        return db.list_non_deleted_files(self.SIGNATURE)
 
     def notifier(self):
         interval = self.settings.pithos_list_interval

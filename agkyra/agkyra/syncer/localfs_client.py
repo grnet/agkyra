@@ -515,7 +515,6 @@ class LocalfsFileClient(FileClient):
         return {"ident": None, "info": None}
 
     def walk_filesystem(self):
-        db = self.get_db()
         candidates = {}
         for dirpath, dirnames, files in os.walk(self.ROOTPATH):
             rel_dirpath = os.path.relpath(dirpath, start=self.ROOTPATH)
@@ -532,10 +531,15 @@ class LocalfsFileClient(FileClient):
                 candidates[objname] = self.none_info()
 
         db_cands = dict((name, self.none_info())
-                        for name in db.list_files(self.SIGNATURE))
+                        for name in self.list_files())
         candidates.update(db_cands)
         logger.info("Candidates: %s" % candidates)
         return candidates
+
+    @transaction()
+    def list_files(self):
+        db = self.get_db()
+        return db.list_files(self.SIGNATURE)
 
     def _local_path_changes(self, name, state):
         local_path = utils.join_path(self.ROOTPATH, name)
