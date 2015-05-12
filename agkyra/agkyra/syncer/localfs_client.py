@@ -52,8 +52,11 @@ def link_file(src, dest):
     try:
         os.link(src, dest)
     except OSError as e:
-        if e.errno in [OS_FILE_EXISTS, OS_NOT_A_DIR]:
+        if e.errno == OS_FILE_EXISTS:
             raise common.ConflictError("Cannot link, '%s' exists." % dest)
+        if e.errno == OS_NOT_A_DIR:
+            raise common.ConflictError(
+                "Cannot link, missing path for '%s'." % dest)
         if e.errno == OS_NO_FILE_OR_DIR:
             raise DirMissing()
 
@@ -143,7 +146,7 @@ def stat_file(path):
     try:
         return os.lstat(path)
     except OSError as e:
-        if e.errno == OS_NO_FILE_OR_DIR:
+        if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
             return None
         raise
 
@@ -266,7 +269,7 @@ class LocalfsTargetHandle(object):
             logger.info("Hiding file '%s' to '%s'" %
                         (fspath, hidden_path))
         except OSError as e:
-            if e.errno == OS_NO_FILE_OR_DIR:
+            if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
                 self.unregister_hidden_name(hidden_filename)
                 logger.info("File '%s' does not exist" % fspath)
                 return
@@ -391,7 +394,7 @@ class LocalfsSourceHandle(object):
         try:
             os.rename(fspath, stage_path)
         except OSError as e:
-            if e.errno == OS_NO_FILE_OR_DIR:
+            if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
                 logger.info("Source does not exist: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
                 return
