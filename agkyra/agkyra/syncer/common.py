@@ -55,6 +55,10 @@ class HandledError(SyncError):
     pass
 
 
+class DatabaseError(SyncError):
+    pass
+
+
 class HardSyncError(SyncError):
     pass
 

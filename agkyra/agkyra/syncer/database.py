@@ -232,7 +232,7 @@ def transaction(max_wait=60, init_wait=0.4, exp_backoff=1.1):
                                 "Got DB error '%s' while running '%s' "
                                 "with args '%s' and kwargs '%s'. Aborting." %
                                 (e, func.__name__, args, kwargs))
-                            return
+                            raise common.DatabaseError(e)
                     else:
                         raise e
         return inner
