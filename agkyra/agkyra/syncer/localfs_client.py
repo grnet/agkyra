@@ -235,6 +235,7 @@ class LocalfsTargetHandle(object):
         f = utils.hash_string(filename)
         hide_filename = utils.join_path(self.cache_hide_name, f)
         self.hidden_filename = hide_filename
+        self.hidden_path = self.get_path_in_cache(self.hidden_filename)
         if db.get_cachename(hide_filename):
             return False
         db.insert_cachename(hide_filename, self.SIGNATURE, filename)
@@ -245,8 +246,9 @@ class LocalfsTargetHandle(object):
         db = self.get_db()
         db.delete_cachename(hidden_filename)
         self.hidden_filename = None
+        self.hidden_path = None
 
-    def hide_file(self):
+    def move_file(self):
         fspath = self.fspath
         if file_is_open(fspath):
             raise common.BusyError("File '%s' is open. Aborting."
@@ -254,8 +256,7 @@ class LocalfsTargetHandle(object):
 
         new_registered = self.register_hidden_name(self.objname)
         hidden_filename = self.hidden_filename
-        hidden_path = self.get_path_in_cache(hidden_filename)
-        self.hidden_path = hidden_path
+        hidden_path = self.hidden_path
 
         if not new_registered:
             logger.warning("Hiding already registered for file %s" %
@@ -275,14 +276,19 @@ class LocalfsTargetHandle(object):
                 return
             else:
                 raise e
-        if file_is_open(hidden_path):
-            os.rename(hidden_path, fspath)
-            self.unregister_hidden_name(hidden_filename)
-            raise common.BusyError("File '%s' is open. Undoing." % hidden_path)
-        if path_status(hidden_path) == LOCAL_NONEMPTY_DIR:
-            os.rename(hidden_path, fspath)
-            self.unregister_hidden_name(hidden_filename)
-            raise common.ConflictError("'%s' is non-empty" % fspath)
+
+    def hide_file(self):
+        self.move_file()
+        if self.hidden_filename is not None:
+            if file_is_open(self.hidden_path):
+                os.rename(self.hidden_path, self.fspath)
+                self.unregister_hidden_name(self.hidden_filename)
+                raise common.BusyError("File '%s' is open. Undoing." %
+                                       self.hidden_path)
+            if path_status(self.hidden_path) == LOCAL_NONEMPTY_DIR:
+                os.rename(self.hidden_path, self.fspath)
+                self.unregister_hidden_name(self.hidden_filename)
+                raise common.ConflictError("'%s' is non-empty" % self.fspath)
 
     def apply(self, fetched_file, fetched_live_info, sync_state):
         local_status = path_status(self.fspath)
@@ -320,17 +326,21 @@ class LocalfsTargetHandle(object):
         logger.info("Finalizing file '%s'" % filename)
         if live_info == {}:
             return
-        if live_info[LOCALFS_TYPE] != common.T_DIR:
+        if live_info[LOCALFS_TYPE] == common.T_FILE:
             try:
                 link_file(filename, self.fspath)
             except DirMissing:
                 make_dirs(os.path.dirname(self.fspath))
                 link_file(filename, self.fspath)
-        else:
-            # assuming empty dir
+        elif live_info[LOCALFS_TYPE] == common.T_DIR:
             make_dirs(self.fspath)
+        else:
+            raise AssertionError("info for fetched file '%s' is %s" %
+                                 (filename, live_info))
 
     def cleanup(self, filename):
+        if filename is None:
+            return
         status = path_status(filename)
         if status == LOCAL_FILE:
             try:
