@@ -370,7 +370,8 @@ class LocalfsSourceHandle(object):
     def get_path_in_cache(self, name):
         return utils.join_path(self.cache_path, name)
 
-    def lock_file(self, fspath):
+    def lock_file(self):
+        fspath = self.fspath
         if file_is_open(fspath):
             raise common.BusyError("File '%s' is open. Aborting"
                                    % fspath)
@@ -393,22 +394,26 @@ class LocalfsSourceHandle(object):
             if e.errno == OS_NO_FILE_OR_DIR:
                 logger.info("Source does not exist: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
-                self.check_update_source_state()
                 return
             else:
                 raise e
-        if file_is_open(stage_path):
-            os.rename(stage_path, fspath)
-            self.unregister_stage_name(stage_filename)
-            logger.warning("File '%s' is open; unstaged" % self.objname)
-            raise common.BusyError("File '%s' is open. Undoing" % stage_path)
 
+    def stage_file(self):
+        self.lock_file()
+        if self.staged_path is not None:
+            if file_is_open(self.staged_path):
+                os.rename(self.staged_path, self.fspath)
+                self.unregister_stage_name(self.stage_filename)
+                logger.warning("File '%s' is open; unstaged" % self.objname)
+                raise common.BusyError("File '%s' is open. Undoing" %
+                                       self.staged_path)
+
+            if path_status(self.staged_path) != LOCAL_FILE:
+                os.rename(self.staged_path, self.fspath)
+                self.unregister_stage_name(self.stage_filename)
+                logger.warning("Object '%s' is not a regular file; unstaged" %
+                               self.objname)
         self.check_update_source_state()
-        if path_status(stage_path) != LOCAL_FILE:
-            os.rename(stage_path, fspath)
-            self.unregister_stage_name(stage_filename)
-            logger.warning("Object '%s' is not a regular file; unstaged" %
-                           self.objname)
 
     def __init__(self, settings, source_state):
         self.settings = settings
@@ -425,7 +430,7 @@ class LocalfsSourceHandle(object):
         self.staged_path = None
         self.heartbeat = settings.heartbeat
         if self.needs_staging():
-            self.lock_file(self.fspath)
+            self.stage_file()
 
     @transaction()
     def update_state(self, state):
@@ -469,13 +474,7 @@ class LocalfsSourceHandle(object):
         os.rename(self.staged_path, stash_filename)
 
     def unstage_file(self):
-        self.do_unstage()
-        self.unregister_stage_name(self.stage_filename)
-
-    def do_unstage(self):
         if self.stage_filename is None:
-            return
-        if self.info_is_deleted():
             return
         staged_path = self.staged_path
         try:
@@ -483,6 +482,7 @@ class LocalfsSourceHandle(object):
             os.unlink(staged_path)
         except common.ConflictError:
             self.stash_staged_file()
+        self.unregister_stage_name(self.stage_filename)
 
 
 class LocalfsFileClient(FileClient):
