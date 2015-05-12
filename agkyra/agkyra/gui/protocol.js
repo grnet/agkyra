@@ -1,49 +1,32 @@
-/*
-Copyright (C) 2015 GRNET S.A.
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 var gui = require('nw.gui');
 var path = require('path');
 
 // Read config file
-var DEBUG = false;
+var DEBUG = true;
 var fs = require('fs');
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
-fs.writeFile(gui.App.argv[0], 'consumed');
 
 function send_json(socket, msg) {
-  socket.send(JSON.stringify(msg))
+  socket.send(JSON.stringify(msg));
 }
 
 var globals = {
-  'settings': {
-    'token': null,
-    'url': null,
-    'container': null,
-    'directory': null,
-    'exclude': null
+  settings: {
+    token: null,
+    url: null,
+    container: null,
+    directory: null,
+    exclude: null
   },
-  'status': {"synced": 0, "unsynced": 0, "paused": null, "can_sync": false},
-  'authenticated': false,
-  'just_opened': false, 'open_settings': false
+  status: {synced: 0, unsynced: 0, paused: null, can_sync: false},
+  authenticated: false,
+  just_opened: false,
+  open_settings: false
 }
 
 // Protocol: requests ::: responses
-function post_gui_id(socket) {
-  send_json(socket, {"method": "post", "gui_id": cnf['gui_id']})
+function post_ui_id(socket) {
+  send_json(socket, {"method": "post", "ui_id": cnf['ui_id']})
 } // expected response: {"ACCEPTED": 202}
 
 function post_shutdown(socket) {
@@ -80,13 +63,13 @@ function get_status(socket) {
 var socket = new WebSocket(cnf['address']);
 socket.onopen = function() {
   if (DEBUG) console.log('Send GUI ID to helper');
-  post_gui_id(this);
+  post_ui_id(this);
 }
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
   if (DEBUG) console.log('RECV: ' + r['action'])
   switch(r['action']) {
-    case 'post gui_id':
+    case 'post ui_id':
       if (r['ACCEPTED'] === 202) {
         get_settings(this);
         get_status(this);

@@ -14,11 +14,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from ws4py.client import WebSocketBaseClient
-from agkyra.protocol import HelperServer
-from tempfile import NamedTemporaryFile
+from agkyra.protocol import SessionHelper
+from agkyra.config import AGKYRA_DIR
 import subprocess
-import json
 import os
+import stat
+import json
 import logging
 
 CURPATH = os.path.dirname(os.path.abspath(__file__))
@@ -26,48 +27,54 @@ LOG = logging.getLogger(__name__)
 
 
 class GUI(WebSocketBaseClient):
-    """Launch the GUI when the helper server is ready"""
+    """Launch the GUI when the SessionHelper server is ready"""
 
-    def __init__(self, addr, gui_id, **kwargs):
-        """Initialize the GUI Launcher"""
-        super(GUI, self).__init__(addr)
-        self.addr = addr
-        self.gui_id = gui_id
+    def __init__(self, session, **kwargs):
+        """Initialize the GUI Launcher
+        :param session: session dict(ui_id=..., address=...) instance
+        """
+        super(GUI, self).__init__(session['address'])
+        self.session_file = kwargs.get(
+            'session_file', os.path.join(AGKYRA_DIR, 'session.info'))
         self.start = self.connect
         self.nw = kwargs.get(
             'nw', os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'))
         self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'gui.nw'))
+        assert not self._gui_running(session), (
+            'Failed to initialize GUI, because another GUI is running')
+        self._dump_session_file(session)
 
-    def run_gui(self):
-        """Launch the GUI and keep it running, clean up afterwards.
-        If the GUI is terminated for some reason, the WebSocket is closed and
-        the temporary file with GUI settings is deleted.
-        In windows, the file must be closed before the GUI is launched.
-        """
-        # NamedTemporaryFile creates a file accessible only to current user
-        LOG.debug('Create temporary file')
-        with NamedTemporaryFile(delete=False) as fp:
-            json.dump(dict(gui_id=self.gui_id, address=self.addr), fp)
-        # subprocess.call blocks the execution
-        LOG.debug('RUN: %s' % (fp.name))
-        subprocess.call([self.nw, self.gui_code, fp.name])
-        LOG.debug('GUI process closed, remove temp file')
-        os.remove(fp.name)
+    def _gui_running(self, session):
+        """Check if a session file with the same credentials already exists"""
+        try:
+            with open(self.session_file) as f:
+                return session == json.load(f)
+        except Exception:
+            return False
+
+    def _dump_session_file(self, session):
+        """Create (overwrite) the session file for GUI use"""
+        flags = os.O_CREAT | os.O_WRONLY
+        mode = stat.S_IREAD | stat.S_IWRITE
+        f = os.open(self.session_file, flags, mode)
+        os.write(f, json.dumps(session))
+        os.close(f)
 
     def handshake_ok(self):
-        """If handshake is OK, the helper is UP, so the GUI can be launched"""
-        self.run_gui()
-        LOG.debug('Close GUI wrapper connection')
+        """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""
+        LOG.debug('Protocol server is UP, running GUI')
+        subprocess.call([self.nw, self.gui_code, self.session_file])
+        LOG.debug('GUI finished, close GUI wrapper connection')
         self.close()
 
 
 def run():
-    """Prepare helper and GUI and run them in the proper order"""
-    server = HelperServer()
-    gui = GUI(server.addr, server.gui_id)
+    """Prepare SessionHelper and GUI and run them in the proper order"""
+    helper = SessionHelper()
+    gui = GUI(helper.session)
 
-    LOG.info('Start helper server')
-    server.start()
+    LOG.info('Start SessionHelper session')
+    helper.start()
 
     try:
         LOG.info('Start GUI')
@@ -75,8 +82,8 @@ def run():
     except KeyboardInterrupt:
         LOG.info('Shutdown GUI')
         gui.close()
-    LOG.info('Shutdown helper server')
-    server.shutdown()
+    LOG.info('Shutdown SessionHelper server')
+    helper.shutdown()
 
 if __name__ == '__main__':
     logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)

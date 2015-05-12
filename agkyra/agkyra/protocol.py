@@ -19,6 +19,8 @@ from ws4py.server.wsgiutils import WebSocketWSGIApplication
 from ws4py.server.wsgirefserver import WSGIServer, WebSocketWSGIRequestHandler
 from hashlib import sha1
 from threading import Thread
+import sqlite3
+import time
 import os
 import json
 import logging
@@ -30,44 +32,85 @@ from agkyra.config import AgkyraConfig, AGKYRA_DIR
 LOG = logging.getLogger(__name__)
 
 
-class HelperServer(object):
+class SessionHelper(object):
     """Agkyra Helper Server sets a WebSocket server with the Helper protocol
     It also provided methods for running and killing the Helper server
-    :param gui_id: Only the GUI with this ID is allowed to chat with the Helper
     """
+    session_timeout = 20
 
-    def __init__(self, port=0):
+    def __init__(self, **kwargs):
         """Setup the helper server"""
-        self.gui_id = sha1(os.urandom(128)).hexdigest()
-        WebSocketProtocol.gui_id = self.gui_id
+        self.session_db = kwargs.get(
+            'session_db', os.path.join(AGKYRA_DIR, 'session.db'))
+        self.session_relation = kwargs.get('session_relation', 'heart')
+
+        LOG.debug('Connect to db')
+        self.db = sqlite3.connect(self.session_db)
+        self._init_db_relation()
+        self.session = self._load_active_session() or self._create_session()
+
+    def _init_db_relation(self):
+        self.db.execute('BEGIN')
+        self.db.execute(
+            'CREATE TABLE IF NOT EXISTS %s ('
+            'ui_id VARCHAR(256), address text, beat VARCHAR(32)'
+            ')' % self.session_relation)
+        self.db.commit()
+
+    def _load_active_session(self):
+        """Load a session from db"""
+        r = self.db.execute('SELECT * FROM %s' % self.session_relation)
+        sessions = r.fetchall()
+        if sessions:
+            last = sessions[-1]
+            now, last_beat = time.time(), float(last[2])
+            if now - last_beat < self.session_timeout:
+                # Found an active session
+                return dict(ui_id=last[0], address=last[1])
+        return None
+
+    def _create_session(self):
+        """Create session credentials"""
+        ui_id = sha1(os.urandom(128)).hexdigest()
+
+        WebSocketProtocol.ui_id = ui_id
         server = make_server(
-            '', port,
+            '', 0,
             server_class=WSGIServer,
             handler_class=WebSocketWSGIRequestHandler,
             app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
         server.initialize_websockets_manager()
-        self.addr = 'ws://%s:%s' % (server.server_name, server.server_port)
-        print self.addr
+        address = 'ws://%s:%s' % (server.server_name, server.server_port)
         self.server = server
+
+        self.db.execute('BEGIN')
+        self.db.execute('DELETE FROM %s' % self.session_relation)
+        self.db.execute('INSERT INTO %s VALUES ("%s", "%s", "%s")' % (
+            self.session_relation, ui_id, address, time.time()))
+        self.db.commit()
+
+        return dict(ui_id=ui_id, address=address)
 
     def start(self):
         """Start the helper server in a thread"""
-        Thread(target=self.server.serve_forever).start()
+        if getattr(self, 'server', None):
+            Thread(target=self.server.serve_forever).start()
 
     def shutdown(self):
         """Shutdown the server (needs another thread) and join threads"""
-        t = Thread(target=self.server.shutdown)
-        t.start()
-        t.join()
+        if getattr(self, 'server', None):
+            t = Thread(target=self.server.shutdown)
+            t.start()
+            t.join()
 
 
 class WebSocketProtocol(WebSocket):
     """Helper-side WebSocket protocol for communication with GUI:
 
     -- INTERRNAL HANDSAKE --
-    GUI: {"method": "post", "gui_id": <GUI ID>}
+    GUI: {"method": "post", "ui_id": <GUI ID>}
     HELPER: {"ACCEPTED": 202, "method": "post"}" or
-        "{"REJECTED": 401, "action": "post gui_id"}
+        "{"REJECTED": 401, "action": "post ui_id"}
 
     -- SHUT DOWN --
     GUI: {"method": "post", "path": "shutdown"}
@@ -114,7 +157,7 @@ class WebSocketProtocol(WebSocket):
         {<ERROR>: <ERROR CODE>, "action": "get status"}
     """
 
-    gui_id = None
+    ui_id = None
     accepted = False
     settings = dict(
         token=None, url=None,
@@ -323,15 +366,15 @@ class WebSocketProtocol(WebSocket):
                 'pause': self.pause_sync
             }[action]()
             self.send_json({'OK': 200, 'action': 'post %s' % action})
-        elif r['gui_id'] == self.gui_id:
+        elif r['ui_id'] == self.ui_id:
             self._load_settings()
             self.accepted = True
-            self.send_json({'ACCEPTED': 202, 'action': 'post gui_id'})
+            self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
             if self.can_sync():
                 self.init_sync()
                 self.pause_sync()
         else:
-            action = r.get('path', 'gui_id')
+            action = r.get('path', 'ui_id')
             self.send_json({'REJECTED': 401, 'action': 'post %s' % action})
             self.terminate()
 

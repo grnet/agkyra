@@ -20,18 +20,9 @@ from agkyra.syncer import setup, syncer
 from agkyra.syncer.pithos_client import PithosFileClient
 from agkyra.syncer.localfs_client import LocalfsFileClient
 from agkyra import config
-# from config import AgkyraConfig
 
 
 LOG = logging.getLogger(__name__)
-LOG.addHandler(logging.FileHandler('%s/agkyra.log' % config.AGKYRA_DIR))
-LOG.setLevel(logging.CRITICAL)
-
-SYNCER_LOG = logging.getLogger('agkyra.syncer')
-SYNCER_LOG.addHandler(logging.FileHandler('%s/agkyra.log' % config.AGKYRA_DIR))
-SYNCER_LOG.setLevel(logging.CRITICAL)
-
-setup.GLOBAL_SETTINGS_NAME = config.AGKYRA_DIR
 
 
 class AgkyraCLI(cmd.Cmd):
@@ -53,7 +44,8 @@ class AgkyraCLI(cmd.Cmd):
 
         # Prepare syncer settings
         self.settings = setup.SyncerSettings(
-            sync, url, token, container, directory)
+            sync, url, token, container, directory,
+            ignore_ssl=True)
         LOG.info('Local: %s' % directory)
         LOG.info('Remote: %s of %s' % (container, url))
         # self.exclude = self.cnf.get_sync(sync, 'exclude')

@@ -13,5 +13,6 @@
     "web": "http://www.synnefo.org"
     }],
   "licences": [{"type": "GPLv3"}],
-  "page-cache": false
+  "page-cache": false,
+  "chromium-args": "--disable-setuid-sandbox"
 }
