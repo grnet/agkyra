@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+<!--
+Copyright (C) 2015 GRNET S.A.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
 <html>
 <head><title>GUI for Agkyra Pithos+ Syncing Client</title></head>
 <body>
@@ -22,14 +38,14 @@ function closeWindows() {
 // GUI components
 var tray = new gui.Tray({
   title: 'Agkyra syncs with Pithos+',
-  icon: 'images/tray.png'
+  icon: 'static/images/tray.png'
 });
 
 var menu = new gui.Menu();
 
 // Progress and Pause
 var start_syncing = 'Start Syncing';
-var start_icon = 'images/play.png';
+var start_icon = 'static/images/play.png';
 var pause_syncing = 'Pause Syncing';
 var paused = true;
 
@@ -43,7 +59,7 @@ menu.append(progress_item);
 menu.append(new gui.MenuItem({type: 'separator'}));
 pause_item = new gui.MenuItem({
   // pause menu item
-  icon: 'images/play_pause.png',
+  icon: 'static/images/play_pause.png',
   label: 'NOT READY',
   type: 'normal',
   click: function() {
@@ -56,7 +72,7 @@ menu.append(pause_item);
 // Menu actions contents
 var local_folder_menu = new gui.MenuItem({
   label: 'Open local folder',
-  icon: 'images/folder.png',
+  icon: 'static/images/folder.png',
   enabled: false,
   click: function () {
     var dir = globals['settings']['directory'];
@@ -68,7 +84,7 @@ menu.append(local_folder_menu);
 
 var pithos_page_menu = new gui.MenuItem({
   label: 'Launch Pithos+ page',
-  icon: 'images/pithos.png',
+  icon: 'static/images/pithos.png',
   enabled: false,
   click: function () {
     if (DEBUG) console.log('Visit ' + get_pithos_ui());
@@ -81,7 +97,7 @@ menu.append(pithos_page_menu);
 menu.append(new gui.MenuItem({type: 'separator'}));
 var settings_menu = new gui.MenuItem({
   label: 'Settings',
-  icon: 'images/settings.png',
+  icon: 'static/images/settings.png',
   enabled: false,
   click: function () {
     export_settings(globals.settings);
@@ -111,7 +127,7 @@ menu.append(settings_menu);
 
 menu.append(new gui.MenuItem({
   label: 'About',
-  icon: 'images/about.png',
+  icon: 'static/images/about.png',
   click: function () {
     if (windows['about']) windows['about'].close();
     windows['about'] = gui.Window.open("about.html", {
@@ -125,7 +141,7 @@ menu.append(new gui.MenuItem({
 menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
   label: 'Quit Agkyra',
-  icon: 'images/exit.png',
+  icon: 'static/images/exit.png',
   click: function() {post_shutdown(socket);}
 }));
 
