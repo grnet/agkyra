@@ -25,7 +25,7 @@ import os
 import json
 import logging
 from agkyra.syncer import (
-    syncer, setup, pithos_client, localfs_client, messaging)
+    syncer, setup, pithos_client, localfs_client, messaging, utils)
 from agkyra.config import AgkyraConfig, AGKYRA_DIR
 
 
@@ -48,6 +48,8 @@ class SessionHelper(object):
         self.db = sqlite3.connect(self.session_db)
         self._init_db_relation()
         self.session = self._load_active_session() or self._create_session()
+
+        self.db.close()
 
     def _init_db_relation(self):
         self.db.execute('BEGIN')
@@ -74,6 +76,8 @@ class SessionHelper(object):
         ui_id = sha1(os.urandom(128)).hexdigest()
 
         WebSocketProtocol.ui_id = ui_id
+        WebSocketProtocol.session_db = self.session_db
+        WebSocketProtocol.session_relation = self.session_relation
         server = make_server(
             '', 0,
             server_class=WSGIServer,
@@ -158,6 +162,7 @@ class WebSocketProtocol(WebSocket):
     """
 
     ui_id = None
+    db, session_db, session_relation = None, None, None
     accepted = False
     settings = dict(
         token=None, url=None,
@@ -168,6 +173,15 @@ class WebSocketProtocol(WebSocket):
     file_syncer = None
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
+
+    def heartbeat(self):
+        if not self.db:
+            self.db = sqlite3.connect(self.session_db)
+        self.db.execute('BEGIN')
+        self.db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
+            self.session_relation, time.time(), self.ui_id))
+        self.db.commit()
+        time.sleep(2)
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
@@ -341,8 +355,21 @@ class WebSocketProtocol(WebSocket):
     # WebSocket connection methods
     def opened(self):
         LOG.debug('Helper: connection established')
+        self.heart = utils.StoppableThread()
+        self.heart.run_body = self.heartbeat
+        self.heart.start()
 
     def closed(self, *args):
+        """Stop server heart, empty DB and exit"""
+        LOG.debug('Stop protocol heart')
+        self.heart.stop()
+        LOG.debug('Remove session traces')
+        self.db = sqlite3.connect(self.session_db)
+        self.db.execute('BEGIN')
+        self.db.execute('DELETE FROM %s' % self.session_relation)
+        self.db.commit()
+        LOG.debug('Close DB connection')
+        self.db.close()
         LOG.debug('Helper: connection closed')
 
     def send_json(self, msg):
