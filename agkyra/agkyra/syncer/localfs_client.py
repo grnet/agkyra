@@ -290,7 +290,7 @@ class LocalfsTargetHandle(object):
                 self.unregister_hidden_name(self.hidden_filename)
                 raise common.ConflictError("'%s' is non-empty" % self.fspath)
 
-    def apply(self, fetched_file, fetched_live_info, sync_state):
+    def apply(self, fetched_path, fetched_live_info, sync_state):
         local_status = path_status(self.fspath)
         fetched_status = status_of_info(fetched_live_info)
         if local_status in [LOCAL_EMPTY_DIR, LOCAL_NONEMPTY_DIR] \
@@ -301,17 +301,17 @@ class LocalfsTargetHandle(object):
         if local_status == LOCAL_NONEMPTY_DIR:
             raise common.ConflictError("'%s' is non-empty" % self.fspath)
 
-        self.prepare(fetched_file, sync_state)
-        self.finalize(fetched_file, fetched_live_info)
+        self.prepare(fetched_path, sync_state)
+        self.finalize(fetched_path, fetched_live_info)
         self.cleanup(self.hidden_path)
         self.unregister_hidden_name(self.hidden_filename)
 
-    def prepare(self, fetched_file, sync_state):
+    def prepare(self, fetched_path, sync_state):
         self.hide_file()
         info_changed = local_path_changes(
             self.hidden_path, sync_state, unhandled_equal=False)
         if info_changed is not None and info_changed != {}:
-            if not files_equal(self.hidden_path, fetched_file):
+            if not files_equal(self.hidden_path, fetched_path):
                 self.stash_file()
 
     def stash_file(self):
@@ -322,40 +322,40 @@ class LocalfsTargetHandle(object):
         self.settings.messager.put(msg)
         os.rename(self.hidden_path, stash_path)
 
-    def finalize(self, filename, live_info):
-        logger.info("Finalizing file '%s'" % filename)
+    def finalize(self, filepath, live_info):
+        logger.info("Finalizing file '%s'" % filepath)
         if live_info == {}:
             return
         if live_info[LOCALFS_TYPE] == common.T_FILE:
             try:
-                link_file(filename, self.fspath)
+                link_file(filepath, self.fspath)
             except DirMissing:
                 make_dirs(os.path.dirname(self.fspath))
-                link_file(filename, self.fspath)
+                link_file(filepath, self.fspath)
         elif live_info[LOCALFS_TYPE] == common.T_DIR:
             make_dirs(self.fspath)
         else:
             raise AssertionError("info for fetched file '%s' is %s" %
-                                 (filename, live_info))
+                                 (filepath, live_info))
 
-    def cleanup(self, filename):
-        if filename is None:
+    def cleanup(self, filepath):
+        if filepath is None:
             return
-        status = path_status(filename)
+        status = path_status(filepath)
         if status == LOCAL_FILE:
             try:
-                logger.info("Cleaning up file '%s'" % filename)
-                os.unlink(filename)
+                logger.info("Cleaning up file '%s'" % filepath)
+                os.unlink(filepath)
             except:
                 pass
         elif status in [LOCAL_EMPTY_DIR, LOCAL_NONEMPTY_DIR]:
-            os.rmdir(filename)
+            os.rmdir(filepath)
 
     def pull(self, source_handle, sync_state):
-        fetched_file = source_handle.send_file(sync_state)
-        fetched_live_info = get_live_info(fetched_file)
-        self.apply(fetched_file, fetched_live_info, sync_state)
-        self.cleanup(fetched_file)
+        fetched_path = source_handle.send_file(sync_state)
+        fetched_live_info = get_live_info(fetched_path)
+        self.apply(fetched_path, fetched_live_info, sync_state)
+        self.cleanup(fetched_path)
         return self.target_state.set(info=fetched_live_info)
 
 
