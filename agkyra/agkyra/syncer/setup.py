@@ -54,6 +54,9 @@ class SyncerSettings():
         self.ignore_ssl = kwargs.get("ignore_ssl", False)
         if self.ignore_ssl:
             https.patch_ignore_ssl()
+        elif kwargs.get('ca_certs', None):
+            https.patch_with_certs(kwargs['ca_certs'])
+
         self.endpoint = self._get_pithos_client(
             auth_url, auth_token, container)
 

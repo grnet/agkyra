@@ -298,12 +298,26 @@ class WebSocketProtocol(WebSocket):
     def init_sync(self):
         """Initialize syncer"""
         sync = self._get_default_sync()
+
+        kwargs = dict(agkyra_path=AGKYRA_DIR)
+        # Get SSL settings
+        cloud = self._get_sync_cloud(sync)
+        try:
+            ignore_ssl = self.cnf.get_cloud(cloud, 'ignore_ssl') in ('on', )
+            kwargs['ignore_ssl'] = ignore_ssl
+        except KeyError:
+            ignore_ssl = None
+        if not ignore_ssl:
+            try:
+                kwargs['ca_certs'] = self.cnf.get_cloud(cloud, 'ca_certs')
+            except KeyError:
+                pass
+
         syncer_settings = setup.SyncerSettings(
             sync,
             self.settings['url'], self.settings['token'],
             self.settings['container'], self.settings['directory'],
-            agkyra_path=AGKYRA_DIR,
-            ignore_ssl=True)
+            **kwargs)
         master = pithos_client.PithosFileClient(syncer_settings)
         slave = localfs_client.LocalfsFileClient(syncer_settings)
         self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
@@ -368,7 +382,6 @@ class WebSocketProtocol(WebSocket):
         self.db.execute('BEGIN')
         self.db.execute('DELETE FROM %s' % self.session_relation)
         self.db.commit()
-        LOG.debug('Close DB connection')
         self.db.close()
         LOG.debug('Helper: connection closed')
 

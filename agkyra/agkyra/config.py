@@ -64,6 +64,8 @@ config.DEFAULTS = {
         # <cloud>: {
         #     'url': '',
         #     'token': '',
+        #     'ignore_ssl': True or False overwrites ca_certs,
+        #     'ca_certs': /path/to/ca/certificate/buddle
         #     whatever else may be useful in this context
         # },
         # ... more clouds
