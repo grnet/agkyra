@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- Copyright (C) 2015 GRNET S.A.
+<!--
+Copyright (C) 2015 GRNET S.A.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -12,11 +13,11 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
 <html>
     <head>
         <title>User Settings</title>
-        <link rel="stylesheet" href="static/stylesheets/normalize.css" />
         <link rel="stylesheet" href="static/stylesheets/main.css" />
         <script src="static/js/jquery.js"></script>
         <script src="settings.js"></script>
@@ -39,12 +40,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
                             fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
             });
-
             function update_exclude(new_content) {
                 if (exclude) fs.writeFile(exclude, new_content);
             }
-
-
             function extract_credentials(cookie) {
                 var credentials = cookie.value.split('%7C');
                 var uuid = credentials[0];
@@ -54,7 +52,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
                 $('#token').trigger('change');
                 //set_setting('token', $(this).val())
             }
-
             function remove_cookies(win, url) {
                 var removed_at_least_one = false
                 win.cookies.getAll({url: url}, function(cookies) {
@@ -65,7 +62,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
                 });
                 return removed_at_least_one;
             }
-
             var gui = require('nw.gui');
             var cred_win = null;
             var logout_win = null;
@@ -74,15 +70,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
             function get_credentials() {
                 var cookie_name = '_pithos2_a';
                 var lurl = get_account_ui() + '/logout?next=' + get_pithos_ui()
-
                 show_creds = false;
                 $('#get_creds').hide();
-
                 got_cookie = false;
                 cred_win = gui.Window.open(lurl, {
                     focus: true, width: 820, height: 580, toolbar: false
                 });
-
                 cred_win.cookies.onChanged.addListener(function(info) {
                     if (info.cookie.name === cookie_name) {
                         console.log('Succesfully logged in');
@@ -93,7 +86,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
                 cred_win.on('loaded', function() {
                     if (got_cookie) cred_win.close();
                 });
-
                 cred_win.on('closed', function() {
                     logout_win = gui.Window.open(
                         get_account_ui() + '/logout',
@@ -106,7 +98,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
                     });
                 });
             }
-
             window.setInterval(function() {
                 // Refresh get_creds visibility, until refresh_endpoints
                 // changes are in effect
@@ -117,96 +108,86 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. -->
         </script>
     </head>
     <body>
-        <div class="row js-main">
+        <div class="wrapper">
             <header>
-            <h2>&nbsp;<img src="static/images/about.png" style="width: 16; height: 16;"/>&nbsp;User Settings</h2>
+                <h2><img src="static/images/about.png"/> User Settings</h2>
             </header>
             <form>
-                <div class="row">
-                    <div class="small-8 columns">
-                        <fieldset>
-                            <legend>Cloud</legend>
-                            <div class="row error">
-                                <div class="small-3 columns">
-                                    <label for="cloud-url" class="right inline">Cloud URL</label>
+                <fieldset>
+                    <legend>Cloud</legend>
+                    <div class="clearfix error">
+                        <div class="small-3 columns">
+                            <label for="cloud-url" class="right inline">Cloud URL</label>
 
-                                </div>
-                                <div class="small-9 columns">
-                                    <input type="text" id="cloud-url" placeholder="Authentication URL"
-                                    onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val());">
-                                    <small class="error" style="visibility: hidden">Invalid entry</small>
-                                </div>
-                            </div>
-
-                            <div class="row error">
-                                <div class="small-3 columns">
-                                    <label for="token" class="right inline">User token</label>
-                                </div>
-                                <div class="small-9 columns">
-                                    <input type="text" id="token" placeholder="User token"
-                                    onchange="set_setting('token', $(this).val())">
-                                    <small class="error" style="visibility: hidden">Invalid entry</small>
-                                </div>
-                             </div>
-
-                            <div class="clearfix">
-                               <a id="get_creds"
-                                    class="button right" style="display: none;"
-                                    onclick="get_credentials();">Login to get credentials</a>
-                            </div>
-
-                        </fieldset>
-                        <fieldset>
-                            <legend>What to sync</legend>
-                            <div class="row">
-                                <div class="small-3 columns">
-                                    <label for="container" class="right inline">Remote container</label>
-                                </div>
-                                <div class="small-9 columns">
-                                    <input type="text" id="container" placeholder="Pithos+ container"
-                                    onchange="set_setting('container', $(this).val())">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="small-3 columns">
-                                    <label for="directory" class="right inline">Local directory</label>
-                                </div>
-                                <div class="small-9 columns" id="directory">
-                                    No dir chosen</div>
-                            </div>
-                            <div class="row">
-                                <div class="small-3 columns">Change it:</div>
-                                <div class="small-9 columns">
-                                    <!-- TODO: change the label of this field -->
-                                    <input type="file" nwdirectory
-                                    onchange="
-                                        $('#directory').html($(this).val());
-                                        set_setting('directory', $(this).val());
-                                    " />
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="small-3 columns">
-                                    <label for="" class="right inline">Exclude these items from syncing</label>
-                                </div>
-                                <div class="small-9 columns">
-                                    <textarea id="exclude"
-                                        onchange="update_exclude($(this).val())">
-                                    </textarea>
-                                </div>
-                            </div>
-                        </fieldset>
-                        <!--<div class="clearfix">
-                            <a id="sync_button" class="button right"
-                                onclick="window.close();">OK</a>
-                        </div>   -->
+                        </div>
+                        <div class="small-9 columns">
+                            <input type="text" id="cloud-url" placeholder="Authentication URL"
+                            onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val());">
+                            <small>Invalid entry</small>
+                        </div>
                     </div>
 
-                    <!--<div class="small-4 columns">
-                        <p class="panel">I have no idea what will happen if I put my credentials there...<br>My space could be used to explain what is going on here.</p>
-                    </div>-->
+                    <div class="clearfix">
+                        <div class="small-3 columns">
+                            <label for="token" class="right inline">User token</label>
+                        </div>
+                        <div class="small-9 columns">
+                            <input type="text" id="token" placeholder="User token"
+                            onchange="set_setting('token', $(this).val())">
+                            <small>Invalid entry</small>
+                        </div>
+                     </div>
 
+                    <div class="clearfix">
+                       <a id="get_creds"
+                            class="button right" style="display: none;"
+                            onclick="get_credentials();">Login to get credentials</a>
                     </div>
+
+                </fieldset>
+                <fieldset>
+                    <legend>What to sync</legend>
+                    <div class="row clearfix">
+                        <div class="small-3 columns">
+                            <label for="container" class="right inline">Remote container</label>
+                        </div>
+                        <div class="small-9 columns">
+                            <input type="text" id="container" placeholder="Pithos+ container"
+                            onchange="set_setting('container', $(this).val())">
+                        </div>
+                    </div>
+                    <div class="row clearfix">
+                        <div class="small-3 columns">
+                            <label for="directory" class="right inline">Local directory</label>
+                        </div>
+                        <div class="small-9 columns" id="directory">
+                            No dir chosen</div>
+                    </div>
+                    <div class="row clearfix">
+                        <div class="small-3 columns"><label class="right inline">Change it:</label></div>
+                        <div class="small-9 columns">
+                            <!-- TODO: change the label of this field -->
+                            <input type="file" nwdirectory
+                            onchange="
+                                $('#directory').html($(this).val());
+                                set_setting('directory', $(this).val());
+                            " />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="small-3 columns">
+                            <label for="exclude" class="right inline">Exclude these items from syncing</label>
+                        </div>
+                        <div class="small-9 columns">
+                            <textarea id="exclude"
+                                onchange="update_exclude($(this).val())">
+                            </textarea>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clearfix">
+                    <a id="sync_button" class="button right"
+                        onclick="window.close();">OK</a>
                 </div>
             </form>
         </div>
