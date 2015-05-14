@@ -20,6 +20,7 @@ import logging
 from agkyra.syncer.utils import join_path, ThreadSafeDict
 from agkyra.syncer.database import SqliteFileStateDB
 from agkyra.syncer.messaging import Messager
+from agkyra.syncer import utils
 
 from kamaki.clients import ClientError
 
@@ -39,17 +40,22 @@ DEFAULT_DBNAME = "syncer.db"
 DEFAULT_ACTION_MAX_WAIT = 10
 DEFAULT_PITHOS_LIST_INTERVAL = 5
 DEFAULT_CONNECTION_RETRY_LIMIT = 3
+INSTANCES_NAME = 'instances'
 
 thread_local_data = threading.local()
 
 
+def get_instance(elems):
+    data = "".join(elems)
+    return utils.hash_string(data)
+
+
 class SyncerSettings():
-    def __init__(self, instance, auth_url, auth_token, container,
-                 local_root_path,
+    def __init__(self, auth_url, auth_token, container, local_root_path,
                  *args, **kwargs):
-        self.auth_url = auth_url
+        self.auth_url = utils.normalize_standard_suffix(auth_url)
         self.auth_token = auth_token
-        self.container = container
+        self.container = utils.normalize_standard_suffix(container)
 
         self.ignore_ssl = kwargs.get("ignore_ssl", False)
         if self.ignore_ssl:
@@ -65,15 +71,22 @@ class SyncerSettings():
         self.settings_path = kwargs.get("agkyra_path", default_settings_path)
         self.create_dir(self.settings_path)
 
-        self.instance_path = join_path(self.settings_path, instance)
+        self.instances_path = join_path(self.settings_path, INSTANCES_NAME)
+        self.create_dir(self.instances_path)
+
+        self.local_root_path = utils.normalize_local_suffix(local_root_path)
+        self.create_dir(self.local_root_path)
+
+        self.user_id = self.endpoint.account
+        self.instance = get_instance(
+            [self.auth_url, self.user_id,
+             self.container, self.local_root_path])
+        self.instance_path = join_path(self.instances_path, self.instance)
         self.create_dir(self.instance_path)
 
         self.dbname = kwargs.get("dbname", DEFAULT_DBNAME)
         self.full_dbname = join_path(self.instance_path, self.dbname)
         self.get_db(initialize=True)
-
-        self.local_root_path = local_root_path
-        self.create_dir(self.local_root_path)
 
         self.cache_name = kwargs.get("cache_name", DEFAULT_CACHE_NAME)
         self.cache_path = join_path(self.local_root_path, self.cache_name)

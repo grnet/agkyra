@@ -314,7 +314,6 @@ class WebSocketProtocol(WebSocket):
                 pass
 
         syncer_settings = setup.SyncerSettings(
-            sync,
             self.settings['url'], self.settings['token'],
             self.settings['container'], self.settings['directory'],
             **kwargs)

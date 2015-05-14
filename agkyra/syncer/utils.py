@@ -42,6 +42,14 @@ def join_objname(prefix, filename):
     return prefix + filename
 
 
+def normalize_standard_suffix(path):
+    return path.rstrip(OBJECT_DIRSEP) + OBJECT_DIRSEP
+
+
+def normalize_local_suffix(path):
+    return path.rstrip(os.path.sep) + os.path.sep
+
+
 def hash_string(s):
     return hashlib.sha256(s).hexdigest()
 
