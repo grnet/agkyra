@@ -18,6 +18,8 @@ import stat
 import re
 import datetime
 import psutil
+import time
+
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import logging
@@ -39,6 +41,7 @@ OS_FILE_EXISTS = 17
 OS_NOT_A_DIR = 20
 OS_NO_FILE_OR_DIR = 2
 
+DEFAULT_MTIME_PRECISION = 1e-7
 
 exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
 exclude_pattern = re.compile('|'.join(exclude_regexes))
@@ -95,7 +98,7 @@ def mk_stash_name(filename):
 
 
 def eq_float(f1, f2):
-    return abs(f1 - f2) < 0.01
+    return abs(f1 - f2) < DEFAULT_MTIME_PRECISION
 
 
 def files_equal(f1, f2):
@@ -135,7 +138,7 @@ def get_live_info(path):
         return {LOCALFS_TYPE: common.T_UNHANDLED}
     if status in [LOCAL_EMPTY_DIR, LOCAL_NONEMPTY_DIR]:
         return {LOCALFS_TYPE: common.T_DIR}
-    live_info = {LOCALFS_MTIME: stats[stat.ST_MTIME],
+    live_info = {LOCALFS_MTIME: stats.st_mtime,
                  LOCALFS_SIZE: stats[stat.ST_SIZE],
                  LOCALFS_TYPE: common.T_FILE,
                  }
@@ -220,6 +223,7 @@ class LocalfsTargetHandle(object):
         self.cache_hide_path = settings.cache_hide_path
         self.cache_path = settings.cache_path
         self.get_db = settings.get_db
+        self.mtime_lag = settings.mtime_lag
         self.target_state = target_state
         self.objname = target_state.objname
         self.fspath = utils.join_path(self.rootpath, self.objname)
@@ -327,6 +331,7 @@ class LocalfsTargetHandle(object):
         if live_info == {}:
             return
         if live_info[LOCALFS_TYPE] == common.T_FILE:
+            time.sleep(self.mtime_lag)
             try:
                 link_file(filepath, self.fspath)
             except DirMissing:

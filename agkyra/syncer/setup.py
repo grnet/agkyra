@@ -121,6 +121,15 @@ class SyncerSettings():
 
         self.messager = Messager()
 
+        self.mtime_lag = self.determine_mtime_lag()
+
+    def determine_mtime_lag(self):
+        st = os.stat(self.cache_path)
+        mtime = st.st_mtime
+        if mtime.is_integer():
+            return 1.1
+        return 0
+
     def get_db(self, initialize=False):
         dbs = getattr(thread_local_data, "dbs", None)
         if dbs is not None:
