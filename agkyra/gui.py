@@ -39,7 +39,7 @@ class GUI(WebSocketBaseClient):
         self.start = self.connect
         self.nw = kwargs.get(
             'nw', os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'))
-        self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'gui.nw'))
+        self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'gui'))
         assert not self._gui_running(session), (
             'Failed to initialize GUI, because another GUI is running')
         self._dump_session_file(session)
