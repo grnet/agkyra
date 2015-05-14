@@ -21,13 +21,19 @@ from agkyra import config
 AGKYRA_DIR = config.AGKYRA_DIR
 
 import logging
-logfile = os.path.join(AGKYRA_DIR, 'agkyra.log')
-logger = logging.getLogger('agkyra')
-handler = logging.FileHandler(logfile)
-formatter = logging.Formatter("%(levelname)s:%(asctime)s:%(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
+LOGGER = logging.getLogger('agkyra')
+HANDLER = logging.FileHandler(LOGFILE)
+FORMATTER = logging.Formatter("%(levelname)s:%(asctime)s:%(message)s")
+HANDLER.setFormatter(FORMATTER)
+LOGGER.addHandler(HANDLER)
+LOGGER.setLevel(logging.INFO)
 
-from agkyra import gui
-gui.run()
+# # run GUI
+# from agkyra import gui
+# gui.run()
+
+# run cli
+from agkyra.cli import AgkyraCLI
+from sys import argv
+AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
