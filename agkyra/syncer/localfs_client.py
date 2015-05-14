@@ -19,6 +19,7 @@ import re
 import datetime
 import psutil
 import time
+import filecmp
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -103,17 +104,7 @@ def eq_float(f1, f2):
 
 def files_equal(f1, f2):
     logger.debug("Comparing files: '%s', '%s'" % (f1, f2))
-    stats1, st1 = get_local_status(f1)
-    stats2, st2 = get_local_status(f2)
-    if st1 != st2:
-        return False
-    if st1 != LOCAL_FILE:
-        return True
-    if stats1[stat.ST_SIZE] != stats2[stat.ST_SIZE]:
-        return False
-    hash1 = utils.hash_file(f1)
-    hash2 = utils.hash_file(f2)
-    return hash1 == hash2
+    return filecmp.cmp(f1, f2, shallow=False)
 
 
 def info_is_unhandled(info):

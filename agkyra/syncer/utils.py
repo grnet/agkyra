@@ -21,8 +21,6 @@ import watchdog.utils
 
 from agkyra.syncer.common import OBJECT_DIRSEP
 
-BUF_SIZE = 65536
-
 
 def to_local_sep(filename):
     return filename.replace(OBJECT_DIRSEP, os.path.sep)
@@ -52,17 +50,6 @@ def normalize_local_suffix(path):
 
 def hash_string(s):
     return hashlib.sha256(s).hexdigest()
-
-
-def hash_file(filename, block_size=BUF_SIZE):
-    sha256 = hashlib.sha256()
-    with open(filename, 'rb') as f:
-        while True:
-            data = f.read(BUF_SIZE)
-            if not data:
-                break
-            sha256.update(data)
-    return sha256.hexdigest()
 
 
 def time_stamp():
