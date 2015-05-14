@@ -23,34 +23,9 @@ from agkyra import config
 LOG = logging.getLogger(__name__)
 
 
-class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
-    """The CLI for Agkyra is connected to a protocol server"""
-
+class ConfigCommands:
+    """Commands for handling Agkyra config options"""
     cnf = config.AgkyraConfig()
-
-    def preloop(self):
-        """Prepare agkyra shell"""
-        self.prompt = '\xe2\x9a\x93 '
-        self.default('')
-
-    def precmd(self):
-        print 'PRE'
-
-    def postcmd(self):
-        print 'POST'
-
-    def do_config(self, line):
-        """Commands for managing the agkyra settings
-        list   [global|cloud|sync [setting]]          List all or some settings
-        set    <global|cloud|sync> <setting> <value>  Set a setting
-        delete <global|cloud|sync> [setting]          Delete a setting or group
-        """
-        args = line.split(' ')
-        try:
-            method = getattr(self, 'config_' + args[0])
-            method(args[1:])
-        except AttributeError:
-            self.do_help('config')
 
     def print_option(self, section, name, option):
         """Print a configuration option"""
@@ -82,6 +57,65 @@ class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
         for section in self.cnf.sections():
             self.list_section_type(section)
 
+    def set_global_setting(self, section, option, value):
+        assert section in ('global'), 'Syntax error'
+        self.cnf.set(section, option, value)
+        self.cnf.write()
+
+    def set_setting(self, section, name, option, value):
+        assert section in self.cnf.sections(), 'Syntax error'
+        self.cnf.set('%s.%s' % (section, name), option, value)
+        self.cnf.write()
+
+    def delete_global_option(self, section, option, yes=False):
+        """Delete global option"""
+        if (not yes and 'y' != raw_input(
+                'Delete %s option %s? [y|N]: ' % (section, option))):
+            sys.stderr.write('Aborted\n')
+        else:
+            self.cnf.remove_option(section, option)
+            self.cnf.write()
+
+    def delete_section_option(self, section, name, option, yes=False):
+        """Delete a section (sync or cloud) option"""
+        assert section in self.cnf.sections(), 'Syntax error'
+        if (not yes and 'y' != raw_input(
+                'Delete %s of %s "%s"? [y|N]: ' % (option, section, name))):
+            sys.stderr.write('Aborted\n')
+        else:
+            if section == config.CLOUD_PREFIX:
+                self.cnf.remove_from_cloud(name, option)
+            elif section == config.SYNC_PREFIX:
+                self.cnf.remove_from_sync(name, option)
+            else:
+                self.cnf.remove_option('%s.%s' % (section, name), option)
+            self.cnf.write()
+
+    def delete_section(self, section, name, yes=False):
+        """Delete a section (sync or cloud)"""
+        if (not yes and 'y' != raw_input(
+                'Delete %s "%s"? [y|N]: ' % (section, name))):
+            sys.stderr.write('Aborted\n')
+        else:
+            self.cnf.remove_option(section, name)
+            self.cnf.write()
+
+
+class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
+    """The CLI for Agkyra is connected to a protocol server"""
+    cnf_cmds = ConfigCommands()
+
+    def preloop(self):
+        """Prepare agkyra shell"""
+        self.prompt = '\xe2\x9a\x93 '
+        self.default('')
+
+    def precmd(self):
+        print 'PRE'
+
+    def postcmd(self):
+        print 'POST'
+
     def config_list(self, args):
         """List (all or some) options
         list                                List all options
@@ -92,22 +126,14 @@ class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
         """
         try:
             {
-                0: self.list_sections,
-                1: self.list_section_type,
-                2: self.list_section,
-                3: self.print_option
+                0: self.cnf_cmds.list_sections,
+                1: self.cnf_cmds.list_section_type,
+                2: self.cnf_cmds.list_section,
+                3: self.cnf_cmds.print_option
             }[len(args)](*args)
         except Exception as e:
             LOG.debug('%s\n' % e)
             sys.stderr.write(self.config_list.__doc__ + '\n')
-
-    def set_global_setting(self, section, option, value):
-        assert section in ('global'), 'Syntax error'
-        self.cnf.set(section, option, value)
-
-    def set_setting(self, section, name, option, value):
-        assert section in self.cnf.sections(), 'Syntax error'
-        self.cnf.set('%s.%s' % (section, name), option, value)
 
     def config_set(self, args):
         """Set an option
@@ -118,39 +144,47 @@ class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
         """
         try:
             {
-                3: self.set_global_setting,
-                4: self.set_setting
+                3: self.cnf_cmds.set_global_setting,
+                4: self.cnf_cmds.set_setting
             }[len(args)](*args)
-            self.cnf.write()
         except Exception as e:
             LOG.debug('%s\n' % e)
             sys.stderr.write(self.config_set.__doc__ + '\n')
 
-    def delete_option(self, section, name, option):
-        """Delete a config secttion (sync or cloud)"""
-        assert section in self.cnf.sections(), 'Syntax error'
-        if section == config.CLOUD_PREFIX:
-            self.cnf.remove_from_cloud(name, option)
-        elif section == config.SYNC_PREFIX:
-            self.cnf.remove_from_sync(name, option)
-        else:
-            self.cnf.remove_option('%s.%s' % (section, name), option)
-
     def config_delete(self, args):
         """Delete an option
-        delete global OPTION                Delete a global option
-        delete <cloud | sync> NAME          Delete a sync or cloud
-        delete <cloud |sync> NAME OPTION    Delete a sync or cloud option
+        delete global OPTION [-y]               Delete a global option
+        delete <cloud | sync> NAME [-y]         Delete a sync or cloud
+        delete <cloud |sync> NAME OPTION [-y]   Delete a sync or cloud option
         """
         try:
+            args.remove('-y')
+            args.append(True)
+        except ValueError:
+            args.append(False)
+        try:
             {
-                2: self.cnf.remove_option,
-                3: self.delete_option
+                3: self.cnf_cmds.delete_global_option if (
+                    args[0] == 'global') else self.cnf_cmds.delete_section,
+                4: self.cnf_cmds.delete_section_option
             }[len(args)](*args)
-            self.cnf.write()
         except Exception as e:
             LOG.debug('%s\n' % e)
             sys.stderr.write(self.config_delete.__doc__ + '\n')
+
+    def do_config(self, line):
+        """Commands for managing the agkyra settings
+        list   [global|cloud|sync [setting]]          List all or some settings
+        set    <global|cloud|sync> <setting> <value>  Set a setting
+        delete <global|cloud|sync> [setting]          Delete a setting or group
+        """
+        args = line.split(' ')
+        try:
+            method = getattr(self, 'config_' + args[0])
+            method(args[1:])
+        except AttributeError:
+            self.do_help('config')
+
 
 # AgkyraCLI().run_onecmd(sys.argv)
 
