@@ -47,7 +47,6 @@ LOCAL_ROOT_PATH = "/tmp/" + ID
 
 
 settings = SyncerSettings(
-    instance=ID,
     auth_url=AUTHENTICATION_URL,
     auth_token=TOKEN,
     container=ID,
