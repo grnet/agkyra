@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 def heartbeat_event(settings, heartbeat, objname):
     event = threading.Event()
-    max_interval = settings.action_max_wait / 2.0
+    max_interval = settings.action_max_wait / 4.0
 
     def set_log():
         with heartbeat.lock() as hb:
