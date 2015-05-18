@@ -213,11 +213,11 @@ window.setInterval(function() {
     }
     new_progress = status.synced + ' of ' + status.unsynced + ' synced';
   }
-  if (new_pause != pause_item.label) {
+  if (new_pause !== pause_item.label.slice(0, new_pause.length)) {
     pause_item.label = new_pause;
     menu_modified = true;
   }
-  if (new_progress != progress_item.label) {
+  if (new_progress !== progress_item.label.slice(0, new_progress.length)) {
     progress_item.label = new_progress;
     menu_modified = true;
   }

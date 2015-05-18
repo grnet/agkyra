@@ -30,10 +30,10 @@ LOGGER.addHandler(HANDLER)
 LOGGER.setLevel(logging.INFO)
 
 # # run GUI
-# from agkyra import gui
-# gui.run()
+from agkyra import gui
+gui.run()
 
 # run cli
-from agkyra.cli import AgkyraCLI
-from sys import argv
-AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
+# from agkyra.cli import AgkyraCLI
+# from sys import argv
+# AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
