@@ -25,7 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             var errors = {
                 cloud_url_empty: 'Provide a Cloud Authentication URL',
                 token_empty: 'Provide a user token (Login to retrieve token)',
-                container_empty: 'Provide the name of the remote container'
+                container_empty: 'Provide the name of the remote container',
+                dir_not_chosen: 'Select the local directory'
             }
 
 
@@ -144,11 +145,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 return true;
             }
 
+            function check_directory() {
+                if(!$('#directory').html()) {
+                    $('#directory-error small').text(errors.dir_not_chosen);
+                    $('#directory-error').addClass('error');
+                    return false;
+                } else $('#directory-error').removeClass('error');
+                return true;
+            }
+
             function check_fields() {
                 var cloud = check_cloud_url();
                 var token = check_token();
                 var container = check_container();
-                return cloud && token && container;
+                var directory = check_directory();
+                return cloud && token && container && directory;
             }
         </script>
     </head>
@@ -200,11 +211,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         </div>
                         <div class="small-9 columns" id="container-error">
                             <input type="text" id="container" placeholder="Pithos+ container"
-                            onchange="settings['container']=$(this).val(); check_fields();">
+                            onchange="settings['container']=$(this).val(); check_container();">
                             <small>Invalid entry</small>
                         </div>
                     </div>
-                    <div class="row clearfix" id="directory_error">
+                    <div class="row clearfix">
                         <div class="small-3 columns">
                             <label for="directory" class="right">
                             Local directory</label>
@@ -212,13 +223,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         <div id="directory" class="small-6 columns"></div>
                         <div onclick="$('#choose-dir').trigger('click');"
                             class="small-3 columns pickdir" id="dirpick">
-                            Change</div>
+                            Select</div>
+                    </div>
+                    <div class="row clearfix">
+                        <div class="small-3 columns">&nbsp;</div>
+                        <div id="directory-error" class="small-6 columns">
+                            <small>Invalid entry</small>
+                        </div>
+                        <div class="small-3 columns">&nbsp;</div>
                     </div>
 
                     <input type="file" id="choose-dir" nwdirectory
-                        style="display:none"
+                        style="display:none;"
                         onchange="$('#directory').html($(this).val());
-                            settings['directory'] = $(this).val();" />
+                            settings['directory'] = $(this).val();
+                            check_directory();" />
                     <!--<div class="row clearfix">
                         <div class="small-3 columns"><label class="right inline">
                             Change the directory:</label></div>
