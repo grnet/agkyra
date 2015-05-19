@@ -106,7 +106,7 @@ var settings_menu = new gui.MenuItem({
     $.each(globals.settings, function(key, val) {old_settings[key]=val;});
     windows['settings'] = gui.Window.open("settings.html", {
       toolbar: false, focus: true,
-      width: 841, height: 520
+      width: 860, height: 620
     });
     windows['settings'].on('closed', function() {
       if (DEBUG) console.log('Settings windows is closed');

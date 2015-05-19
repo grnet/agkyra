@@ -124,9 +124,7 @@ form small                  { display: none; }
     color: #fff;
 }
 
-
-
-button, .button {
+button, .button, .pickdir {
     -webkit-appearance: none;
     -moz-appearance: none;
     border-radius: 0;
@@ -136,7 +134,7 @@ button, .button {
     font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
     font-weight: normal;
     line-height: normal;
-    margin: 0 0 1.25rem;
+    margin: 0 13px;
     position: relative;
     text-align: center;
     text-decoration: none;
@@ -147,6 +145,10 @@ button, .button {
     border-color: #007095;
     color: #FFFFFF;
     transition: background-color 300ms ease-out;
+}
+.pickdir {
+    font-size: 0.8rem;
+    padding: 0.6rem 1rem 0.6rem 1rem;
 }
 
   input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="url"],  textarea {

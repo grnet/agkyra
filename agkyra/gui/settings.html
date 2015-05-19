@@ -22,18 +22,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <script src="static/js/jquery.js"></script>
         <script src="settings.js"></script>
         <script type="text/javascript">
+            var errors = {
+                cloud_url_empty: 'Provide a Cloud Authentication URL',
+                token_empty: 'Provide a user token (Login to retrieve token)',
+                container_empty: 'Provide the name of the remote container'
+            }
+
+
             var fs = require('fs');
             var exclude = null;
+            var settings = {};
             remove_tokens = null;
             $(document).ready(function() {
                 var url = get_setting('url');
                 if (url) $('#cloud-url').val(url);
+                settings['url'] = url;
                 var token = get_setting('token');
                 if (token) $('#token').val(token);
+                settings['token'] = token;
                 var container = get_setting('container');
                 if (container) $('#container').val(container);
+                settings['container'] = container;
                 var directory = get_setting('directory');
                 if (directory) $('#directory').html(directory);
+                settings['directory'] = directory
                 var exclude = get_setting('exclude');
                 if (exclude) try {
                         $('#exclude').val(
@@ -50,7 +62,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 //$('#uuid').html(uuid);
                 $('#token').val(token);
                 $('#token').trigger('change');
-                //set_setting('token', $(this).val())
             }
             function remove_cookies(win, url) {
                 var removed_at_least_one = false
@@ -105,6 +116,40 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     $('#get_creds').show();
                 } else {$('#get_creds').hide(); }
             }, 500);
+
+            function check_cloud_url() {
+                if(!$('#cloud-url').val()) {
+                    $('#cloud-error small').text(errors.cloud_url_empty);
+                    $('#cloud-error').addClass('error');
+                    return false;
+                } else $('#cloud-error').removeClass('error');
+                return true;
+            }
+
+            function check_token() {
+                if (!$('#token').val()) {
+                    $('#token-error small').text(errors.token_empty);
+                    $('#token-error').addClass('error');
+                    return false;
+                } else $('#token-error').removeClass('error');
+                return true;
+            }
+
+            function check_container() {
+                if (!$('#container').val()) {
+                    $('#container-error small').text(errors.container_empty);
+                    $('#container-error').addClass('error');
+                    return false;
+                } else $('#container-error').removeClass('error');
+                return true;
+            }
+
+            function check_fields() {
+                var cloud = check_cloud_url();
+                var token = check_token();
+                var container = check_container();
+                return cloud && token && container;
+            }
         </script>
     </head>
     <body>
@@ -115,14 +160,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             <form>
                 <fieldset>
                     <legend>Cloud</legend>
-                    <div class="clearfix error">
+                    <div class="clearfix">
                         <div class="small-3 columns">
                             <label for="cloud-url" class="right inline">Cloud URL</label>
 
                         </div>
-                        <div class="small-9 columns">
+                        <div class="small-9 columns" id="cloud-error">
                             <input type="text" id="cloud-url" placeholder="Authentication URL"
-                            onchange="set_setting('url', $(this).val()); refresh_endpoints($(this).val());">
+                            onchange="settings['url'] = $(this).val();
+                            refresh_endpoints($(this).val()); check_cloud_url();">
                             <small>Invalid entry</small>
                         </div>
                     </div>
@@ -131,17 +177,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         <div class="small-3 columns">
                             <label for="token" class="right inline">User token</label>
                         </div>
-                        <div class="small-9 columns">
+                        <div class="small-9 columns" id="token-error">
                             <input type="text" id="token" placeholder="User token"
-                            onchange="set_setting('token', $(this).val())">
+                            onchange="settings['token'] = $(this).val(); check_token();">
                             <small>Invalid entry</small>
                         </div>
                      </div>
 
                     <div class="clearfix">
+                        <div class="small-8 columns"></div>
                        <a id="get_creds"
-                            class="button right" style="display: none;"
-                            onclick="get_credentials();">Login to get credentials</a>
+                            class="small-4 columns button right" style="display: none;"
+                            onclick="get_credentials();">Login to retrieve token</a>
                     </div>
 
                 </fieldset>
@@ -151,30 +198,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         <div class="small-3 columns">
                             <label for="container" class="right inline">Remote container</label>
                         </div>
-                        <div class="small-9 columns">
+                        <div class="small-9 columns" id="container-error">
                             <input type="text" id="container" placeholder="Pithos+ container"
-                            onchange="set_setting('container', $(this).val())">
+                            onchange="settings['container']=$(this).val(); check_fields();">
+                            <small>Invalid entry</small>
                         </div>
                     </div>
-                    <div class="row clearfix">
+                    <div class="row clearfix" id="directory_error">
                         <div class="small-3 columns">
-                            <label for="directory" class="right inline">Local directory</label>
+                            <label for="directory" class="right">
+                            Local directory</label>
                         </div>
-                        <div class="small-9 columns" id="directory">
-                            No dir chosen</div>
+                        <div id="directory" class="small-6 columns"></div>
+                        <div onclick="$('#choose-dir').trigger('click');"
+                            class="small-3 columns pickdir" id="dirpick">
+                            Change</div>
                     </div>
-                    <div class="row clearfix">
-                        <div class="small-3 columns"><label class="right inline">Change it:</label></div>
+
+                    <input type="file" id="choose-dir" nwdirectory
+                        style="display:none"
+                        onchange="$('#directory').html($(this).val());
+                            settings['directory'] = $(this).val();" />
+                    <!--<div class="row clearfix">
+                        <div class="small-3 columns"><label class="right inline">
+                            Change the directory:</label></div>
                         <div class="small-9 columns">
-                            <!-- TODO: change the label of this field -->
                             <input type="file" nwdirectory
-                            onchange="
-                                $('#directory').html($(this).val());
-                                set_setting('directory', $(this).val());
+                            onchange="$('#directory').html($(this).val());
+                                settings['directory'] = $(this).val();
                             " />
                         </div>
-                    </div>
-                    <div class="row">
+                    </div>-->
+                    <!--<div class="row">
                         <div class="small-3 columns">
                             <label for="exclude" class="right inline">Exclude these items from syncing</label>
                         </div>
@@ -183,11 +238,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                                 onchange="update_exclude($(this).val())">
                             </textarea>
                         </div>
-                    </div>
+                    </div> -->
                 </fieldset>
                 <div class="clearfix">
                     <a id="sync_button" class="button right"
-                        onclick="window.close();">OK</a>
+                        onclick="if(check_fields() || confirm(
+                                'There are some concerns about your settings.\n'
+                                + 'To fix the errors: Cancel\n'
+                                + 'To save anyway: OK')) {
+                            export_settings(settings);
+                            window.close();
+                        }">Save</a>
                 </div>
             </form>
         </div>
