@@ -16,7 +16,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from agkyra.syncer import common
+from agkyra.syncer import common, messaging
 
 
 class FileClient(object):
@@ -41,7 +41,11 @@ class FileClient(object):
             if callback is not None:
                 callback(synced_source_state, synced_target_state)
         except common.SyncError as e:
-            logger.warning(e)
+            msg = messaging.SyncErrorMessage(
+                objname=target_state.objname,
+                serial=source_handle.source_state.serial,
+                exception=e, logger=logger)
+            self.settings.messager.put(msg)
             if isinstance(e, common.HardSyncError):
                 if failure_callback is not None:
                     failure_callback(source_handle.source_state)

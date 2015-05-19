@@ -71,6 +71,17 @@ class AckSyncMessage(Message):
                          (self.archive, self.objname, self.serial))
 
 
+class SyncErrorMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.objname = kwargs["objname"]
+        self.serial = kwargs["serial"]
+        self.exception = kwargs["exception"]
+        self.logger.warning(
+            "Sync failed; object: '%s' serial: %s error: %s"
+            % (self.objname, self.serial, self.exception))
+
+
 class CollisionMessage(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
