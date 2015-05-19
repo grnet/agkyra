@@ -1,0 +1,60 @@
+archive serial: last found version of a file
+sync serial: the last synced version
+decision serial: specifies which archive is being / should be synced
+
+failed serials: marks failed syncs to avoid replay (eg collision in upload)
+  in runtime -- in a new process replay will fail again
+
+heartbeat: blocks probe while syncing, but candidates are kept for later
+  blocks new sync action while syncing
+
+
+probe_file:
+  if active heartbeat for file found:
+    abort (file is being synced)
+
+  if archive serial != sync serial:
+    abort (already probed)
+
+  if file changed:
+     get new info
+     update file state
+     commit
+
+
+decide_file_sync:
+  if active heartbeat found with different id:
+    abort
+
+  if previous decision serial found:
+    use decision unless serial marked as failed
+
+  make decision with priority to master
+  add file/current id in heartbeat
+  commit
+  sync file (in new thread)
+
+
+sync_file:
+  source handle <- stage source file
+  target pull file from source handle
+  call back ack_file_sync
+
+
+ack_file_sync (synced source state, synced target state):
+  update source state
+  update target state using source serial
+  update sync state (merging source & target info) using source serial
+  set decision state equal to sync state
+  commit
+  remove file from heartbeat
+
+
+mark_as_failed:
+  remove file from heartbeat
+  include (serial, file) in failed serials
+
+
+main loop:
+  for every archive probe candidate files
+  for every file with updated serial, decide sync
