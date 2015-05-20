@@ -38,6 +38,7 @@ function refresh_endpoints(identity_url) {
         var endpoints = data.access.serviceCatalog
         global.pithos_ui = null;
         global.account_ui = null;
+        global.url_error = null;
         $.each(endpoints, function(i, endpoint) {
             switch(endpoint.type) {
             case 'object-store': try {
@@ -50,15 +51,50 @@ function refresh_endpoints(identity_url) {
             break;
             }
         });
+    }).fail(function(xhr, status, msg) {
+        global.pithos_ui = null;
+        global.account_ui = null;
+        global.url_error = xhr.status + ' ' + msg;
+        console.log(xhr.status + ' ' + xhr.responseText);
+    });
+}
+
+function check_auth(identity_url, token) {
+    var data2send = {auth: {token: {id: token}}};
+    $.ajax({
+        type: 'POST', url: identity_url + '/tokens',
+        beforeSend: function(req) {
+            req.setRequestHeader('X-Auth-Token', token);
+        },
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(data2send),
+        dataType: 'json'
+    })
+    .done(function() {global.auth_error = null;})
+    .fail(function(xhr, status, msg) {
+        global.auth_error = xhr.status + ' ' + msg;
+        console.log(xhr.status + ' ' + xhr.responseText);
     });
 }
 
 function get_pithos_ui() {
-    if (global.pithos_ui) {return global.pithos_ui;}
-    else {return null;}
+    if (global.pithos_ui) return global.pithos_ui;
+    return null;
 }
 
 function get_account_ui() {
-    if (global.account_ui) {return global.account_ui;}
-    else {return null;}
+    if (global.account_ui) return global.account_ui;
+    return null;
+}
+
+function get_url_error() {
+    if (global.url_error) return global.url_error;
+    return null;
+}
+
+function get_auth_error() {
+    if (global.auth_error) return global.auth_error;
+    return null;
 }

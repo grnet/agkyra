@@ -24,16 +24,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <script type="text/javascript">
             var errors = {
                 cloud_url_empty: 'Provide a Cloud Authentication URL',
+                cloud_inaccessible: 'Cloud URL did not respond as expected',
                 token_empty: 'Provide a user token (Login to retrieve token)',
+                token_error: 'Failed to authenticate',
+                token_cloudless: 'No cloud to try this token against',
                 container_empty: 'Provide the name of the remote container',
                 dir_not_chosen: 'Select the local directory'
             }
-
+            var settings = {};
 
             var fs = require('fs');
             var exclude = null;
-            var settings = {};
-            remove_tokens = null;
             $(document).ready(function() {
                 var url = get_setting('url');
                 if (url) $('#cloud-url').val(url);
@@ -49,8 +50,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 settings['directory'] = directory
                 var exclude = get_setting('exclude');
                 if (exclude) try {
-                        $('#exclude').val(
-                            fs.readFileSync(exclude, encoding='utf-8'));
+                    $('#exclude').val(
+                        fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
             });
             function update_exclude(new_content) {
@@ -110,20 +111,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     });
                 });
             }
-            window.setInterval(function() {
-                // Refresh get_creds visibility, until refresh_endpoints
-                // changes are in effect
-                if (get_pithos_ui() && show_creds) {
-                    $('#get_creds').show();
-                } else {$('#get_creds').hide(); }
-            }, 500);
 
             function check_cloud_url() {
                 if(!$('#cloud-url').val()) {
                     $('#cloud-error small').text(errors.cloud_url_empty);
                     $('#cloud-error').addClass('error');
                     return false;
-                } else $('#cloud-error').removeClass('error');
+                } else {
+                    refresh_endpoints($('#cloud-url').val());
+                    if (!get_pithos_ui()) {
+                        $('#cloud-error small').text(errors.cloud_inaccessible
+                            + ' [' + get_url_error() + ']');
+                        $('#cloud-error').addClass('error');
+                        return false;
+                    }
+                }
+                $('#cloud-error').removeClass('error');
                 return true;
             }
 
@@ -132,7 +135,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     $('#token-error small').text(errors.token_empty);
                     $('#token-error').addClass('error');
                     return false;
-                } else $('#token-error').removeClass('error');
+                } else{
+                    if (get_pithos_ui() && $('#cloud-url').val()) {
+                        check_auth($('#cloud-url').val(), $('#token').val());
+                        var auth_error = get_auth_error();
+                        if (auth_error) {
+                            $('#token-error small').text(
+                                errors.token_error + ' [' + auth_error + ']');
+                            $('#token-error').addClass('error');
+                            return false;
+                        }
+                    } else {
+                        $('#token-error small').text(errors.token_cloudless);
+                        $('#token-error').addClass('error');
+                        return false;
+                    }
+                }
+                $('#token-error').removeClass('error');
                 return true;
             }
 
@@ -161,6 +180,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 var directory = check_directory();
                 return cloud && token && container && directory;
             }
+
+            window.setInterval(function() {
+                // Refresh get_creds visibility, until refresh_endpoints
+                // changes are in effect
+                if (get_pithos_ui() && show_creds) {
+                    $('#get_creds').show();
+                } else {$('#get_creds').hide();}
+                check_cloud_url();
+                check_token();
+            }, 500);
         </script>
     </head>
     <body>
