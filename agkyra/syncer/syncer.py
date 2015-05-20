@@ -120,7 +120,7 @@ class FileSyncer(object):
             if beat is not None:
                 if utils.younger_than(
                         beat["tstamp"], self.settings.action_max_wait):
-                    logger.warning("Object '%s' already handled; "
+                    logger.warning("Object '%s' is being synced; "
                                    "Probe aborted." % objname)
                     return
         if db_state.serial != ref_state.serial:
