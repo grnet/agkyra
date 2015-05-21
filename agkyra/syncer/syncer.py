@@ -230,10 +230,14 @@ class FileSyncer(object):
                     (objname, decision_serial))
 
         if master_serial > sync_serial:
+            if master_serial == decision_serial:  # this is a failed serial
+                return None
             self._make_decision_state(decision_state, master_state)
             return master_state, slave_state, sync_state
         elif master_serial == sync_serial:
             if slave_serial > sync_serial:
+                if slave_serial == decision_serial:  # this is a failed serial
+                    return None
                 self._make_decision_state(decision_state, slave_state)
                 return slave_state, master_state, sync_state
             elif slave_serial == sync_serial:
