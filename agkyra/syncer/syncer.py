@@ -288,16 +288,17 @@ class FileSyncer(object):
             callback=self.ack_file_sync,
             failure_callback=self.mark_as_failed)
 
-    def mark_as_failed(self, state):
+    def mark_as_failed(self, state, hard=False):
         serial = state.serial
         objname = state.objname
-        logger.warning(
-            "Marking failed serial %s for archive: %s, object: '%s'" %
-            (serial, state.archive, objname))
         with self.heartbeat.lock() as hb:
             hb.pop(objname)
-        with self.failed_serials.lock() as d:
-            d[(serial, objname)] = state
+        if hard:
+            logger.warning(
+                "Marking failed serial %s for archive: %s, object: '%s'" %
+                (serial, state.archive, objname))
+            with self.failed_serials.lock() as d:
+                d[(serial, objname)] = state
 
     def update_state(self, old_state, new_state):
         db = self.get_db()
