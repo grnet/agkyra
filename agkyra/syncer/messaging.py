@@ -49,6 +49,16 @@ class UpdateMessage(Message):
                          (self.archive, self.objname, self.serial))
 
 
+class LiveInfoUpdateMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.archive = kwargs["archive"]
+        self.objname = kwargs["objname"]
+        self.info = kwargs["info"]
+        self.logger.warning("Actual info differs in %s for object: '%s'; "
+                            "updating..." % (self.archive, self.objname))
+
+
 class SyncMessage(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)

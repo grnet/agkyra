@@ -389,6 +389,7 @@ with open(fchanged_path, "w") as f:
 
 s.decide_file_sync(fchanged)
 assert_message(messaging.SyncMessage)
+assert_message(messaging.LiveInfoUpdateMessage)
 assert_message(messaging.AckSyncMessage)
 
 state = db.get_state(s.SLAVE, fchanged)
@@ -414,6 +415,7 @@ new_fupch_etag = r1['etag']
 
 s.decide_file_sync(fupch)
 assert_message(messaging.SyncMessage)
+assert_message(messaging.LiveInfoUpdateMessage)
 assert_message(messaging.AckSyncMessage)
 state = db.get_state(s.MASTER, fupch)
 new_fupch_info = state.info

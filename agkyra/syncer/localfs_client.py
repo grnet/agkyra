@@ -450,8 +450,10 @@ class LocalfsSourceHandle(object):
         live_info = local_path_changes(
             self.staged_path, self.source_state)
         if live_info is not None:
-            logger.warning("Actual info differs in %s for object: '%s'; "
-                           "updating..." % (self.SIGNATURE, self.objname))
+            msg = messaging.LiveInfoUpdateMessage(
+                archive=self.SIGNATURE, objname=self.objname,
+                info=live_info, logger=logger)
+            self.settings.messager.put(msg)
             new_state = self.source_state.set(info=live_info)
             self.update_state(new_state)
             self.source_state = new_state

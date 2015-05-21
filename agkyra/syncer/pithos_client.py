@@ -149,8 +149,10 @@ class PithosSourceHandle(object):
 
     def check_update_source_state(self, actual_info):
         if actual_info != self.source_state.info:
-            logger.warning("Actual info differs in %s for object: '%s'; "
-                           "updating..." % (self.SIGNATURE, self.objname))
+            msg = messaging.LiveInfoUpdateMessage(
+                archive=self.SIGNATURE, objname=self.objname,
+                info=actual_info, logger=logger)
+            self.settings.messager.put(msg)
             new_state = self.source_state.set(info=actual_info)
             self.update_state(new_state)
             self.source_state = new_state
