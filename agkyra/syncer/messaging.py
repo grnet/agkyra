@@ -44,6 +44,7 @@ class UpdateMessage(Message):
         Message.__init__(self, *args, **kwargs)
         self.archive = kwargs["archive"]
         self.objname = kwargs["objname"]
+        self.old_serial = kwargs["old_serial"]
         self.serial = kwargs["serial"]
         self.logger.info("Updating archive: %s, object: '%s', serial: %s" %
                          (self.archive, self.objname, self.serial))

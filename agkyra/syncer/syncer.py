@@ -127,7 +127,8 @@ class FileSyncer(object):
                     return
         if db_state.serial != ref_state.serial:
             msg = messaging.AlreadyProbedMessage(
-                archive=archive, objname=objname, serial=serial, logger=logger)
+                archive=archive, objname=objname, serial=db_state.serial,
+                logger=logger)
             self.messager.put(msg)
             return
         live_state = client.probe_file(objname, db_state, ref_state, ident)
@@ -139,9 +140,6 @@ class FileSyncer(object):
         archive = live_state.archive
         objname = live_state.objname
         serial = live_state.serial
-        msg = messaging.UpdateMessage(
-            archive=archive, objname=objname, serial=serial, logger=logger)
-        self.messager.put(msg)
         db_state = db.get_state(archive, objname)
         if db_state and db_state.serial != serial:
             logger.warning(
@@ -153,6 +151,10 @@ class FileSyncer(object):
         new_serial = db.new_serial(objname)
         new_state = live_state.set(serial=new_serial)
         db.put_state(new_state)
+        msg = messaging.UpdateMessage(
+            archive=archive, objname=objname,
+            serial=new_serial, old_serial=serial, logger=logger)
+        self.messager.put(msg)
         if new_serial == 0:
             sync_state = common.FileState(
                 archive=self.SYNC, objname=objname, serial=-1,
