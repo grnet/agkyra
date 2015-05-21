@@ -199,10 +199,12 @@ class PithosTargetHandle(object):
             logger.info("Deleted tmp '%s'" % del_name)
 
     def directory_put(self, objname, etag):
+        if_etag_not_match = '*' if not(etag) else None
         r = self.endpoint.object_put(
             objname,
             content_type='application/directory',
             content_length=0,
+            if_etag_not_match=if_etag_not_match,
             if_etag_match=etag)
         return r
 
@@ -229,7 +231,8 @@ class PithosTargetHandle(object):
                     r = self.endpoint.upload_object(
                         self.target_objname,
                         fil,
-                        if_etag_match=info.get("pithos_etag"))
+                        if_not_exist=not(etag),
+                        if_etag_match=etag)
                     synced_etag = r["etag"]
                 live_info = {"pithos_etag": synced_etag,
                              "pithos_type": common.T_FILE}
