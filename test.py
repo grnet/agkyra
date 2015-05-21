@@ -261,13 +261,8 @@ class AgkyraTest(unittest.TestCase):
         inner_fil = "f005/in005"
         inner_fil_content = "ff1 in dir "
         r1 = self.pithos.upload_from_string(inner_fil, inner_fil_content)
-        inner_fil2 = "f005/in2005"
-        inner_fil2_content = "inner2 in dir "
-        r1 = self.pithos.upload_from_string(inner_fil2, inner_fil2_content)
         self.s.probe_file(self.s.MASTER, fil)
         self.s.probe_file(self.s.MASTER, inner_fil)
-        self.s.probe_file(self.s.MASTER, inner_fil2)
-        self.assert_message(messaging.UpdateMessage)
         self.assert_message(messaging.UpdateMessage)
         self.assert_message(messaging.UpdateMessage)
 
@@ -290,6 +285,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.decide_file_sync(fil)
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
+        self.assertTrue(os.path.isdir(f_path))
         self.s.decide_file_sync(inner_fil)
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -342,6 +338,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.assertTrue(os.path.isdir(d_path))
+        # sync the dir too
         self.s.probe_file(self.s.SLAVE, d)
         m = self.assert_message(messaging.UpdateMessage)
         slave_serial = m.serial
@@ -352,149 +349,142 @@ class AgkyraTest(unittest.TestCase):
         state = self.db.get_state(self.s.SLAVE, d)
         self.assertEqual(state.serial, master_serial)
 
+        # locally remove the dir and sync
+        shutil.rmtree(d_path)
+        self.s.probe_file(self.s.SLAVE, d)
+        self.s.probe_file(self.s.SLAVE, inner_fil)
+        self.assert_message(messaging.UpdateMessage)
+        self.assert_message(messaging.UpdateMessage)
+        self.s.decide_file_sync(d)
+        self.s.decide_file_sync(inner_fil)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        with self.assertRaises(ClientError) as cm:
+            self.pithos.get_object_info(d)
+        self.assertEqual(cm.exception.status, 404)
+
+    def test_009_dir_delete_upstream(self):
+        d = "d009"
+        d_path = self.get_path(d)
+        r = self.pithos.object_put(
+            d, content_type='application/directory', content_length=0)
+        innerd = "d009/innerd009"
+        r = self.pithos.object_put(
+            innerd, content_type='application/directory', content_length=0)
+        self.s.probe_file(self.s.MASTER, d)
+        self.s.probe_file(self.s.MASTER, innerd)
+        self.assert_message(messaging.UpdateMessage)
+        self.assert_message(messaging.UpdateMessage)
+        self.s.decide_file_sync(d)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        self.s.decide_file_sync(innerd)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        self.assertTrue(os.path.isdir(d_path))
+
+        # delete upstream
+        self.pithos.del_object(d)
+        self.pithos.del_object(innerd)
+        self.s.probe_file(self.s.MASTER, d)
+        self.s.probe_file(self.s.MASTER, innerd)
+        self.assert_message(messaging.UpdateMessage)
+        self.assert_message(messaging.UpdateMessage)
+
+        # will fail because local dir is non-empty
+        self.s.decide_file_sync(d)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.SyncErrorMessage)
+
+        # but this is ok
+        self.s.decide_file_sync(innerd)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        self.s.decide_file_sync(d)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+
+    def test_010_live_update_local(self):
+        fil = "f010"
+        f_path = self.get_path(fil)
+        with open(f_path, "w") as f:
+            f.write("f to be changed")
+
+        self.s.probe_file(self.s.SLAVE, fil)
+        self.assert_message(messaging.UpdateMessage)
+        state = self.db.get_state(self.s.SLAVE, fil)
+        f_info = state.info
+
+        f_content = "changed"
+        with open(f_path, "w") as f:
+            f.write(f_content)
+
+        self.s.decide_file_sync(fil)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.LiveInfoUpdateMessage)
+        self.assert_message(messaging.AckSyncMessage)
+
+        state = self.db.get_state(self.s.SLAVE, fil)
+        new_info = state.info
+        self.assertNotEqual(f_info, new_info)
+        self.assertEqual(new_info["localfs_size"], len(f_content))
+
+    def test_011_live_update_upstream(self):
+        fil = "f011"
+        f_path = self.get_path(fil)
+        r = self.pithos.upload_from_string(fil, "f upstream")
+        etag = r['etag']
+
+        self.s.probe_file(self.s.MASTER, fil)
+        self.assert_message(messaging.UpdateMessage)
+        state = self.db.get_state(self.s.MASTER, fil)
+        f_info = state.info
+        self.assertEqual(f_info["pithos_etag"], etag)
+
+        r1 = self.pithos.upload_from_string(fil, "new")
+        new_etag = r1['etag']
+
+        self.s.decide_file_sync(fil)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.LiveInfoUpdateMessage)
+        self.assert_message(messaging.AckSyncMessage)
+        state = self.db.get_state(self.s.MASTER, fil)
+        new_info = state.info
+        self.assertEqual(new_info["pithos_etag"], new_etag)
+
+    def test_012_cachename(self):
+        fil = "f012"
+        f_path = self.get_path(fil)
+        with open(f_path, "w") as f:
+            f.write("content")
+
+        state = self.db.get_state(self.s.SLAVE, fil)
+        handle = LocalfsTargetHandle(self.s.settings, state)
+        hidden_filename = utils.join_path(
+            handle.cache_hide_name, utils.hash_string(handle.objname))
+        hidden_path = handle.get_path_in_cache(hidden_filename)
+        self.assertFalse(os.path.isfile(hidden_path))
+
+        self.assertIsNone(self.db.get_cachename(hidden_filename))
+        handle.move_file()
+
+        self.assertTrue(os.path.isfile(hidden_path))
+        self.assertIsNotNone(self.db.get_cachename(hidden_filename))
+        handle.move_file()
+        self.assertTrue(os.path.isfile(hidden_path))
+
+        shutil.move(hidden_path, f_path)
+        self.assertIsNotNone(self.db.get_cachename(hidden_filename))
+        handle.move_file()
+        self.assertTrue(os.path.isfile(hidden_path))
+
+        # open file to cause busy error
+        f = open(hidden_path, "r")
+        with self.assertRaises(common.BusyError):
+            handle.hide_file()
+
+
 if __name__ == '__main__':
     unittest.main()
-
-# ln1 is a file; let a dir be upstream
-r = pithos.object_put(
-    ln1, content_type='application/directory',
-    content_length=0)
-
-s.probe_file(s.MASTER, ln1)
-s.decide_file_sync(ln1)
-
-assert_message(messaging.UpdateMessage)
-assert_message(messaging.SyncMessage)
-assert_message(messaging.AckSyncMessage)
-assert os.path.isdir(ln1_path)
-
-# locally remove dir and file
-shutil.rmtree(d1_path)
-s.probe_file(s.SLAVE, d1)
-s.probe_file(s.SLAVE, f2)
-
-assert_message(messaging.UpdateMessage)
-assert_message(messaging.UpdateMessage)
-
-s.decide_file_sync(d1)
-s.decide_file_sync(f2)
-
-assert_message(messaging.SyncMessage)
-assert_message(messaging.SyncMessage)
-assert_message(messaging.AckSyncMessage)
-assert_message(messaging.AckSyncMessage)
-
-try:
-    pithos.get_object_info(d1)
-    assert False
-except Exception as e:
-    assert isinstance(e, ClientError) and e.status == 404
-
-# delete upstream
-pithos.del_object(f1)
-pithos.del_object(ff1)
-s.probe_file(s.MASTER, f1)
-s.probe_file(s.MASTER, ff1)
-assert_message(messaging.UpdateMessage)
-assert_message(messaging.UpdateMessage)
-
-# will fail because local dir is non-empty
-s.decide_file_sync(f1)
-
-assert_message(messaging.SyncMessage)
-assert_message(messaging.SyncErrorMessage)
-
-# but this is ok
-s.decide_file_sync(ff1)
-
-assert_message(messaging.SyncMessage)
-assert_message(messaging.AckSyncMessage)
-
-print "SLEEPING 11"
-time.sleep(11)
-s.decide_file_sync(f1)
-
-assert_message(messaging.SyncMessage)
-assert_message(messaging.AckSyncMessage)
-
-# this will be changed after probe
-fchanged = "fchanged"
-fchanged_path = os.path.join(LOCAL_ROOT_PATH, fchanged)
-with open(fchanged_path, "w") as f:
-    f.write("fchanged orig")
-
-s.probe_file(s.SLAVE, fchanged)
-assert_message(messaging.UpdateMessage)
-
-state = db.get_state(s.SLAVE, fchanged)
-fchanged_info = state.info
-
-fchanged_new = "new content changed"
-with open(fchanged_path, "w") as f:
-    f.write(fchanged_new)
-
-s.decide_file_sync(fchanged)
-assert_message(messaging.SyncMessage)
-assert_message(messaging.LiveInfoUpdateMessage)
-assert_message(messaging.AckSyncMessage)
-
-state = db.get_state(s.SLAVE, fchanged)
-new_fchanged_info = state.info
-assert fchanged_info != new_fchanged_info
-print new_fchanged_info
-assert new_fchanged_info["localfs_size"] == len(fchanged_new)
-
-fupch = "fupch"
-r1 = pithos.upload_from_string(
-    fupch, "fupch")
-fupch_etag = r1['etag']
-
-s.probe_file(s.MASTER, fupch)
-assert_message(messaging.UpdateMessage)
-state = db.get_state(s.MASTER, fupch)
-fupch_info = state.info
-assert fupch_info["pithos_etag"] == fupch_etag
-
-r1 = pithos.upload_from_string(
-    fupch, "fupch new")
-new_fupch_etag = r1['etag']
-
-s.decide_file_sync(fupch)
-assert_message(messaging.SyncMessage)
-assert_message(messaging.LiveInfoUpdateMessage)
-assert_message(messaging.AckSyncMessage)
-state = db.get_state(s.MASTER, fupch)
-new_fupch_info = state.info
-assert new_fupch_info["pithos_etag"] == new_fupch_etag
-
-#############################################################
-### INTERNALS
-
-fupch_path = os.path.join(LOCAL_ROOT_PATH, fupch)
-assert os.path.isfile(fupch_path)
-state = db.get_state(s.SLAVE, fupch)
-handle = LocalfsTargetHandle(s.settings, state)
-hidden_filename = utils.join_path(handle.cache_hide_name,
-                                  utils.hash_string(handle.objname))
-hidden_path = handle.get_path_in_cache(hidden_filename)
-assert not os.path.isfile(hidden_path)
-
-assert db.get_cachename(hidden_filename) is None
-handle.move_file()
-assert os.path.isfile(hidden_path)
-assert db.get_cachename(hidden_filename) is not None
-handle.move_file()
-assert os.path.isfile(hidden_path)
-
-shutil.move(hidden_path, fupch_path)
-assert db.get_cachename(hidden_filename) is not None
-handle.move_file()
-assert os.path.isfile(hidden_path)
-
-# open file to cause busy error
-f = open(hidden_path, "r")
-try:
-    handle.hide_file()
-    assert False
-except Exception as e:
-    assert isinstance(e, common.BusyError)
