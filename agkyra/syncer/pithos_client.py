@@ -181,9 +181,14 @@ class PithosTargetHandle(object):
         return "%s.%s%s" % (name, etag, STAGED_FOR_DELETION_SUFFIX)
 
     def safe_object_del(self, objname, etag):
-        container = self.endpoint.container
         del_name = self.mk_del_name(objname, etag)
         logger.info("Moving temporarily to '%s'" % del_name)
+        self._move_object(objname, etag, del_name)
+        self.endpoint.del_object(del_name)
+        logger.info("Deleted tmp '%s'" % del_name)
+
+    def _move_object(self, objname, etag, del_name):
+        container = self.endpoint.container
         try:
             self.endpoint.object_move(
                 objname,
@@ -194,9 +199,6 @@ class PithosTargetHandle(object):
                 logger.warning("'%s' not found; already moved?" % objname)
             else:
                 raise
-        finally:
-            self.endpoint.del_object(del_name)
-            logger.info("Deleted tmp '%s'" % del_name)
 
     def directory_put(self, objname, etag):
         if_etag_not_match = '*' if not(etag) else None
