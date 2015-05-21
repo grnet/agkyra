@@ -49,6 +49,36 @@ class UpdateMessage(Message):
                          (self.archive, self.objname, self.serial))
 
 
+class AlreadyProbedMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.archive = kwargs["archive"]
+        self.objname = kwargs["objname"]
+        self.serial = kwargs["serial"]
+        self.logger.warning("Serial mismatch in probing archive: %s, "
+                            "object: '%s'" % (self.archive, self.objname))
+
+
+class HeartbeatNoProbeMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.archive = kwargs["archive"]
+        self.objname = kwargs["objname"]
+        self.heartbeat = kwargs["heartbeat"]
+        self.logger.warning("Object '%s' is being synced; "
+                            "Probe in archive %s aborted." %
+                            (self.objname, self.archive))
+
+
+class HeartbeatNoDecideMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.objname = kwargs["objname"]
+        self.heartbeat = kwargs["heartbeat"]
+        self.logger.warning("Object '%s' already handled; aborting."
+                            % self.objname)
+
+
 class LiveInfoUpdateMessage(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)

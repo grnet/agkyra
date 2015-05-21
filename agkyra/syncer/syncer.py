@@ -120,12 +120,15 @@ class FileSyncer(object):
             if beat is not None:
                 if utils.younger_than(
                         beat["tstamp"], self.settings.action_max_wait):
-                    logger.warning("Object '%s' is being synced; "
-                                   "Probe aborted." % objname)
+                    msg = messaging.HeartbeatNoProbeMessage(
+                        archive=archive, objname=objname, heartbeat=beat,
+                        logger=logger)
+                    self.messager.put(msg)
                     return
         if db_state.serial != ref_state.serial:
-            logger.warning("Serial mismatch in probing archive: %s, "
-                           "object: '%s'" % (archive, objname))
+            msg = messaging.AlreadyProbedMessage(
+                archive=archive, objname=objname, serial=serial, logger=logger)
+            self.messager.put(msg)
             return
         live_state = client.probe_file(objname, db_state, ref_state, ident)
         if live_state is not None:
@@ -202,8 +205,9 @@ class FileSyncer(object):
                 else:
                     if utils.younger_than(
                             beat["tstamp"], self.settings.action_max_wait):
-                        logger.warning("Object '%s' already handled; aborting."
-                                       % objname)
+                        msg = messaging.HeartbeatNoDecideMessage(
+                            objname=objname, heartbeat=beat, logger=logger)
+                        self.messager.put(msg)
                         return None
                     logger.warning("Ignoring previous run: %s %s" %
                                    (objname, beat))
