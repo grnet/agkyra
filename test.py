@@ -485,6 +485,50 @@ class AgkyraTest(unittest.TestCase):
         with self.assertRaises(common.BusyError):
             handle.hide_file()
 
+    def test_013_collisions(self):
+        fil = "f013"
+        f_path = self.get_path(fil)
+        with open(f_path, "w") as f:
+            f.write("content")
+        self.s.probe_file(self.s.SLAVE, fil)
+        self.assert_message(messaging.UpdateMessage)
+
+        r = self.pithos.upload_from_string(fil, "new")
+        self.s.decide_file_sync(fil)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.CollisionMessage)
+        self.assert_message(messaging.SyncErrorMessage)
+
+        d = "d013"
+        d_path = self.get_path(d)
+        os.mkdir(d_path)
+        self.s.probe_file(self.s.SLAVE, d)
+        self.assert_message(messaging.UpdateMessage)
+
+        r = self.pithos.upload_from_string(d, "new")
+        self.s.decide_file_sync(d)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.CollisionMessage)
+        self.assert_message(messaging.SyncErrorMessage)
+
+        d_synced = "d013_s"
+        d_synced_path = self.get_path(d_synced)
+        os.mkdir(d_synced_path)
+        self.s.probe_file(self.s.SLAVE, d_synced)
+        self.assert_message(messaging.UpdateMessage)
+        self.s.decide_file_sync(d_synced)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.AckSyncMessage)
+
+        os.rmdir(d_synced_path)
+        self.s.probe_file(self.s.SLAVE, d_synced)
+        self.assert_message(messaging.UpdateMessage)
+
+        r = self.pithos.upload_from_string(d_synced, "new")
+        self.s.decide_file_sync(d_synced)
+        self.assert_message(messaging.SyncMessage)
+        self.assert_message(messaging.CollisionMessage)
+        self.assert_message(messaging.SyncErrorMessage)
 
 if __name__ == '__main__':
     unittest.main()
