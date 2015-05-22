@@ -202,8 +202,9 @@ class FileSyncer(object):
                         (objname, beat))
             if beat is not None:
                 if beat["ident"] == ident:
-                    logger.info("Found heartbeat with current ident %s"
-                                % ident)
+                    msg = messaging.HeartbeatReplayDecideMessage(
+                        objname=objname, heartbeat=beat, logger=logger)
+                    self.messager.put(msg)
                 else:
                     if utils.younger_than(
                             beat["tstamp"], self.settings.action_max_wait):
@@ -231,9 +232,9 @@ class FileSyncer(object):
                         "does not match any archive." %
                         (decision_serial, objname))
             else:
-                logger.warning(
-                    "Ignoring failed decision for: '%s', decision: %s" %
-                    (objname, decision_serial))
+                msg = messaging.FailedSyncIgnoreDecisionMessage(
+                    objname=objname, serial=decision_serial, logger=logger)
+                self.messager.put(msg)
 
         if master_serial > sync_serial:
             if master_serial == decision_serial:  # this is a failed serial

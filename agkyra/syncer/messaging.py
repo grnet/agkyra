@@ -50,6 +50,15 @@ class UpdateMessage(Message):
                          (self.archive, self.objname, self.serial))
 
 
+class IgnoreProbeMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.archive = kwargs["archive"]
+        self.objname = kwargs["objname"]
+        self.logger.warning("Ignoring probe archive: %s, object: %s" %
+                            (self.archive, self.objname))
+
+
 class AlreadyProbedMessage(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
@@ -78,6 +87,25 @@ class HeartbeatNoDecideMessage(Message):
         self.heartbeat = kwargs["heartbeat"]
         self.logger.warning("Object '%s' already handled; aborting."
                             % self.objname)
+
+
+class HeartbeatReplayDecideMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.objname = kwargs["objname"]
+        self.heartbeat = kwargs["heartbeat"]
+        self.logger.info("Found heartbeat with current ident %s"
+                         % self.heartbeat["ident"])
+
+
+class FailedSyncIgnoreDecisionMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.objname = kwargs["objname"]
+        self.serial = kwargs["serial"]
+        self.logger.warning(
+            "Ignoring failed decision for: '%s', decision: %s" %
+            (self.objname, self.serial))
 
 
 class LiveInfoUpdateMessage(Message):

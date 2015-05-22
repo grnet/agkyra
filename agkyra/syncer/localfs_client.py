@@ -574,8 +574,9 @@ class LocalfsFileClient(FileClient):
                 cached_info = None
 
         if self.exclude_file(objname):
-            logger.warning("Ignoring probe archive: %s, object: %s" %
-                           (old_state.archive, objname))
+            msg = messaging.IgnoreProbeMessage(
+                archive=old_state.archive, objname=objname, logger=logger)
+            self.settings.messager.put(msg)
             return
 
         live_info = (self._local_path_changes(objname, old_state)
