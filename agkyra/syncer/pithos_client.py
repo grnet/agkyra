@@ -183,8 +183,7 @@ class PithosTargetHandle(object):
         del_name = self.mk_del_name(objname, etag)
         logger.info("Moving temporarily to '%s'" % del_name)
         self._move_object(objname, etag, del_name)
-        self.endpoint.del_object(del_name)
-        logger.info("Deleted tmp '%s'" % del_name)
+        self._del_object(del_name)
 
     def _move_object(self, objname, etag, del_name):
         container = self.endpoint.container
@@ -196,6 +195,16 @@ class PithosTargetHandle(object):
         except ClientError as e:
             if e.status == 404:
                 logger.warning("'%s' not found; already moved?" % objname)
+            else:
+                raise
+
+    def _del_object(self, del_name):
+        try:
+            self.endpoint.del_object(del_name)
+            logger.info("Deleted tmp '%s'" % del_name)
+        except ClientError as e:
+            if e.status == 404:
+                logger.warning("'%s' not found; already deleted?" % del_name)
             else:
                 raise
 
