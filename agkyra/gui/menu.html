@@ -23,8 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
-var DEBUG = true;
-
 // Setup GUI
 var windows = {
   "settings": null,
@@ -76,7 +74,7 @@ var local_folder_menu = new gui.MenuItem({
   enabled: false,
   click: function () {
     var dir = globals['settings']['directory'];
-    if (DEBUG) console.log('Open ' + dir);
+    log_debug('Open ' + dir);
     gui.Shell.showItemInFolder(dir);
   }
 })
@@ -87,7 +85,7 @@ var pithos_page_menu = new gui.MenuItem({
   icon: 'static/images/pithos.png',
   enabled: false,
   click: function () {
-    if (DEBUG) console.log('Visit ' + get_pithos_ui());
+    log_debug('Visit ' + get_pithos_ui());
     gui.Shell.openExternal(get_pithos_ui());
   }
 });
@@ -109,11 +107,11 @@ var settings_menu = new gui.MenuItem({
       width: 860, height: 620
     });
     windows['settings'].on('closed', function() {
-      if (DEBUG) console.log('Settings windows is closed');
+      log_debug('Settings windows is closed');
       var new_settings = import_settings();
       $.each(new_settings, function(key, setting) {
         if (old_settings[key] !== setting) {
-          if (DEBUG) console.log('Settings have been modified - updating...');
+          log_debug('Settings have been modified - updating...');
           put_settings(socket, new_settings);
           get_status(socket);
           get_settings(socket);

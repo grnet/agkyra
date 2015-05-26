@@ -21,6 +21,8 @@ var DEBUG = true;
 var fs = require('fs');
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
 
+function log_debug(msg) { if (DEBUG) console.log(msg); }
+
 function send_json(socket, msg) {
   socket.send(JSON.stringify(msg));
 }
@@ -46,16 +48,20 @@ function post_ui_id(socket) {
 
 function post_shutdown(socket) {
   send_json(socket, {'method': 'post', 'path': 'shutdown'});
+  log_debug('Close all windows');
   closeWindows();
+  log_debug('Close socket');
+  socket.close();
+  log_debug('Shutdown is complete');
 } // expected response: nothing
 
 function post_pause(socket) {
-  if (DEBUG) console.log('SEND post pause');
+  log_debug('SEND post pause');
   send_json(socket, {'method': 'post', 'path': 'pause'});
 } // expected response: {"OK": 200}
 
 function post_start(socket) {
-  if (DEBUG) console.log('SEND post start');
+  log_debug('SEND post start');
   send_json(socket, {'method': 'post', 'path': 'start'});
 } // expected response: {"OK": 200}
 
@@ -77,12 +83,12 @@ function get_status(socket) {
 // Connect to helper
 var socket = new WebSocket(cnf['address']);
 socket.onopen = function() {
-  if (DEBUG) console.log('Send GUI ID to helper');
+  log_debug('Send GUI ID to helper');
   post_ui_id(this);
 }
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
-  if (DEBUG) console.log('RECV: ' + r['action'])
+  log_debug('RECV: ' + r['action'])
   switch(r['action']) {
     case 'post ui_id':
       if (r['ACCEPTED'] === 202) {
@@ -91,28 +97,28 @@ socket.onmessage = function(e) {
         globals.authenticated = true;
         globals.just_opened = true;
       } else {
-        if (DEBUG) console.log('Helper: ' + JSON.stringify(r));
+        log_debug('Helper: ' + JSON.stringify(r));
         closeWindows();
       }
     break;
     case 'post start':
     case 'post pause':
-      if (DEBUG) console.log('RECV ' + r['OK']);
+      log_debug('RECV ' + r['OK']);
       if (r['OK'] === 200) {
         get_status(this);
       } else {
-        if (DEBUG) console.log('Helper: ' + JSON.stringify(r));
+        log_debug('Helper: ' + JSON.stringify(r));
       }
     break;
     case 'get settings':
-      if (DEBUG) console.log(r);
+      log_debug(r);
       globals['settings'] = r;
     break;
     case 'put settings':
       if (r['CREATED'] === 201) {
         get_settings(this);
       } else {
-        if (DEBUG) console.log('Helper: ' + JSON.stringify(r));
+        log_debug('Helper: ' + JSON.stringify(r));
       }
     break;
     case 'get status':
@@ -132,6 +138,6 @@ socket.onerror = function (e) {
     closeWindows();
 }
 socket.onclose = function() {
-    if (DEBUG) console.log('Connection to helper closed');
+    log_debug('Connection to helper closed');
     closeWindows();
 }

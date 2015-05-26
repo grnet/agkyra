@@ -14,5 +14,6 @@
     }],
   "licences": [{"type": "GPLv3"}],
   "page-cache": false,
-  "chromium-args": "--disable-setuid-sandbox"
+  "chromium-args": "--disable-setuid-sandbox",
+  "single-instance": true
 }

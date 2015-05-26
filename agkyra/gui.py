@@ -60,12 +60,23 @@ class GUI(WebSocketBaseClient):
         os.write(f, json.dumps(session))
         os.close(f)
 
+    def clean_exit(self):
+        """Clean up tracks of GUI"""
+        try:
+            os.remove(self.session_file)
+            LOG.debug('Removed GUI session file')
+        except Exception as e:
+            LOG.warning('While cleaning GUI: %s' % e)
+        self.close()
+
     def handshake_ok(self):
         """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""
         LOG.debug('Protocol server is UP, running GUI')
-        subprocess.call([self.nw, self.gui_code, self.session_file])
+        try:
+            subprocess.call([self.nw, self.gui_code, self.session_file])
+        finally:
+            self.clean_exit()
         LOG.debug('GUI finished, close GUI wrapper connection')
-        self.close()
 
 
 def run():
@@ -81,7 +92,7 @@ def run():
         gui.start()
     except KeyboardInterrupt:
         LOG.info('Shutdown GUI')
-        gui.close()
+        gui.clean_exit()
     LOG.info('Shutdown SessionHelper server')
     helper.shutdown()
 

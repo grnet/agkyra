@@ -113,7 +113,7 @@ class WebSocketProtocol(WebSocket):
 
     -- INTERRNAL HANDSAKE --
     GUI: {"method": "post", "ui_id": <GUI ID>}
-    HELPER: {"ACCEPTED": 202, "method": "post"}" or
+    HELPER: {"ACCEPTED": 202, "action": "post ui_id"}" or
         "{"REJECTED": 401, "action": "post ui_id"}
 
     -- SHUT DOWN --
@@ -224,7 +224,8 @@ class WebSocketProtocol(WebSocket):
         except Exception:
             self.settings['url'] = None
 
-        for option in ('container', 'directory', 'exclude'):
+        # for option in ('container', 'directory', 'exclude'):
+        for option in ('container', 'directory'):
             try:
                 self.settings[option] = self.cnf.get_sync(sync, option)
             except KeyError:
@@ -257,7 +258,8 @@ class WebSocketProtocol(WebSocket):
         self.cnf.set_cloud(cloud, 'token', self.settings['token'] or '')
         self.cnf.set_sync(sync, 'cloud', cloud)
 
-        for option in ('directory', 'container', 'exclude'):
+        # for option in ('directory', 'container', 'exclude'):
+        for option in ('directory', 'container'):
             self.cnf.set_sync(sync, option, self.settings[option] or '')
 
         self.cnf.write()
