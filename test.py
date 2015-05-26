@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from agkyra.syncer.setup import SyncerSettings
-from agkyra.syncer.localfs_client import LocalfsFileClient, LocalfsTargetHandle
+from agkyra.syncer import localfs_client
 from agkyra.syncer.pithos_client import PithosFileClient
 from agkyra.syncer.syncer import FileSyncer
 import agkyra.syncer.syncer
@@ -88,7 +88,7 @@ class AgkyraTest(unittest.TestCase):
             ignore_ssl=True)
 
         cls.master = PithosFileClient(cls.settings)
-        cls.slave = LocalfsFileClient(cls.settings)
+        cls.slave = localfs_client.LocalfsFileClient(cls.settings)
         cls.s = FileSyncer(cls.settings, cls.master, cls.slave)
         cls.pithos = cls.master.endpoint
         cls.pithos.create_container(cls.ID)
@@ -618,7 +618,7 @@ class AgkyraTest(unittest.TestCase):
             f.write("content")
 
         state = self.db.get_state(self.s.SLAVE, fil)
-        handle = LocalfsTargetHandle(self.s.settings, state)
+        handle = localfs_client.LocalfsTargetHandle(self.s.settings, state)
         hidden_filename = utils.join_path(
             handle.cache_hide_name, utils.hash_string(handle.objname))
         hidden_path = handle.get_path_in_cache(hidden_filename)
@@ -686,6 +686,99 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
+
+    def test_014_staging(self):
+        fil = "f014"
+        d = "d014"
+        fln = "f014.link"
+        f_path = self.get_path(fil)
+        with open(f_path, "w") as f:
+            f.write("content")
+        fln_path = self.get_path(fln)
+        os.symlink(f_path, fln_path)
+        d_path = self.get_path(d)
+        os.mkdir(d_path)
+
+        self.s.probe_file(self.s.SLAVE, fil)
+        self.assert_message(messaging.UpdateMessage)
+        state = self.db.get_state(self.s.SLAVE, fil)
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        staged_path = handle.staged_path
+        self.assertTrue(localfs_client.files_equal(f_path, staged_path))
+        handle.unstage_file()
+        self.assertFalse(os.path.exists(staged_path))
+
+        with open(f_path, "w") as f:
+            f.write("content new")
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        self.assert_message(messaging.LiveInfoUpdateMessage)
+        self.assertTrue(localfs_client.files_equal(f_path, staged_path))
+        handle.unstage_file()
+
+        f = open(f_path, "r")
+        with self.assertRaises(common.OpenBusyError):
+            handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+
+        ftmp_path = self.get_path("f014tmp")
+        with open(ftmp_path, "w") as f:
+            f.write("tmp")
+        os.unlink(f_path)
+        os.symlink(ftmp_path, f_path)
+        state = self.db.get_state(self.s.SLAVE, fil)
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        self.assert_message(messaging.LiveInfoUpdateMessage)
+        self.assertIsNone(handle.staged_path)
+
+        self.s.probe_file(self.s.SLAVE, fln)
+        self.assert_message(messaging.UpdateMessage)
+        state = self.db.get_state(self.s.SLAVE, fln)
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        self.assertIsNone(handle.staged_path)
+
+        os.unlink(fln_path)
+        with open(fln_path, "w") as f:
+            f.write("reg file")
+
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        self.assertIsNone(handle.staged_path)
+
+        # try to stage now
+        handle.stage_file()
+        self.assert_message(messaging.LiveInfoUpdateMessage)
+        self.assertTrue(localfs_client.files_equal(
+            fln_path, handle.staged_path))
+        handle.unstage_file()
+
+        fmissing = "fmissing014"
+        fmissing_path = self.get_path(fmissing)
+        self.s.probe_file(self.s.SLAVE, fmissing)
+        state = self.db.get_state(self.s.SLAVE, fmissing)
+        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        self.assertIsNone(handle.staged_path)
+
+        with open(fmissing_path, "w") as f:
+            f.write("ref file")
+
+        handle.copy_file()
+        self.assertIsNotNone(handle.staged_path)
+        live_info = localfs_client.get_live_info(handle.fspath)
+        handle.check_staged(live_info)
+
+        with open(fmissing_path, "w") as f:
+            f.write("ref file2")
+        with self.assertRaises(common.ChangedBusyError):
+            handle.check_staged(live_info)
+
+        # turn it into a dir
+        os.unlink(fmissing_path)
+        os.mkdir(fmissing_path)
+        handle.copy_file()
+        with self.assertRaises(common.NotStableBusyError):
+            handle.check_staged(live_info)
+
+        # info of dir
+        live_info = localfs_client.get_live_info(handle.fspath)
+        handle.check_staged(live_info)
 
 
 if __name__ == '__main__':

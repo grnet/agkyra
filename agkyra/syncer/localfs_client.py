@@ -20,6 +20,7 @@ import datetime
 import psutil
 import time
 import filecmp
+import shutil
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -41,8 +42,9 @@ LOCAL_OTHER = 5
 OS_FILE_EXISTS = 17
 OS_NOT_A_DIR = 20
 OS_NO_FILE_OR_DIR = 2
+OS_IS_DIR = 21
 
-DEFAULT_MTIME_PRECISION = 1e-7
+DEFAULT_MTIME_PRECISION = 1e-4
 
 exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
 exclude_pattern = re.compile('|'.join(exclude_regexes))
@@ -104,7 +106,12 @@ def eq_float(f1, f2):
 
 def files_equal(f1, f2):
     logger.debug("Comparing files: '%s', '%s'" % (f1, f2))
-    return filecmp.cmp(f1, f2, shallow=False)
+    try:
+        return filecmp.cmp(f1, f2, shallow=False)
+    except OSError as e:
+        if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
+            return False
+        raise
 
 
 def info_is_unhandled(info):
@@ -190,6 +197,10 @@ def _get_local_status_from_stats(stats, path):
 def path_status(path):
     stats, status = get_local_status(path)
     return status
+
+
+def info_of_regular_file(info):
+    return info and info[LOCALFS_TYPE] == common.T_FILE
 
 
 def is_info_eq(info1, info2, unhandled_equal=True):
@@ -379,11 +390,11 @@ class LocalfsSourceHandle(object):
     def get_path_in_cache(self, name):
         return utils.join_path(self.cache_path, name)
 
-    def lock_file(self):
+    def copy_file(self):
         fspath = self.fspath
         if file_is_open(fspath):
-            raise common.BusyError("File '%s' is open. Aborting"
-                                   % fspath)
+            raise common.OpenBusyError("File '%s' is open. Aborting"
+                                       % fspath)
         new_registered = self.register_stage_name(fspath)
         stage_filename = self.stage_filename
         stage_path = self.staged_path
@@ -398,31 +409,53 @@ class LocalfsSourceHandle(object):
 
         logger.info("Staging file '%s' to '%s'" % (self.objname, stage_path))
         try:
-            os.rename(fspath, stage_path)
-        except OSError as e:
-            if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
-                logger.info("Source does not exist: '%s'" % fspath)
+            shutil.copy2(fspath, stage_path)
+        except IOError as e:
+            if e.errno in [OS_NO_FILE_OR_DIR, OS_IS_DIR]:
+                logger.info("Source is not a regural file: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
                 return
             else:
                 raise e
 
     def stage_file(self):
-        self.lock_file()
-        if self.staged_path is not None:
-            if file_is_open(self.staged_path):
-                os.rename(self.staged_path, self.fspath)
-                self.unregister_stage_name(self.stage_filename)
-                logger.warning("File '%s' is open; unstaged" % self.objname)
-                raise common.BusyError("File '%s' is open. Undoing" %
-                                       self.staged_path)
+        self.copy_file()
+        live_info = get_live_info(self.fspath)
+        print "live_info =", self.objname, live_info
+        self.check_staged(live_info)
+        self.check_update_source_state(live_info)
 
-            if path_status(self.staged_path) != LOCAL_FILE:
-                os.rename(self.staged_path, self.fspath)
-                self.unregister_stage_name(self.stage_filename)
-                logger.warning("Object '%s' is not a regular file; unstaged" %
-                               self.objname)
-        self.check_update_source_state()
+    def check_staged(self, live_info):
+        is_reg = info_of_regular_file(live_info)
+        print "is_reg", self.objname, is_reg
+
+        if self.staged_path is None:
+            if is_reg:
+                m = ("File '%s' is not in a stable state; unstaged"
+                     % self.objname)
+                logger.warning(m)
+                raise common.NotStableBusyError(m)
+            return
+
+        if not is_reg:
+            os.unlink(self.staged_path)
+            self.unregister_stage_name(self.stage_filename)
+            logger.warning("Path '%s' is not a regular file; unstaged")
+            return
+
+        if file_is_open(self.fspath):
+            os.unlink(self.staged_path)
+            self.unregister_stage_name(self.stage_filename)
+            m = "File '%s' is open; unstaged" % self.objname
+            logger.warning(m)
+            raise common.OpenBusyError(m)
+
+        if not files_equal(self.staged_path, self.fspath):
+            os.unlink(self.staged_path)
+            self.unregister_stage_name(self.stage_filename)
+            m = "File '%s' contents have changed; unstaged" % self.objname
+            logger.warning(m)
+            raise common.ChangedBusyError(m)
 
     def __init__(self, settings, source_state):
         self.settings = settings
@@ -438,7 +471,7 @@ class LocalfsSourceHandle(object):
         self.stage_filename = None
         self.staged_path = None
         self.heartbeat = settings.heartbeat
-        if self.needs_staging():
+        if info_of_regular_file(self.source_state.info):
             self.stage_file()
 
     @transaction()
@@ -446,10 +479,8 @@ class LocalfsSourceHandle(object):
         db = self.get_db()
         db.put_state(state)
 
-    def check_update_source_state(self):
-        live_info = local_path_changes(
-            self.staged_path, self.source_state)
-        if live_info is not None:
+    def check_update_source_state(self, live_info):
+        if not is_info_eq(live_info, self.source_state.info):
             msg = messaging.LiveInfoUpdateMessage(
                 archive=self.SIGNATURE, objname=self.objname,
                 info=live_info, logger=logger)
@@ -460,10 +491,6 @@ class LocalfsSourceHandle(object):
 
     def get_synced_state(self):
         return self.source_state
-
-    def needs_staging(self):
-        info = self.source_state.info
-        return info and info[LOCALFS_TYPE] == common.T_FILE
 
     def info_is_dir(self):
         try:
@@ -488,11 +515,7 @@ class LocalfsSourceHandle(object):
         if self.stage_filename is None:
             return
         staged_path = self.staged_path
-        try:
-            link_file(staged_path, self.fspath)
-            os.unlink(staged_path)
-        except common.ConflictError:
-            self.stash_staged_file()
+        os.unlink(staged_path)
         self.unregister_stage_name(self.stage_filename)
 
 

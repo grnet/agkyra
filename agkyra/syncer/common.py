@@ -43,6 +43,18 @@ class BusyError(SyncError):
     pass
 
 
+class NotStableBusyError(BusyError):
+    pass
+
+
+class OpenBusyError(BusyError):
+    pass
+
+
+class ChangedBusyError(BusyError):
+    pass
+
+
 class ConflictError(SyncError):
     pass
 
