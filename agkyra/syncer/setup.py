@@ -168,7 +168,22 @@ class SyncerSettings():
             raise
         try:
             account = astakos.user_info['id']
-            return PithosClient(PITHOS_URL, token, account, container)
+            client = PithosClient(PITHOS_URL, token, account, container)
         except ClientError:
             logger.error("Failed to initialize Pithos client")
             raise
+        try:
+            client.get_container_info(container)
+        except ClientError as e:
+            if e.status == 404:
+                logger.warning("Container '%s' does not exist, creating..."
+                               % container)
+                try:
+                    client.create_container(container)
+                except ClientError:
+                    logger.error("Failed to create container '%s'" % container)
+                    raise
+            else:
+                raise
+
+        return client
