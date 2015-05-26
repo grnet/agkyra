@@ -421,13 +421,11 @@ class LocalfsSourceHandle(object):
     def stage_file(self):
         self.copy_file()
         live_info = get_live_info(self.fspath)
-        print "live_info =", self.objname, live_info
         self.check_staged(live_info)
         self.check_update_source_state(live_info)
 
     def check_staged(self, live_info):
         is_reg = info_of_regular_file(live_info)
-        print "is_reg", self.objname, is_reg
 
         if self.staged_path is None:
             if is_reg:
