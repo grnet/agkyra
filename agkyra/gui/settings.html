@@ -36,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             var fs = require('fs');
             var exclude = null;
             $(document).ready(function() {
-                var url = get_setting('url');
+                var url = get_setting('url').replace(/\/+$/, '');
                 if (url) $('#cloud-url').val(url);
                 settings['url'] = url;
                 var token = get_setting('token');
@@ -113,12 +113,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             }
 
             function check_cloud_url() {
-                if(!$('#cloud-url').val()) {
+                var url = $('#cloud-url').val().replace(/\/+$/, '');
+                if(!url) {
                     $('#cloud-error small').text(errors.cloud_url_empty);
                     $('#cloud-error').addClass('error');
                     return false;
                 } else {
-                    refresh_endpoints($('#cloud-url').val());
+                    refresh_endpoints(url);
                     if (!get_pithos_ui()) {
                         $('#cloud-error small').text(errors.cloud_inaccessible
                             + ' [' + get_url_error() + ']');
@@ -136,8 +137,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     $('#token-error').addClass('error');
                     return false;
                 } else{
-                    if (get_pithos_ui() && $('#cloud-url').val()) {
-                        check_auth($('#cloud-url').val(), $('#token').val());
+                    var url = $('#cloud-url').val().replace(/\/+$/, '');
+                    if (get_pithos_ui() && url) {
+                        check_auth(url, $('#token').val());
                         var auth_error = get_auth_error();
                         if (auth_error) {
                             $('#token-error small').text(
@@ -207,8 +209,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         </div>
                         <div class="small-9 columns" id="cloud-error">
                             <input type="text" id="cloud-url" placeholder="Authentication URL"
-                            onchange="settings['url'] = $(this).val();
-                            refresh_endpoints($(this).val()); check_cloud_url();">
+                            onchange="
+                            var identity_url = $(this).val().replace(/\/+$/, '');
+                            settings['url'] = identity_url;                            refresh_endpoints(identity_url);
+                            check_cloud_url();">
                             <small>Invalid entry</small>
                         </div>
                     </div>
