@@ -378,13 +378,15 @@ class WebSocketProtocol(WebSocket):
         """Stop server heart, empty DB and exit"""
         LOG.debug('Stop protocol heart')
         self.heart.stop()
+        self.clean_db()
+
+    def clean_db(self):
+        """Clean DB from session traces"""
         LOG.debug('Remove session traces')
         self.db = sqlite3.connect(self.session_db)
         self.db.execute('BEGIN')
         self.db.execute('DELETE FROM %s' % self.session_relation)
         self.db.commit()
-        self.db.close()
-        LOG.debug('Helper: connection closed')
 
     def send_json(self, msg):
         LOG.debug('send: %s' % msg)
