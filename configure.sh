@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/bin/bash
 # Copyright (C) 2015 GRNET S.A.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,21 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
+CURPWD=$(pwd)
+cd "$(dirname "$0")"
+ROOTPATH=$(pwd)
 
-from agkyra import config
-AGKYRA_DIR = config.AGKYRA_DIR
-
-import logging
-LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
-LOGGER = logging.getLogger('agkyra')
-HANDLER = logging.FileHandler(LOGFILE)
-FORMATTER = logging.Formatter("%(levelname)s:%(asctime)s:%(message)s")
-HANDLER.setFormatter(FORMATTER)
-LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.INFO)
-
-# run cli
-from agkyra.cli import AgkyraCLI
-from sys import argv
-AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
+./get_nwjs.sh $1
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+echo "Now run 'python setup.py install'."

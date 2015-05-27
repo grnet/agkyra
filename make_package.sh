@@ -16,48 +16,35 @@
 
 CURPWD=$(pwd)
 cd "$(dirname "$0")"
+ROOTPATH=$(pwd)
 
-declare -A nwjsfile
-nwjsfile[win64]="nwjs-v0.12.1-win-x64.zip"
-nwjsfile[osx64]="nwjs-v0.12.1-osx-x64.zip"
-nwjsfile[linux64]="nwjs-v0.12.1-linux-x64.tar.gz"
-nwjsfile[win32]="nwjs-v0.12.1-win-ia32.zip"
-nwjsfile[osx32]="nwjs-v0.12.1-osx-ia32.zip"
-nwjsfile[linux32]="nwjs-v0.12.1-linux-ia32.tar.gz"
-
-if [[ -z $1 ]]; then
-    echo "Select one of:" ${!nwjsfile[@]}
-    exit
+os=$1
+./get_nwjs.sh $os
+if [ $? -ne 0 ]; then
+    exit 1
 fi
 
 ID=agkyra-$(date +%s)
 TMPDIR=/tmp/$ID
 TMPAGKYRA=$TMPDIR/agkyra
 mkdir -p $TMPAGKYRA
+WHEELHOUSE=$TMPAGKYRA/wheelhouse
 
-cp launch $TMPAGKYRA
-cp README.md $TMPAGKYRA
-cp COPYING $TMPAGKYRA
-git ls-files agkyra | xargs cp --parents -t $TMPAGKYRA
-
-cd $TMPAGKYRA/agkyra/gui
-zip -r ../gui.nw .
-cd .. && rm -r gui
-
-os=$1
-file=${nwjsfile[$os]}
-url="http://dl.nwjs.io/v0.12.1/"$file
-
-cd $TMPAGKYRA/agkyra
-wget $url
-if [[ "$os" =~ ^(linux64|linux32)$ ]]; then
-    mkdir nwjs
-    tar xzf $file --strip-components 1 -C nwjs
-else
-    unzip -d nwjs "$file" && f=(nwjs/*) && mv nwjs/*/* nwjs && rmdir "${f[@]}"
+cd $ROOTPATH/src
+pip wheel . -w $WHEELHOUSE
+if [ $? -ne 0 ]; then
+    exit 1
 fi
 
-rm $file
+cd $WHEELHOUSE
+for i in *; do unzip $i -d $TMPAGKYRA/lib; done
+cd $TMPAGKYRA
+rm -r $WHEELHOUSE
+
+cp $ROOTPATH/COPYING $TMPAGKYRA
+cp $ROOTPATH/README.md $TMPAGKYRA
+cp $ROOTPATH/agkyra/scripts/gui.py $TMPAGKYRA/agkyra
+cp $ROOTPATH/agkyra/scripts/cli.py $TMPAGKYRA/agkyra-cli
 
 cd $TMPDIR
 ARCHIVENAME=$CURPWD/agkyra-snapshot-${os}

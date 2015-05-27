@@ -16,6 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
+
+PATH = os.path.dirname(os.path.realpath(__file__))
+LIBPATH = os.path.join(PATH, "lib")
+
+sys.path.append(LIBPATH)
 
 from agkyra import config
 AGKYRA_DIR = config.AGKYRA_DIR
@@ -29,6 +35,12 @@ HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
 LOGGER.setLevel(logging.DEBUG)
 
-# # run GUI
-from agkyra import gui
-gui.run()
+
+def main():
+    from agkyra.cli import AgkyraCLI
+    from sys import argv
+    AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
+
+
+if __name__ == "__main__":
+    main()
