@@ -129,7 +129,7 @@ socket.onmessage = function(e) {
       }
     break;
     default:
-      console.log('Incomprehensible response ' + r);
+      console.log('Incomprehensible response ' + JSON.stringify(r));
   }
 
 };

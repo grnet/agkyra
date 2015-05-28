@@ -36,8 +36,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             var fs = require('fs');
             var exclude = null;
             $(document).ready(function() {
-                var url = get_setting('url').replace(/\/+$/, '');
-                if (url) $('#cloud-url').val(url);
+                var url = get_setting('url')
+                if (url) {
+                    url = url.replace(/\/+$/, '');
+                    $('#cloud-url').val(url);
+                }
                 settings['url'] = url;
                 var token = get_setting('token');
                 if (token) $('#token').val(token);

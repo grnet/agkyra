@@ -235,35 +235,44 @@ class WebSocketProtocol(WebSocket):
 
     def _dump_settings(self):
         LOG.debug('Saving settings')
-        if not self.settings.get('url', None):
-            LOG.debug('No settings to save')
-            return
-
         sync = self._get_default_sync()
-        cloud = self._get_sync_cloud(sync)
+        changes = False
 
-        try:
-            old_url = self.cnf.get_cloud(cloud, 'url') or ''
-        except KeyError:
-            old_url = self.settings['url']
+        if not self.settings.get('url', None):
+            LOG.debug('No cloud settings to save')
+        else:
+            LOG.debug('Save cloud settings')
+            cloud = self._get_sync_cloud(sync)
 
-        while old_url != self.settings['url']:
-            cloud = '%s_%s' % (cloud, sync)
             try:
-                self.cnf.get_cloud(cloud, 'url')
+                old_url = self.cnf.get_cloud(cloud, 'url') or ''
             except KeyError:
-                break
+                old_url = self.settings['url']
 
-        self.cnf.set_cloud(cloud, 'url', self.settings['url'])
-        self.cnf.set_cloud(cloud, 'token', self.settings['token'] or '')
-        self.cnf.set_sync(sync, 'cloud', cloud)
+            while old_url and old_url != self.settings['url']:
+                cloud = '%s_%s' % (cloud, sync)
+                try:
+                    self.cnf.get_cloud(cloud, 'url')
+                except KeyError:
+                    break
 
+            LOG.debug('Cloud name is %s' % cloud)
+            self.cnf.set_cloud(cloud, 'url', self.settings['url'])
+            self.cnf.set_cloud(cloud, 'token', self.settings['token'] or '')
+            self.cnf.set_sync(sync, 'cloud', cloud)
+            changes = True
+
+        LOG.debug('Save sync settings, name is %s' % sync)
         # for option in ('directory', 'container', 'exclude'):
         for option in ('directory', 'container'):
             self.cnf.set_sync(sync, option, self.settings[option] or '')
+            changes = True
 
-        self.cnf.write()
-        LOG.debug('Settings saved')
+        if changes:
+            self.cnf.write()
+            LOG.debug('Settings saved')
+        else:
+            LOG.debug('No setting changes spotted')
 
     def _essentials_changed(self, new_settings):
         """Check if essential settings have changed in new_settings"""
@@ -340,6 +349,7 @@ class WebSocketProtocol(WebSocket):
         return self.settings
 
     def set_settings(self, new_settings):
+        """Set the settings and dump them to permanent storage if needed"""
         # Prepare setting save
         could_sync = self.can_sync()
         was_active = False
@@ -349,7 +359,7 @@ class WebSocketProtocol(WebSocket):
         must_reset_syncing = self._essentials_changed(new_settings)
 
         # save settings
-        self.settings = new_settings
+        self.settings.update(new_settings)
         self._dump_settings()
 
         # Restart

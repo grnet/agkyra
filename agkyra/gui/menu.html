@@ -110,6 +110,7 @@ var settings_menu = new gui.MenuItem({
       log_debug('Settings windows is closed');
       var new_settings = import_settings();
       $.each(new_settings, function(key, setting) {
+        log_debug('Compare ' + old_settings[key] + ' with ' + setting);
         if (old_settings[key] !== setting) {
           log_debug('Settings have been modified - updating...');
           put_settings(socket, new_settings);
