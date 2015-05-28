@@ -40,6 +40,7 @@ INSTALL_REQUIRES = [
     'watchdog',
     'psutil',
     'ws4py',
+    'certifi',
 ]
 
 EXTRAS_REQUIRES = {

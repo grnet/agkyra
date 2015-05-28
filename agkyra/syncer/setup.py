@@ -22,7 +22,7 @@ from agkyra.syncer.database import SqliteFileStateDB
 from agkyra.syncer.messaging import Messager
 from agkyra.syncer import utils
 
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, KamakiSSLError
 
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.pithos import PithosClient
@@ -48,6 +48,23 @@ thread_local_data = threading.local()
 def get_instance(elems):
     data = "".join(elems)
     return utils.hash_string(data)
+
+
+def ssl_fall_back(method):
+    """Catch an SSL error while executing a method, patch kamaki and retry"""
+    def wrap(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except KamakiSSLError as ssle:
+            logger.debug('Kamaki SSL failed %s' % ssle)
+            logger.info(
+                'Kamaki SSL failed, fall back to certifi (mozilla certs)')
+            import certifi
+            https.patch_with_certs(certifi.where())
+            return method(self, *args, **kwargs)
+    wrap.__name__ = method.__name__
+    wrap.__doc__ = method.__doc__
+    return wrap
 
 
 class SyncerSettings():
@@ -155,6 +172,7 @@ class SyncerSettings():
         os.mkdir(path)
         return path
 
+    @ssl_fall_back
     def _get_pithos_client(self, auth_url, token, container):
         try:
             astakos = AstakosClient(auth_url, token)
@@ -176,8 +194,8 @@ class SyncerSettings():
             client.get_container_info(container)
         except ClientError as e:
             if e.status == 404:
-                logger.warning("Container '%s' does not exist, creating..."
-                               % container)
+                logger.warning(
+                    "Container '%s' does not exist, creating..." % container)
                 try:
                     client.create_container(container)
                 except ClientError:
