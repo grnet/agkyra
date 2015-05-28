@@ -30,7 +30,6 @@ TMPAGKYRA=$TMPDIR/agkyra
 mkdir -p $TMPAGKYRA
 WHEELHOUSE=$TMPAGKYRA/wheelhouse
 
-cd $ROOTPATH/src
 pip wheel . -w $WHEELHOUSE
 if [ $? -ne 0 ]; then
     exit 1
