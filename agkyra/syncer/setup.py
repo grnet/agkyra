@@ -17,6 +17,8 @@ import os
 import threading
 import logging
 
+from functools import wraps
+
 from agkyra.syncer.utils import join_path, ThreadSafeDict
 from agkyra.syncer.database import SqliteFileStateDB
 from agkyra.syncer.messaging import Messager
@@ -52,6 +54,7 @@ def get_instance(elems):
 
 def ssl_fall_back(method):
     """Catch an SSL error while executing a method, patch kamaki and retry"""
+    @wraps(method)
     def wrap(self, *args, **kwargs):
         try:
             return method(self, *args, **kwargs)
@@ -62,8 +65,6 @@ def ssl_fall_back(method):
             import certifi
             https.patch_with_certs(certifi.where())
             return method(self, *args, **kwargs)
-    wrap.__name__ = method.__name__
-    wrap.__doc__ = method.__doc__
     return wrap
 
 
