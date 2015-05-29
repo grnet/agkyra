@@ -49,7 +49,7 @@ class SqliteFileStateDB(FileStateDB):
             self.init()
 
     def init(self):
-        logger.warning("Initializing DB '%s'" % self.dbname)
+        logger.info("Initializing DB '%s'" % self.dbname)
         db = self.db
 
         Q = ("create table if not exists "

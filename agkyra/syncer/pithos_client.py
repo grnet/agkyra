@@ -181,7 +181,7 @@ class PithosTargetHandle(object):
 
     def safe_object_del(self, objname, etag):
         del_name = self.mk_del_name(objname, etag)
-        logger.info("Moving temporarily to '%s'" % del_name)
+        logger.debug("Moving upstream temporarily to '%s'" % del_name)
         self._move_object(objname, etag, del_name)
         self._del_object(del_name)
 
@@ -194,17 +194,19 @@ class PithosTargetHandle(object):
                 if_etag_match=etag)
         except ClientError as e:
             if e.status == 404:
-                logger.warning("'%s' not found; already moved?" % objname)
+                logger.warning("Upstream '%s' not found; already moved?"
+                               % objname)
             else:
                 raise
 
     def _del_object(self, del_name):
         try:
             self.endpoint.del_object(del_name)
-            logger.info("Deleted tmp '%s'" % del_name)
+            logger.debug("Deleted upstream tmp '%s'" % del_name)
         except ClientError as e:
             if e.status == 404:
-                logger.warning("'%s' not found; already deleted?" % del_name)
+                logger.warning("Upstream '%s' not found; already deleted?"
+                               % del_name)
             else:
                 raise
 
@@ -227,11 +229,11 @@ class PithosTargetHandle(object):
         try:
             if source_handle.info_is_deleted_or_unhandled():
                 if etag is not None:
-                    logger.info("Deleting object '%s'" % self.target_objname)
+                    logger.debug("Deleting object '%s'" % self.target_objname)
                     self.safe_object_del(self.target_objname, etag)
                 live_info = {}
             elif source_handle.info_is_dir():
-                logger.info("Creating dir '%s'" % self.target_objname)
+                logger.debug("Creating dir '%s'" % self.target_objname)
                 r = self.directory_put(self.target_objname, etag)
                 synced_etag = r.headers["etag"]
                 live_info = {"pithos_etag": synced_etag,
@@ -334,8 +336,8 @@ class PithosFileClient(FileClient):
                              for name in newly_deleted_names)
 
         candidates.update(newly_deleted)
-        logger.info("Candidates since %s: %s" %
-                    (last_modified, candidates))
+        logger.debug("Candidates since %s: %s" %
+                     (last_modified, candidates))
         return candidates
 
     @transaction()

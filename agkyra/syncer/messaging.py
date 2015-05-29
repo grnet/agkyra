@@ -125,9 +125,8 @@ class SyncMessage(Message):
         self.archive = kwargs["archive"]
         self.serial = kwargs["serial"]
         self.info = kwargs["info"]
-        self.logger.info("Syncing archive: %s, object: '%s', serial: %s "
-                         "info: %s" %
-                         (self.archive, self.objname, self.serial, self.info))
+        self.logger.info("Syncing archive: %s, object: '%s', serial: %s"
+                         % (self.archive, self.objname, self.serial))
 
 
 class AckSyncMessage(Message):

@@ -273,12 +273,12 @@ class LocalfsTargetHandle(object):
                 return
         try:
             os.rename(fspath, hidden_path)
-            logger.info("Hiding file '%s' to '%s'" %
-                        (fspath, hidden_path))
+            logger.debug("Hiding file '%s' to '%s'" %
+                         (fspath, hidden_path))
         except OSError as e:
             if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
                 self.unregister_hidden_name(hidden_filename)
-                logger.info("File '%s' does not exist" % fspath)
+                logger.debug("File '%s' does not exist" % fspath)
                 return
             else:
                 raise e
@@ -329,7 +329,7 @@ class LocalfsTargetHandle(object):
         os.rename(self.hidden_path, stash_path)
 
     def finalize(self, filepath, live_info):
-        logger.info("Finalizing file '%s'" % filepath)
+        logger.debug("Finalizing file '%s'" % filepath)
         if live_info == {}:
             return
         if live_info[LOCALFS_TYPE] == common.T_FILE:
@@ -351,7 +351,7 @@ class LocalfsTargetHandle(object):
         status = path_status(filepath)
         if status == LOCAL_FILE:
             try:
-                logger.info("Cleaning up file '%s'" % filepath)
+                logger.debug("Cleaning up file '%s'" % filepath)
                 os.unlink(filepath)
             except:
                 pass
@@ -407,12 +407,12 @@ class LocalfsSourceHandle(object):
                                (self.objname, stage_path))
                 return
 
-        logger.info("Staging file '%s' to '%s'" % (self.objname, stage_path))
+        logger.debug("Staging file '%s' to '%s'" % (self.objname, stage_path))
         try:
             shutil.copy2(fspath, stage_path)
         except IOError as e:
             if e.errno in [OS_NO_FILE_OR_DIR, OS_IS_DIR]:
-                logger.info("Source is not a regural file: '%s'" % fspath)
+                logger.debug("Source is not a regular file: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
                 return
             else:
@@ -565,7 +565,7 @@ class LocalfsFileClient(FileClient):
         db_cands = dict((name, self.none_info())
                         for name in self.list_files())
         candidates.update(db_cands)
-        logger.info("Candidates: %s" % candidates)
+        logger.debug("Candidates: %s" % candidates)
         return candidates
 
     @transaction()
@@ -627,14 +627,14 @@ class LocalfsFileClient(FileClient):
                 path = event.src_path
                 if path.startswith(self.CACHEPATH):
                     return
-                logger.info("Handling %s" % event)
+                logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_deleted(this, event):
                 path = event.src_path
                 if path.startswith(self.CACHEPATH):
                     return
-                logger.info("Handling %s" % event)
+                logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_modified(this, event):
@@ -643,7 +643,7 @@ class LocalfsFileClient(FileClient):
                 path = event.src_path
                 if path.startswith(self.CACHEPATH):
                     return
-                logger.info("Handling %s" % event)
+                logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_moved(this, event):
@@ -652,7 +652,7 @@ class LocalfsFileClient(FileClient):
                 if src_path.startswith(self.CACHEPATH) or \
                         dest_path.startswith(self.CACHEPATH):
                     return
-                logger.info("Handling %s" % event)
+                logger.debug("Handling %s" % event)
                 handle_path(src_path)
                 handle_path(dest_path)
 

@@ -198,8 +198,7 @@ class FileSyncer(object):
 
         with self.heartbeat.lock() as hb:
             beat = hb.get(objname)
-            logger.info("object: %s heartbeat: %s" %
-                        (objname, beat))
+            logger.debug("object: %s heartbeat: %s" % (objname, beat))
             if beat is not None:
                 if beat["ident"] == ident:
                     msg = messaging.HeartbeatReplayDecideMessage(
@@ -332,9 +331,9 @@ class FileSyncer(object):
         source = synced_source_state.archive
         target = synced_target_state.archive
         tinfo = synced_target_state.info
-        logger.info("Acking archive: %s, object: '%s', serial: %s "
-                    "info: %s" %
-                    (target, objname, serial, tinfo))
+        logger.debug("Acking archive: %s, object: '%s', serial: %s "
+                     "info: %s" %
+                     (target, objname, serial, tinfo))
         decision_state = db.get_state(self.DECISION, objname)
         sync_state = db.get_state(self.SYNC, objname)
 
@@ -395,7 +394,7 @@ class FileSyncer(object):
             pass
 
     def decide_all_archives(self):
-        logger.info("Checking candidates to sync")
+        logger.debug("Checking candidates to sync")
         self.probe_all()
         self.decide_archive()
 
