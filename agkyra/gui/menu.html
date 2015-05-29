@@ -43,7 +43,6 @@ var menu = new gui.Menu();
 
 // Progress and Pause
 var start_syncing = 'Start Syncing';
-var start_icon = 'static/images/play.png';
 var pause_syncing = 'Pause Syncing';
 var paused = true;
 
@@ -210,20 +209,27 @@ window.setInterval(function() {
           menu_modified = true;
       }
     }
-    new_progress = status.synced + ' of ' + status.unsynced + ' synced';
+
+    var remaining = status.unsynced - status.synced;
+    if (status.paused){
+      if (remaining)
+        new_progress = 'Pausing, ' + remaining + ' remaining';
+      else new_progress = 'Paused';
+    } else {
+      if (remaining)
+        new_progress = 'Syncing, ' + remaining + ' remaining';
+      else new_progress = 'Running, all synced';
+    }
   }
   if (new_pause !== pause_item.label.slice(0, new_pause.length)) {
     pause_item.label = new_pause;
     menu_modified = true;
   }
-  if (new_progress !== progress_item.label.slice(0, new_progress.length)) {
+  if (new_progress !== progress_item.label) {
     progress_item.label = new_progress;
     menu_modified = true;
   }
-  if (menu_modified) {
-    if (paused) progress_item.label += ' - paused';
-    tray.menu = menu;
-  }
+  if (menu_modified) tray.menu = menu;
   get_status(socket);
 }, 1500);
 
