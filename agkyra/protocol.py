@@ -75,16 +75,17 @@ class SessionHelper(object):
         """Create session credentials"""
         ui_id = sha1(os.urandom(128)).hexdigest()
 
+        LOCAL_ADDR = '127.0.0.1'
         WebSocketProtocol.ui_id = ui_id
         WebSocketProtocol.session_db = self.session_db
         WebSocketProtocol.session_relation = self.session_relation
         server = make_server(
-            '', 0,
+            LOCAL_ADDR, 0,
             server_class=WSGIServer,
             handler_class=WebSocketWSGIRequestHandler,
             app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
         server.initialize_websockets_manager()
-        address = 'ws://%s:%s' % (server.server_name, server.server_port)
+        address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
         self.server = server
 
         self.db.execute('BEGIN')
