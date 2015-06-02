@@ -426,7 +426,7 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
             if self.can_sync():
                 self.init_sync()
-                self.pause_sync()
+                self.start_sync()
         else:
             action = r.get('path', 'ui_id')
             self.send_json({'REJECTED': 401, 'action': 'post %s' % action})
