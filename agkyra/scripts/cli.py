@@ -21,7 +21,7 @@ import sys
 PATH = os.path.dirname(os.path.realpath(__file__))
 LIBPATH = os.path.join(PATH, "lib")
 
-sys.path.append(LIBPATH)
+sys.path.insert(0, LIBPATH)
 
 from agkyra import config
 AGKYRA_DIR = config.AGKYRA_DIR
