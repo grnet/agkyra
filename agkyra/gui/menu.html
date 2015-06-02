@@ -97,6 +97,8 @@ var settings_menu = new gui.MenuItem({
   icon: 'static/images/settings.png',
   enabled: false,
   click: function () {
+    globals.settings_are_open = true;
+    globals.open_settings = false;
     export_settings(globals.settings);
     if (windows['settings']) windows['settings'].close();
     var old_settings = {};
@@ -107,6 +109,7 @@ var settings_menu = new gui.MenuItem({
     });
     windows['settings'].on('closed', function() {
       log_debug('Settings windows is closed');
+    globals.settings_are_open = false;
       var new_settings = import_settings();
       $.each(new_settings, function(key, setting) {
         log_debug('Compare ' + old_settings[key] + ' with ' + setting);
@@ -144,12 +147,33 @@ menu.append(new gui.MenuItem({
 }));
 
 
+function deactivate_menu() {
+  if (
+      pause_item.enabled ||
+      local_folder_menu.enabled ||
+      pithos_page_menu.enabled) {
+    progress_item.label = 'Settings window is open';
+    pause_item.enabled = false;
+    local_folder_menu.enabled = false;
+    pithos_page_menu.enabled = false;
+    tray.menu = menu;
+  }
+}
+
+
 // Update progress
 var client_ready = false;
 window.setInterval(function() {
+  if (globals.settings_are_open) {
+    deactivate_menu();
+    return;
+  }
+
   if (globals.open_settings) {
     globals.open_settings = false;
     settings_menu.click();
+    deactivate_menu();
+    return;
   }
 
   var menu_modified = false;
@@ -159,6 +183,7 @@ window.setInterval(function() {
   }
 
   if (client_ready) {
+    pause_item.enabled = (pause_item.label !== 'inactive');
     if (!settings_menu.enabled) {
       if (globals.settings.url) refresh_endpoints(globals.settings.url);
       settings_menu.enabled = true;
@@ -182,7 +207,7 @@ window.setInterval(function() {
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
   if (!status.can_sync) {
-    new_progress = 'Incomplete settings'
+    new_progress = 'Not able to sync'
     new_pause = 'inactive'
     pause_item.enabled = false;
   } else {

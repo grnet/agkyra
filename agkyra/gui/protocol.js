@@ -38,7 +38,8 @@ var globals = {
   status: {synced: 0, unsynced: 0, paused: null, can_sync: false},
   authenticated: false,
   just_opened: false,
-  open_settings: false
+  open_settings: false,
+  settings_are_open: false
 }
 
 // Protocol: requests ::: responses
@@ -89,6 +90,12 @@ socket.onopen = function() {
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
   log_debug('RECV: ' + r['action'])
+  if (globals.authenticated && r['UNAUTHORIZED'] === 401) {
+    log_debug('Authentication error (wrong token?)');
+    globals.open_settings = true;
+    return
+  }
+
   switch(r['action']) {
     case 'post ui_id':
       if (r['ACCEPTED'] === 202) {

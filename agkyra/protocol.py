@@ -117,6 +117,10 @@ class WebSocketProtocol(WebSocket):
     HELPER: {"ACCEPTED": 202, "action": "post ui_id"}" or
         "{"REJECTED": 401, "action": "post ui_id"}
 
+    -- ERRORS WITH SIGNIFICANCE --
+    If the token doesn't work:
+    HELPER: {"action": <action that caused the error>, "UNAUTHORIZED": 401}
+
     -- SHUT DOWN --
     GUI: {"method": "post", "path": "shutdown"}
 
@@ -325,19 +329,23 @@ class WebSocketProtocol(WebSocket):
             except KeyError:
                 pass
 
-        syncer_settings = setup.SyncerSettings(
-            self.settings['url'], self.settings['token'],
-            self.settings['container'], self.settings['directory'],
-            **kwargs)
-        master = pithos_client.PithosFileClient(syncer_settings)
-        slave = localfs_client.LocalfsFileClient(syncer_settings)
-        self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
-        self.syncer_settings = syncer_settings
-        self.syncer.initiate_probe()
+        try:
+            syncer_settings = setup.SyncerSettings(
+                self.settings['url'], self.settings['token'],
+                self.settings['container'], self.settings['directory'],
+                **kwargs)
+            master = pithos_client.PithosFileClient(syncer_settings)
+            slave = localfs_client.LocalfsFileClient(syncer_settings)
+            self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
+            self.syncer_settings = syncer_settings
+            self.syncer.initiate_probe()
+        except setup.ClientError:
+            self.syncer = None
+            raise
 
     # Syncer-related methods
     def get_status(self):
-        if self.can_sync():
+        if getattr(self, 'syncer', None) and self.can_sync():
             self._update_statistics()
             self.status['paused'] = self.syncer.paused
             self.status['can_sync'] = self.can_sync()
@@ -352,7 +360,7 @@ class WebSocketProtocol(WebSocket):
     def set_settings(self, new_settings):
         """Set the settings and dump them to permanent storage if needed"""
         # Prepare setting save
-        could_sync = self.can_sync()
+        could_sync = getattr(self, 'syncer', None) and self.can_sync()
         was_active = False
         if could_sync and not self.syncer.paused:
             was_active = True
@@ -367,7 +375,7 @@ class WebSocketProtocol(WebSocket):
         if self.can_sync():
             if must_reset_syncing or not could_sync:
                 self.init_sync()
-            elif was_active:
+            if was_active:
                 self.start_sync()
 
     def pause_sync(self):
@@ -421,9 +429,9 @@ class WebSocketProtocol(WebSocket):
             }[action]()
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['ui_id'] == self.ui_id:
-            self._load_settings()
             self.accepted = True
             self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
+            self._load_settings()
             if self.can_sync():
                 self.init_sync()
                 self.start_sync()
@@ -442,14 +450,16 @@ class WebSocketProtocol(WebSocket):
             self.send_json(r)
         else:
             action = r['path']
-            self.send_json({'UNAUTHORIZED': 401, 'action': 'put %s' % action})
+            self.send_json({
+                'UNAUTHORIZED UI': 401, 'action': 'put %s' % action})
             self.terminate()
 
     def _get(self, r):
         """Handle GET requests"""
         action = r.pop('path')
         if not self.accepted:
-            self.send_json({'UNAUTHORIZED': 401, 'action': 'get %s' % action})
+            self.send_json({
+                'UNAUTHORIZED UI': 401, 'action': 'get %s' % action})
             self.terminate()
         else:
             data = {
@@ -478,7 +488,14 @@ class WebSocketProtocol(WebSocket):
         except KeyError as ke:
             self.send_json({'BAD REQUEST': 400})
             LOG.error('KEY ERROR: %s' % ke)
+        except setup.ClientError as ce:
+            action = '%s %s' % (
+                method, r.get('path', 'ui_id' if 'ui_id' in r else ''))
+            self.send_json({'%s' % ce: ce.status, 'action': action})
+            return
         except Exception as e:
+            from traceback import print_stack
+            print_stack(e)
             self.send_json({'INTERNAL ERROR': 500})
             LOG.error('EXCEPTION: %s' % e)
             self.terminate()
