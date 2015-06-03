@@ -207,7 +207,8 @@ window.setInterval(function() {
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
   if (!status.can_sync) {
-    new_progress = 'Not able to sync'
+    if (globals.just_opened) new_progress = 'Connecting...'
+    else new_progress = 'Not able to sync'
     new_pause = 'inactive'
     pause_item.enabled = false;
   } else {

@@ -397,6 +397,7 @@ class WebSocketProtocol(WebSocket):
         """Stop server heart, empty DB and exit"""
         LOG.debug('Stop protocol heart')
         self.heart.stop()
+        LOG.debug('Clean database')
         self.clean_db()
 
     def clean_db(self):
