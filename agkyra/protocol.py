@@ -182,11 +182,12 @@ class WebSocketProtocol(WebSocket):
     def heartbeat(self):
         if not self.db:
             self.db = sqlite3.connect(self.session_db)
-        self.db.execute('BEGIN')
-        self.db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
-            self.session_relation, time.time(), self.ui_id))
-        self.db.commit()
-        time.sleep(2)
+        while True:
+            self.db.execute('BEGIN')
+            self.db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
+                self.session_relation, time.time(), self.ui_id))
+            self.db.commit()
+            time.sleep(2)
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
