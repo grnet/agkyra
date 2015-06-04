@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (C) 2015 GRNET S.A.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -46,12 +48,14 @@ class SessionHelper(object):
 
         LOG.debug('Connect to db')
         self.db = sqlite3.connect(self.session_db)
-        self._init_db_relation()
-        self.session = self._load_active_session() or self._create_session()
 
-        self.db.close()
+        self._init_db_relation()
+        # self.session = self._load_active_session() or self._create_session()
+
+        # self.db.close()
 
     def _init_db_relation(self):
+        """Create the session relation"""
         self.db.execute('BEGIN')
         self.db.execute(
             'CREATE TABLE IF NOT EXISTS %s ('
@@ -59,7 +63,7 @@ class SessionHelper(object):
             ')' % self.session_relation)
         self.db.commit()
 
-    def _load_active_session(self):
+    def load_active_session(self):
         """Load a session from db"""
         r = self.db.execute('SELECT * FROM %s' % self.session_relation)
         sessions = r.fetchall()
@@ -71,7 +75,7 @@ class SessionHelper(object):
                 return dict(ui_id=last[0], address=last[1])
         return None
 
-    def _create_session(self):
+    def create_session(self):
         """Create session credentials"""
         ui_id = sha1(os.urandom(128)).hexdigest()
 
@@ -84,6 +88,7 @@ class SessionHelper(object):
             server_class=WSGIServer,
             handler_class=WebSocketWSGIRequestHandler,
             app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
+        WebSocketProtocol.server = server
         server.initialize_websockets_manager()
         address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
         self.server = server
@@ -95,6 +100,19 @@ class SessionHelper(object):
         self.db.commit()
 
         return dict(ui_id=ui_id, address=address)
+
+    def wait_session_to_load(self, timeout=20, step=2):
+        """Wait while the session is loading e.g. in another process
+            :returns: the session or None if timeout
+        """
+        time_passed = 0
+        while time_passed < timeout:
+            self.session = self.load_active_session()
+            if self.session:
+                return self.session
+            time_passed += step
+            time.sleep(step)
+        return None
 
     def start(self):
         """Start the helper server in a thread"""
@@ -167,7 +185,7 @@ class WebSocketProtocol(WebSocket):
     """
 
     ui_id = None
-    db, session_db, session_relation = None, None, None
+    session_db, session_relation = None, None
     accepted = False
     settings = dict(
         token=None, url=None,
@@ -180,13 +198,12 @@ class WebSocketProtocol(WebSocket):
     essentials = ('url', 'token', 'container', 'directory')
 
     def heartbeat(self):
-        if not self.db:
-            self.db = sqlite3.connect(self.session_db)
+        db = sqlite3.connect(self.session_db)
         while True:
-            self.db.execute('BEGIN')
-            self.db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
+            db.execute('BEGIN')
+            db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
                 self.session_relation, time.time(), self.ui_id))
-            self.db.commit()
+            db.commit()
             time.sleep(2)
 
     def _get_default_sync(self):
@@ -404,10 +421,11 @@ class WebSocketProtocol(WebSocket):
     def clean_db(self):
         """Clean DB from session traces"""
         LOG.debug('Remove session traces')
-        self.db = sqlite3.connect(self.session_db)
-        self.db.execute('BEGIN')
-        self.db.execute('DELETE FROM %s' % self.session_relation)
-        self.db.commit()
+        db = sqlite3.connect(self.session_db)
+        db.execute('BEGIN')
+        db.execute('DELETE FROM %s' % self.session_relation)
+        db.commit()
+        db.close()
 
     def send_json(self, msg):
         LOG.debug('send: %s' % msg)
@@ -424,6 +442,7 @@ class WebSocketProtocol(WebSocket):
                     LOG.debug('Wait open syncs to complete')
                     self.syncer.wait_sync_threads()
                 self.close()
+                Thread(target=self.server.shutdown).start()
                 return
             {
                 'start': self.start_sync,

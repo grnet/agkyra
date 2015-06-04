@@ -30,10 +30,11 @@ import logging
 LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
 LOGGER = logging.getLogger('agkyra')
 HANDLER = logging.FileHandler(LOGFILE)
-FORMATTER = logging.Formatter("%(name)s %(levelname)s:%(asctime)s:%(message)s")
+FORMATTER = logging.Formatter(
+    "[CLI]%(name)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 
 
 def main():
@@ -43,4 +44,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1] in ('launch_server', ):
+        # This piece of code will stay here until the CLI can launch a server
+        # by itself
+        from agkyra.protocol import SessionHelper
+        LOGGER.debug('Please start the session helper')
+        helper = SessionHelper()
+        if not helper.load_active_session():
+            helper.create_session()
+            helper.server.serve_forever()
+    else:
+        main()

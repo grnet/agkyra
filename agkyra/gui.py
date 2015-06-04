@@ -81,11 +81,15 @@ class GUI(WebSocketBaseClient):
 
 def run():
     """Prepare SessionHelper and GUI and run them in the proper order"""
-    helper = SessionHelper()
-    gui = GUI(helper.session)
-
     LOG.info('Start SessionHelper session')
-    helper.start()
+    subprocess.Popen([
+        os.path.join(CURPATH, 'scripts/cli.py'), 'launch_server'])
+
+    LOG.info('Client blocks until session is ready')
+    session = SessionHelper().wait_session_to_load()
+    assert session, 'UI server failed to load...'
+    LOG.info('Server session is ready, setup the GUI session')
+    gui = GUI(session)
 
     try:
         LOG.info('Start GUI')
@@ -93,8 +97,6 @@ def run():
     except KeyboardInterrupt:
         LOG.info('Shutdown GUI')
         gui.clean_exit()
-    LOG.info('Shutdown SessionHelper server')
-    helper.shutdown()
 
 if __name__ == '__main__':
     logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)
