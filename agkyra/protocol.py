@@ -32,6 +32,7 @@ from agkyra.config import AgkyraConfig, AGKYRA_DIR
 
 
 LOG = logging.getLogger(__name__)
+SYNCERS = utils.ThreadSafeDict()
 
 
 class SessionHelper(object):
@@ -193,9 +194,15 @@ class WebSocketProtocol(WebSocket):
         exclude=None)
     status = dict(
         progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
-    file_syncer = None
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
+
+    @property
+    def syncer(self):
+        with SYNCERS.lock() as d:
+            for sync_key, sync_obj in d.items():
+                return sync_obj
+        return None
 
     def heartbeat(self):
         db = sqlite3.connect(self.session_db)
@@ -354,12 +361,15 @@ class WebSocketProtocol(WebSocket):
                 **kwargs)
             master = pithos_client.PithosFileClient(syncer_settings)
             slave = localfs_client.LocalfsFileClient(syncer_settings)
-            self.syncer = syncer.FileSyncer(syncer_settings, master, slave)
+            syncer_ = syncer.FileSyncer(syncer_settings, master, slave)
             self.syncer_settings = syncer_settings
-            self.syncer.initiate_probe()
+            syncer_.initiate_probe()
         except setup.ClientError:
-            self.syncer = None
+            syncer_ = None
             raise
+        finally:
+            with SYNCERS.lock() as d:
+                d[0] = syncer_
 
     # Syncer-related methods
     def get_status(self):
@@ -515,8 +525,6 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'%s' % ce: ce.status, 'action': action})
             return
         except Exception as e:
-            from traceback import print_stack
-            print_stack(e)
             self.send_json({'INTERNAL ERROR': 500})
             LOG.error('EXCEPTION: %s' % e)
             self.terminate()
