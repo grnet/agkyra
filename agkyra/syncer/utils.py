@@ -18,8 +18,15 @@ import hashlib
 import datetime
 import threading
 import watchdog.utils
+import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 from agkyra.syncer.common import OBJECT_DIRSEP
+
+ENCODING = sys.getfilesystemencoding() or sys.getdefaultencoding()
+PLATFORM = sys.platform
 
 
 def to_local_sep(filename):
@@ -48,7 +55,24 @@ def normalize_local_suffix(path):
     return path.rstrip(os.path.sep) + os.path.sep
 
 
+def from_unicode(s):
+    if type(s) is unicode:
+        return s.encode(ENCODING)
+    return s
+
+
+def to_unicode(s):
+    if type(s) is unicode:
+        return s
+    try:
+        return unicode(s, ENCODING)
+    except UnicodeDecodeError as e:
+        logger.warning("Failed to decode %s" % s.__repr__())
+        raise
+
+
 def hash_string(s):
+    s = from_unicode(s)
     return hashlib.sha256(s).hexdigest()
 
 

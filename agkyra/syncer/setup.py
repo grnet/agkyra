@@ -68,9 +68,24 @@ def ssl_fall_back(method):
     return wrap
 
 
+def check_encoding():
+    platform = utils.PLATFORM
+    encoding = utils.ENCODING
+    if platform.startswith("linux"):
+        if not encoding.lower() in ['utf-8', 'utf8']:
+            raise Exception(
+                "Cannot operate with encoding %s. Please use UTF-8."
+                % encoding)
+
+
 class SyncerSettings():
     def __init__(self, auth_url, auth_token, container, local_root_path,
                  *args, **kwargs):
+        check_encoding()
+        auth_url = utils.to_unicode(auth_url)
+        auth_token = utils.to_unicode(auth_token)
+        container = utils.to_unicode(container)
+        local_root_path = utils.to_unicode(local_root_path)
         self.auth_url = utils.normalize_standard_suffix(auth_url)
         self.auth_token = auth_token
         self.container = utils.normalize_standard_suffix(container)
@@ -84,9 +99,10 @@ class SyncerSettings():
         self.endpoint = self._get_pithos_client(
             auth_url, auth_token, container)
 
-        home_dir = os.path.expanduser('~')
+        home_dir = utils.to_unicode(os.path.expanduser('~'))
         default_settings_path = join_path(home_dir, GLOBAL_SETTINGS_NAME)
-        self.settings_path = kwargs.get("agkyra_path", default_settings_path)
+        self.settings_path = utils.to_unicode(
+            kwargs.get("agkyra_path", default_settings_path))
         self.create_dir(self.settings_path)
 
         self.instances_path = join_path(self.settings_path, INSTANCES_NAME)
@@ -102,27 +118,28 @@ class SyncerSettings():
         self.instance_path = join_path(self.instances_path, self.instance)
         self.create_dir(self.instance_path)
 
-        self.dbname = kwargs.get("dbname", DEFAULT_DBNAME)
+        self.dbname = utils.to_unicode(kwargs.get("dbname", DEFAULT_DBNAME))
         self.full_dbname = join_path(self.instance_path, self.dbname)
         self.get_db(initialize=True)
 
-        self.cache_name = kwargs.get("cache_name", DEFAULT_CACHE_NAME)
+        self.cache_name = utils.to_unicode(
+            kwargs.get("cache_name", DEFAULT_CACHE_NAME))
         self.cache_path = join_path(self.local_root_path, self.cache_name)
         self.create_dir(self.cache_path)
 
-        self.cache_hide_name = kwargs.get("cache_hide_name",
-                                          DEFAULT_CACHE_HIDE_NAME)
+        self.cache_hide_name = utils.to_unicode(
+            kwargs.get("cache_hide_name", DEFAULT_CACHE_HIDE_NAME))
         self.cache_hide_path = join_path(self.cache_path, self.cache_hide_name)
         self.create_dir(self.cache_hide_path)
 
-        self.cache_stage_name = kwargs.get("cache_stage_name",
-                                           DEFAULT_CACHE_STAGE_NAME)
+        self.cache_stage_name = utils.to_unicode(
+            kwargs.get("cache_stage_name", DEFAULT_CACHE_STAGE_NAME))
         self.cache_stage_path = join_path(self.cache_path,
                                           self.cache_stage_name)
         self.create_dir(self.cache_stage_path)
 
-        self.cache_fetch_name = kwargs.get("cache_fetch_name",
-                                           DEFAULT_CACHE_FETCH_NAME)
+        self.cache_fetch_name = utils.to_unicode(
+            kwargs.get("cache_fetch_name", DEFAULT_CACHE_FETCH_NAME))
         self.cache_fetch_path = join_path(self.cache_path,
                                           self.cache_fetch_name)
         self.create_dir(self.cache_fetch_path)

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2015 GRNET S.A.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -12,6 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from __future__ import unicode_literals
 
 from agkyra.syncer.setup import SyncerSettings
 from agkyra.syncer import localfs_client
@@ -38,6 +42,13 @@ formatter = logging.Formatter("%(levelname)s:%(asctime)s:%(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
+# kamakisend_logger = logging.getLogger('kamaki.clients.send')
+# kamakisend_logger.addHandler(handler)
+# kamakisend_logger.setLevel(logging.DEBUG)
+# kamakirecv_logger = logging.getLogger('kamaki.clients.recv')
+# kamakirecv_logger.addHandler(handler)
+# kamakirecv_logger.setLevel(logging.DEBUG)
 
 TMP = "/tmp"
 
@@ -76,7 +87,7 @@ class AgkyraTest(unittest.TestCase):
         AUTHENTICATION_URL = cloud_conf['url']
         TOKEN = cloud_conf['token']
 
-        cls.ID = "AGKYRATEST" + str(random.random()).split('.')[1]
+        cls.ID = "ΑΓΚΥΡΑTEST" + str(random.random()).split('.')[1]
 
         cls.LOCAL_ROOT_PATH = utils.join_path("/tmp", cls.ID)
 
@@ -135,10 +146,10 @@ class AgkyraTest(unittest.TestCase):
         candidates = self.slave.list_candidate_files(forced=True)
         self.assertEqual(real(candidates), [])
 
-        fil = "f0001"
+        fil = "φ0001"
         f_path = self.get_path(fil)
         open(f_path, "a").close()
-        d = "d0001"
+        d = "δ0001"
         d_path = self.get_path(d)
         os.mkdir(d_path)
 
@@ -177,11 +188,11 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(candidates, [])
 
     def test_0002_notifier_local(self):
-        f_out = "f0002out"
-        f_cache = "f0002cache"
-        f_upd = "f0002upd"
-        f_ren = "f0002ren"
-        dbefore = "d0002before"
+        f_out = "φ0002out"
+        f_cache = "φ0002cache"
+        f_upd = "φ0002upd"
+        f_ren = "φ0002ren"
+        dbefore = "δ0002before"
         f_out_path = self.get_path(f_out)
         f_cache_path = self.get_path(f_cache)
         f_upd_path = self.get_path(f_upd)
@@ -197,9 +208,9 @@ class AgkyraTest(unittest.TestCase):
         candidates = self.slave.list_candidate_files()
         self.assertEqual(candidates, [])
 
-        fafter = "f0002after"
+        fafter = "φ0002after"
         fafter_path = self.get_path(fafter)
-        dafter = "d0002after"
+        dafter = "δ0002after"
         dafter_path = self.get_path(dafter)
         open(fafter_path, "a").close()
         os.mkdir(dafter_path)
@@ -215,13 +226,13 @@ class AgkyraTest(unittest.TestCase):
         with open(f_upd_path, "a") as f:
             f.write("upd")
 
-        f_in = "f0002in"
+        f_in = "φ0002in"
         f_in_path = self.get_path(f_in)
         f_in_orig_path = utils.join_path(TMP, f_in)
         open(f_in_orig_path, "a").close()
         os.rename(f_in_orig_path, f_in_path)
 
-        f_ren_new = "f0002ren_new"
+        f_ren_new = "φ0002ren_new"
         f_ren_new_path = self.get_path(f_ren_new)
         os.rename(f_ren_path, f_ren_new_path)
 
@@ -235,7 +246,7 @@ class AgkyraTest(unittest.TestCase):
 
     def test_001_probe_and_sync(self):
         # initial upload to pithos
-        f1 = "f001"
+        f1 = "φ001"
         f1_content1 = "content1"
         r1 = self.pithos.upload_from_string(
             f1, f1_content1)
@@ -281,7 +292,7 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(sstate.serial, 0)
 
     def test_002_conflict(self):
-        fil = "f002"
+        fil = "φ002"
         # local file
         fil_local_content = "local"
         with open(self.get_path(fil), "w") as f:
@@ -317,10 +328,10 @@ class AgkyraTest(unittest.TestCase):
 
     def test_003_dirs(self):
         # make local dir with files
-        d = "d003"
+        d = "δ003"
         d_path = self.get_path(d)
         os.mkdir(d_path)
-        fil = "d003/f003"
+        fil = "δ003/φ003"
         f_path = self.get_path(fil)
         f_content = "f2"
         with open(f_path, "w") as f:
@@ -337,7 +348,7 @@ class AgkyraTest(unittest.TestCase):
 
     def test_004_link(self):
         # Check sym links
-        fil = "f004"
+        fil = "φ004"
         f_path = self.get_path(fil)
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
@@ -346,7 +357,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
 
-        ln = "f004.link"
+        ln = "φ004.link"
         ln_path = self.get_path(ln)
         os.symlink(f_path, ln_path)
         self.s.probe_file(self.s.SLAVE, ln)
@@ -390,7 +401,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_no_message()
 
     def test_005_dirs_inhibited_by_file(self):
-        fil = "f005"
+        fil = "φ005"
         f_path = self.get_path(fil)
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
@@ -401,7 +412,7 @@ class AgkyraTest(unittest.TestCase):
 
         r = self.pithos.object_put(
             fil, content_type='application/directory', content_length=0)
-        inner_fil = "f005/in005"
+        inner_fil = "φ005/in005"
         inner_fil_content = "ff1 in dir "
         r1 = self.pithos.upload_from_string(inner_fil, inner_fil_content)
         self.s.probe_file(self.s.MASTER, fil)
@@ -414,7 +425,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
-        inner_dir = "f005/indir005"
+        inner_dir = "φ005/indir005"
         r = self.pithos.object_put(
             inner_dir, content_type='application/directory', content_length=0)
         self.s.probe_file(self.s.MASTER, inner_dir)
@@ -434,7 +445,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.AckSyncMessage)
 
     def test_006_heartbeat(self):
-        fil = "f006"
+        fil = "φ006"
         f_path = self.get_path(fil)
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
@@ -466,7 +477,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.AckSyncMessage)
 
     def test_007_multiprobe(self):
-        fil = "f007"
+        fil = "φ007"
         f_path = self.get_path(fil)
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
@@ -477,11 +488,11 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.AlreadyProbedMessage)
 
     def test_008_dir_contents(self):
-        d = "d008"
+        d = "δ008"
         d_path = self.get_path(d)
         r = self.pithos.object_put(
             d, content_type='application/directory', content_length=0)
-        inner_fil = "d008/inf008"
+        inner_fil = "δ008/inφ008"
         inner_fil_content = "fil in dir "
         r1 = self.pithos.upload_from_string(inner_fil, inner_fil_content)
         self.s.probe_file(self.s.MASTER, d)
@@ -523,11 +534,11 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(cm.exception.status, 404)
 
     def test_009_dir_delete_upstream(self):
-        d = "d009"
+        d = "δ009"
         d_path = self.get_path(d)
         r = self.pithos.object_put(
             d, content_type='application/directory', content_length=0)
-        innerd = "d009/innerd009"
+        innerd = "δ009/innerδ009"
         r = self.pithos.object_put(
             innerd, content_type='application/directory', content_length=0)
         self.s.probe_file(self.s.MASTER, d)
@@ -564,7 +575,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.AckSyncMessage)
 
     def test_010_live_update_local(self):
-        fil = "f010"
+        fil = "φ010"
         f_path = self.get_path(fil)
         with open(f_path, "w") as f:
             f.write("f to be changed")
@@ -589,7 +600,7 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(new_info["localfs_size"], len(f_content))
 
     def test_011_live_update_upstream(self):
-        fil = "f011"
+        fil = "φ011"
         f_path = self.get_path(fil)
         r = self.pithos.upload_from_string(fil, "f upstream")
         etag = r['etag']
@@ -612,7 +623,7 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(new_info["pithos_etag"], new_etag)
 
     def test_012_cachename(self):
-        fil = "f012"
+        fil = "φ012"
         f_path = self.get_path(fil)
         with open(f_path, "w") as f:
             f.write("content")
@@ -643,7 +654,7 @@ class AgkyraTest(unittest.TestCase):
             handle.hide_file()
 
     def test_013_collisions(self):
-        fil = "f013"
+        fil = "φ013"
         f_path = self.get_path(fil)
         with open(f_path, "w") as f:
             f.write("content")
@@ -656,7 +667,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
-        d = "d013"
+        d = "δ013"
         d_path = self.get_path(d)
         os.mkdir(d_path)
         self.s.probe_file(self.s.SLAVE, d)
@@ -668,7 +679,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
-        d_synced = "d013_s"
+        d_synced = "δ013_s"
         d_synced_path = self.get_path(d_synced)
         os.mkdir(d_synced_path)
         self.s.probe_file(self.s.SLAVE, d_synced)
@@ -688,9 +699,9 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.SyncErrorMessage)
 
     def test_014_staging(self):
-        fil = "f014"
-        d = "d014"
-        fln = "f014.link"
+        fil = "φ014"
+        d = "δ014"
+        fln = "φ014.link"
         f_path = self.get_path(fil)
         with open(f_path, "w") as f:
             f.write("content")
@@ -719,7 +730,7 @@ class AgkyraTest(unittest.TestCase):
         with self.assertRaises(common.OpenBusyError):
             handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
 
-        ftmp_path = self.get_path("f014tmp")
+        ftmp_path = self.get_path("φ014tmp")
         with open(ftmp_path, "w") as f:
             f.write("tmp")
         os.unlink(f_path)

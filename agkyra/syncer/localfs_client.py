@@ -88,7 +88,11 @@ def file_is_open(path):
         try:
             flist = psutil_open_files(proc)
             for nt in flist:
-                if nt.path == path:
+                try:
+                    nt_path = utils.to_unicode(nt.path)
+                except UnicodeDecodeError as e:
+                    continue
+                if nt_path == path:
                     return True
         except psutil.Error:
             pass
@@ -548,13 +552,22 @@ class LocalfsFileClient(FileClient):
 
     def walk_filesystem(self):
         candidates = {}
-        for dirpath, dirnames, files in os.walk(self.ROOTPATH):
+        rootpath = utils.from_unicode(self.ROOTPATH)
+        for dirpath, dirnames, files in os.walk(rootpath):
+            try:
+                dirpath = utils.to_unicode(dirpath)
+            except UnicodeDecodeError as e:
+                continue
             rel_dirpath = os.path.relpath(dirpath, start=self.ROOTPATH)
             logger.debug("'%s' '%s'" % (dirpath, rel_dirpath))
             if rel_dirpath != '.':
                 objname = utils.to_standard_sep(rel_dirpath)
                 candidates[objname] = self.none_info()
             for filename in files:
+                try:
+                    filename = utils.to_unicode(filename)
+                except UnicodeDecodeError as e:
+                    continue
                 if rel_dirpath == '.':
                     prefix = ""
                 else:
@@ -615,24 +628,29 @@ class LocalfsFileClient(FileClient):
 
     def notifier(self):
         def handle_path(path):
+            try:
+                path = utils.to_unicode(path)
+            except UnicodeDecodeError as e:
+                return
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
             with self.probe_candidates.lock() as d:
                 d[objname] = self.none_info()
 
+        cachepath = utils.from_unicode(self.CACHEPATH)
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):
                 # if not event.is_directory:
                 #     return
                 path = event.src_path
-                if path.startswith(self.CACHEPATH):
+                if path.startswith(cachepath):
                     return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_deleted(this, event):
                 path = event.src_path
-                if path.startswith(self.CACHEPATH):
+                if path.startswith(cachepath):
                     return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
@@ -641,7 +659,7 @@ class LocalfsFileClient(FileClient):
                 if event.is_directory:
                     return
                 path = event.src_path
-                if path.startswith(self.CACHEPATH):
+                if path.startswith(cachepath):
                     return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
@@ -649,14 +667,14 @@ class LocalfsFileClient(FileClient):
             def on_moved(this, event):
                 src_path = event.src_path
                 dest_path = event.dest_path
-                if src_path.startswith(self.CACHEPATH) or \
-                        dest_path.startswith(self.CACHEPATH):
+                if src_path.startswith(cachepath) or \
+                        dest_path.startswith(cachepath):
                     return
                 logger.debug("Handling %s" % event)
                 handle_path(src_path)
                 handle_path(dest_path)
 
-        path = self.ROOTPATH
+        path = utils.from_unicode(self.ROOTPATH)
         event_handler = EventHandler()
         observer = Observer()
         observer.schedule(event_handler, path, recursive=True)
