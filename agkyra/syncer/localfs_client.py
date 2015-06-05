@@ -632,26 +632,23 @@ class LocalfsFileClient(FileClient):
                 path = utils.to_unicode(path)
             except UnicodeDecodeError as e:
                 return
+            if path.startswith(self.CACHEPATH):
+                return
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
             with self.probe_candidates.lock() as d:
                 d[objname] = self.none_info()
 
-        cachepath = utils.from_unicode(self.CACHEPATH)
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):
                 # if not event.is_directory:
                 #     return
                 path = event.src_path
-                if path.startswith(cachepath):
-                    return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_deleted(this, event):
                 path = event.src_path
-                if path.startswith(cachepath):
-                    return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
 
@@ -659,17 +656,12 @@ class LocalfsFileClient(FileClient):
                 if event.is_directory:
                     return
                 path = event.src_path
-                if path.startswith(cachepath):
-                    return
                 logger.debug("Handling %s" % event)
                 handle_path(path)
 
             def on_moved(this, event):
                 src_path = event.src_path
                 dest_path = event.dest_path
-                if src_path.startswith(cachepath) or \
-                        dest_path.startswith(cachepath):
-                    return
                 logger.debug("Handling %s" % event)
                 handle_path(src_path)
                 handle_path(dest_path)

@@ -192,16 +192,20 @@ class AgkyraTest(unittest.TestCase):
         f_cache = "φ0002cache"
         f_upd = "φ0002upd"
         f_ren = "φ0002ren"
+        f_cached = "φ0002cached"
         dbefore = "δ0002before"
         f_out_path = self.get_path(f_out)
         f_cache_path = self.get_path(f_cache)
         f_upd_path = self.get_path(f_upd)
         f_ren_path = self.get_path(f_ren)
+        f_cached_path = os.path.join(
+            self.settings.cache_path, f_cached)
         dbefore_path = self.get_path(dbefore)
         open(f_out_path, "a").close()
         open(f_cache_path, "a").close()
         open(f_upd_path, "a").close()
         open(f_ren_path, "a").close()
+        open(f_cached_path, "a").close()
         os.mkdir(dbefore_path)
 
         notifier = self.slave.notifier()
@@ -236,12 +240,16 @@ class AgkyraTest(unittest.TestCase):
         f_ren_new_path = self.get_path(f_ren_new)
         os.rename(f_ren_path, f_ren_new_path)
 
+        f_cached_out_path = self.get_path(f_cached)
+        os.rename(f_cached_path, f_cached_out_path)
+
         time.sleep(1)
         candidates = self.slave.list_candidate_files()
         self.assertEqual(sorted(candidates),
                          sorted([fafter, dafter,
                                  f_in, f_out, f_upd,
-                                 f_ren, f_ren_new]))
+                                 f_ren, f_ren_new,
+                                 f_cache, f_cached]))
         notifier.stop()
 
     def test_001_probe_and_sync(self):
@@ -320,11 +328,17 @@ class AgkyraTest(unittest.TestCase):
         # now probe upstream too and retry
         self.s.probe_file(self.s.MASTER, fil)
         self.assert_message(messaging.UpdateMessage)
+        self.s.start_notifiers()
         self.s.decide_file_sync(fil)
         self.assert_message(messaging.FailedSyncIgnoreDecisionMessage)
         self.assert_message(messaging.SyncMessage)
-        self.assert_message(messaging.ConflictStashMessage)
+        m = self.assert_message(messaging.ConflictStashMessage)
+        stash_name = m.stash_name
         self.assert_message(messaging.AckSyncMessage)
+        time.sleep(1)
+        self.s.stop_notifiers()
+        local_cands = self.slave.list_candidate_files()
+        self.assertIn(stash_name, local_cands)
 
     def test_003_dirs(self):
         # make local dir with files
