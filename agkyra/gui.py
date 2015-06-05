@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from ws4py.client import WebSocketBaseClient
-from agkyra.protocol import SessionHelper
+from agkyra.protocol import SessionHelper, launch_server
 from agkyra.config import AGKYRA_DIR
 import subprocess
 import os
@@ -81,9 +81,7 @@ class GUI(WebSocketBaseClient):
 
 def run():
     """Prepare SessionHelper and GUI and run them in the proper order"""
-    LOG.info('Start SessionHelper session')
-    subprocess.Popen(['agkyra-cli', 'launch_server'])
-
+    launch_server()
     LOG.info('Client blocks until session is ready')
     session = SessionHelper().wait_session_to_load()
     assert session, 'UI server failed to load...'

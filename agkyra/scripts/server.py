@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015 GRNET S.A.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,12 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import sys
-
-PATH = os.path.dirname(os.path.realpath(__file__))
-LIBPATH = os.path.join(PATH, "lib")
-
-sys.path.insert(0, LIBPATH)
 
 from agkyra import config
 AGKYRA_DIR = config.AGKYRA_DIR
@@ -30,17 +22,22 @@ import logging
 LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
 LOGGER = logging.getLogger('agkyra')
 HANDLER = logging.FileHandler(LOGFILE)
-FORMATTER = logging.Formatter(
-    "[CLI]%(name)s %(levelname)s:%(asctime)s:%(message)s")
+FORMATTER = logging.Formatter("%(name)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.INFO)
 
 
 def main():
-    from agkyra.cli import AgkyraCLI
-    from sys import argv
-    AgkyraCLI().onecmd(' '.join(argv[1:] or ['help', ]))
+    from agkyra.protocol import SessionHelper
+    LOGGER.debug('Start the session helper')
+    helper = SessionHelper()
+    if not helper.load_active_session():
+        helper.create_session()
+        helper.server.serve_forever()
+    else:
+        LOGGER.info('Another session is running, aborting')
+        exit(1)
 
 
 if __name__ == "__main__":

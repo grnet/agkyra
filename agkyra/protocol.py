@@ -31,6 +31,8 @@ from agkyra.syncer import (
 from agkyra.config import AgkyraConfig, AGKYRA_DIR
 
 
+CURPATH = os.path.dirname(os.path.abspath(__file__))
+
 LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
@@ -528,3 +530,12 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'INTERNAL ERROR': 500})
             LOG.error('EXCEPTION: %s' % e)
             self.terminate()
+
+
+def launch_server():
+    """Launch the server in a separate process"""
+    LOG.info('Start SessionHelper session')
+    pid = os.fork()
+    if not pid:
+        server_path = os.path.join(CURPATH, 'scripts', 'server.py')
+        os.execlp("python", "python", server_path)
