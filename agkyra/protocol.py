@@ -115,6 +115,16 @@ class SessionHelper(object):
             time.sleep(step)
         return None
 
+    def wait_session_to_stop(self, timeout=20, step=2):
+        """Wait while the session is shutting down
+            :returns: True if stopped, False if timed out and still running
+        """
+        time_passed = 0
+        while time_passed < timeout and self.load_active_session():
+            time.sleep(step)
+            time_passed += step
+        return not bool(self.load_active_session())
+
     def start(self):
         """Start the helper server in a thread"""
         if getattr(self, 'server', None):
@@ -521,7 +531,8 @@ class WebSocketProtocol(WebSocket):
                 'get': self._get
             }[method](r)
         except KeyError as ke:
-            self.send_json({'BAD REQUEST': 400})
+            action = method + ' ' + r.get('path', '')
+            self.send_json({'BAD REQUEST': 400, 'action': action})
             LOG.error('KEY ERROR: %s' % ke)
         except setup.ClientError as ce:
             action = '%s %s' % (

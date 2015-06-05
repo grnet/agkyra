@@ -39,7 +39,7 @@ class UIClient(WebSocketClient):
 
     def closed(self, code, reason):
         """After the client is closed"""
-        LOG.debug('Client exits with %s, %s' % code, reason)
+        LOG.debug('Client exits with %s, %s' % (code, reason))
 
     def wait_until_ready(self, timeout=20):
         """Wait until client is connected"""
@@ -53,7 +53,7 @@ class UIClient(WebSocketClient):
         msg = json.loads('%s' % m)
         {
             'post ui_id': self.recv_authenticate,
-            'get status': self.recv_get_status
+            'get status': self.recv_get_status,
         }[msg['action']](msg)
 
     # Request handlers
@@ -80,3 +80,8 @@ class UIClient(WebSocketClient):
         while 'get status' not in self.buf:
             time.sleep(1)
         return self.buf.pop('get status')
+
+    def shutdown(self):
+        """Request: POST SHUTDOWN"""
+        self.wait_until_ready()
+        self.send(json.dumps(dict(method='post', path='shutdown')))

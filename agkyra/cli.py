@@ -16,6 +16,7 @@
 import cmd
 import sys
 import logging
+import time
 from agkyra import config, protocol, protocol_client
 
 
@@ -212,7 +213,26 @@ class AgkyraCLI(cmd.Cmd):
             sys.stdout.write('Not running\n')
         sys.stdout.flush()
 
-# AgkyraCLI().run_onecmd(sys.argv)
+    def do_launch(self, line):
+        """Start the Agkyra daemon if it is not running"""
+        if self.client:
+            sys.stderr.write('An Agkyra daemon is already running\n')
+        else:
+            sys.stderr.write('Launcing a new Agkyra daemon\n')
+            protocol.launch_server()
+            sys.stderr.write('Waiting for the deamon to load\n')
+            self.helper.wait_session_to_load()
+            self.do_status('')
+        sys.stderr.flush()
 
-# or run a shell with
-# AgkyraCLI().cmdloop()
+    def do_stop(self, line):
+        """Stop the Agkyra daemon, if it is running"""
+        client = self.client
+        if client:
+            client.shutdown()
+            success = self.helper.wait_session_to_stop()
+            sys.stderr.write('Stopped' if success else 'Still up (timed out)')
+            sys.stderr.write('\n')
+        else:
+            sys.stderr.write('No daemons running\n')
+        sys.stderr.flush()
