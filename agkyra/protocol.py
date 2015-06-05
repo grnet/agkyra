@@ -147,7 +147,7 @@ class WebSocketProtocol(WebSocket):
     GUI: {"method": "post", "path": "pause"}
     HELPER: {"OK": 200, "action": "post pause"} or error
 
-    -- start --
+    -- START --
     GUI: {"method": "post", "path": "start"}
     HELPER: {"OK": 200, "action": "post start"} or error
 

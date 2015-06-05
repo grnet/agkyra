@@ -82,8 +82,7 @@ class GUI(WebSocketBaseClient):
 def run():
     """Prepare SessionHelper and GUI and run them in the proper order"""
     LOG.info('Start SessionHelper session')
-    subprocess.Popen([
-        os.path.join(CURPATH, 'scripts/cli.py'), 'launch_server'])
+    subprocess.Popen(['agkyra-cli', 'launch_server'])
 
     LOG.info('Client blocks until session is ready')
     session = SessionHelper().wait_session_to_load()
