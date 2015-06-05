@@ -17,7 +17,7 @@ var gui = require('nw.gui');
 var path = require('path');
 
 // Read config file
-var DEBUG = true;
+var DEBUG = false;
 var fs = require('fs');
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
 
