@@ -13,11 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from ws4py.client import WebSocketBaseClient
 import cmd
 import sys
 import logging
-from agkyra import config
+from agkyra import config, protocol, protocol_client
 
 
 LOG = logging.getLogger(__name__)
@@ -101,9 +100,21 @@ class ConfigCommands:
             self.cnf.write()
 
 
-class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
+class AgkyraCLI(cmd.Cmd):
     """The CLI for Agkyra is connected to a protocol server"""
     cnf_cmds = ConfigCommands()
+    helper = protocol.SessionHelper()
+
+    @property
+    def client(self):
+        """Return the helper client instace or None"""
+        self._client = getattr(self, '_client', None)
+        if not self._client:
+            session = self.helper.load_active_session()
+            if session:
+                self._client = protocol_client.UIClient(session)
+                self._client.connect()
+        return self._client
 
     def preloop(self):
         """Prepare agkyra shell"""
@@ -185,6 +196,21 @@ class AgkyraCLI(cmd.Cmd, WebSocketBaseClient):
         except AttributeError:
             self.do_help('config')
 
+    def do_status(self, line):
+        """Get Agkyra client status. Status may be one of the following:
+            Up and syncing  There is a process syncing right now
+            Up and paused   Notifiers are active but syncing is paused
+            Not running     No active processes
+        """
+        client = self.client
+        if client:
+            # Ask the server for the status
+            status = client.get_status()
+            msg = 'paused' if status['paused'] else 'running'
+            sys.stdout.write('Up and %s\n' % msg)
+        else:
+            sys.stdout.write('Not running\n')
+        sys.stdout.flush()
 
 # AgkyraCLI().run_onecmd(sys.argv)
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015 GRNET S.A.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -133,7 +131,7 @@ class SessionHelper(object):
 class WebSocketProtocol(WebSocket):
     """Helper-side WebSocket protocol for communication with GUI:
 
-    -- INTERRNAL HANDSAKE --
+    -- INTERNAL HANDSAKE --
     GUI: {"method": "post", "ui_id": <GUI ID>}
     HELPER: {"ACCEPTED": 202, "action": "post ui_id"}" or
         "{"REJECTED": 401, "action": "post ui_id"}
@@ -424,11 +422,16 @@ class WebSocketProtocol(WebSocket):
         self.heart.start()
 
     def closed(self, *args):
-        """Stop server heart, empty DB and exit"""
-        LOG.debug('Stop protocol heart')
+        """When a connection closes"""
+        LOG.debug('Stop protocol heart for this session')
         self.heart.stop()
+
+    def shutdown(self):
+        """Shutdown the service"""
+        self.close()
         LOG.debug('Clean database')
         self.clean_db()
+        Thread(target=self.server.shutdown).start()
 
     def clean_db(self):
         """Clean DB from session traces"""
@@ -453,8 +456,7 @@ class WebSocketProtocol(WebSocket):
                     self.syncer.stop_all_daemons()
                     LOG.debug('Wait open syncs to complete')
                     self.syncer.wait_sync_threads()
-                self.close()
-                Thread(target=self.server.shutdown).start()
+                self.shutdown()
                 return
             {
                 'start': self.start_sync,
@@ -465,7 +467,7 @@ class WebSocketProtocol(WebSocket):
             self.accepted = True
             self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
             self._load_settings()
-            if self.can_sync():
+            if (not self.syncer) and self.can_sync():
                 self.init_sync()
                 self.start_sync()
         else:
