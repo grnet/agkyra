@@ -43,16 +43,37 @@ class UIClient(WebSocketClient):
 
     def wait_until_ready(self, timeout=20):
         """Wait until client is connected"""
-        while not self.ready:
+        while timeout and not self.ready:
             time.sleep(1)
+            timeout -= 1
         assert self.ready, 'UI client timed out while waiting to be ready'
         return self.ready
+
+    def wait_until_syncing(self, timeout=20):
+        """Wait until session reaches syncing status"""
+        status = self.get_status()
+        while timeout and status['paused']:
+            time.sleep(1)
+            status = self.get_status()
+            timeout -= 1
+        assert not status['paused'], 'Timed out, still in paused status'
+
+    def wait_until_paused(self, timeout=20):
+        """Wait until session reaches paused status"""
+        status = self.get_status()
+        while timeout and not status['paused']:
+            time.sleep(1)
+            status = self.get_status()
+            timeout -= 1
+        assert status['paused'], 'Timed out, still in syncing status'
 
     def received_message(self, m):
         """handle server responces according to the protocol"""
         msg = json.loads('%s' % m)
         {
             'post ui_id': self.recv_authenticate,
+            'post start': self.recv_start,
+            'post pause': self.recv_pause,
             'get status': self.recv_get_status,
         }[msg['action']](msg)
 
@@ -66,6 +87,14 @@ class UIClient(WebSocketClient):
         """Receive: client authentication response"""
         assert 'ACCEPTED' in msg, json.dumps(msg)
         self.ready = True
+
+    def recv_start(self, msg):
+        """Receive: start response"""
+        assert 'OK' in msg, json.dumps(msg)
+
+    def recv_pause(self, msg):
+        """Receive: start response"""
+        assert 'OK' in msg, json.dumps(msg)
 
     def recv_get_status(self, msg):
         """Receive: GET STATUS"""
@@ -81,7 +110,21 @@ class UIClient(WebSocketClient):
             time.sleep(1)
         return self.buf.pop('get status')
 
+    def _post(self, path):
+        """send json with action=POST and path=path"""
+        self.send(json.dumps(dict(method='post', path=path)))
+
     def shutdown(self):
         """Request: POST SHUTDOWN"""
         self.wait_until_ready()
-        self.send(json.dumps(dict(method='post', path='shutdown')))
+        self._post('shutdown')
+
+    def start(self):
+        """Request: POST START"""
+        self.wait_until_ready()
+        self._post('start')
+
+    def pause(self):
+        """Request: POST PAUSE"""
+        self.wait_until_ready()
+        self._post('pause')

@@ -199,40 +199,85 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_status(self, line):
         """Get Agkyra client status. Status may be one of the following:
-            Up and syncing  There is a process syncing right now
-            Up and paused   Notifiers are active but syncing is paused
-            Not running     No active processes
+            Syncing     There is a process syncing right now
+            Paused      Notifiers are active but syncing is paused
+            Not running No active processes
         """
         client = self.client
         if client:
             # Ask the server for the status
             status = client.get_status()
-            msg = 'paused' if status['paused'] else 'running'
-            sys.stdout.write('Up and %s\n' % msg)
+            msg = 'Paused' if status['paused'] else 'Syncing'
+            sys.stdout.write('%s\n' % msg)
         else:
             sys.stdout.write('Not running\n')
         sys.stdout.flush()
 
-    def do_start_daemon(self, line):
-        """Start the Agkyra daemon if it is not running"""
-        if self.client:
-            sys.stderr.write('An Agkyra daemon is already running\n')
-        else:
-            sys.stderr.write('Launcing a new Agkyra daemon\n')
+    # def do_start_daemon(self, line):
+    #     """Start the Agkyra daemon if it is not running"""
+    #     if self.client:
+    #         sys.stderr.write('An Agkyra daemon is already running\n')
+    #     else:
+    #         sys.stderr.write('Launcing a new Agkyra daemon\n')
+    #         protocol.launch_server()
+    #         sys.stderr.write('Waiting for the deamon to load\n')
+    #         self.helper.wait_session_to_load()
+    #         self.do_status('')
+    #     sys.stderr.flush()
+
+    def do_start(self, line):
+        """Start the session. If no daemons are running, start one first"""
+        client = self.client
+        if not client:
+            sys.stderr.write('No Agkyra daemons running, starting one ...')
             protocol.launch_server()
-            sys.stderr.write('Waiting for the deamon to load\n')
+            sys.stderr.write(' ... ')
             self.helper.wait_session_to_load()
-            self.do_status('')
+            sys.stderr.write('OK\n')
+        else:
+            status = client.get_status()
+            if status['paused']:
+                client.start()
+                sys.stderr.write('Starting syncer ... ')
+                try:
+                    client.wait_until_syncing()
+                except AssertionError:
+                    sys.stderr.write('\n')
+                    raise
+                sys.stderr.write('OK\n')
+            else:
+                sys.stderr.write('Already syncing\n')
         sys.stderr.flush()
 
-    def do_stop_daemon(self, line):
-        """Stop the Agkyra daemon, if it is running"""
+    def do_pause(self, line):
+        """Pause a session (stop it from syncing, but keep it running)"""
+        client = self.client
+        if client:
+            status = client.get_status()
+            if status['paused']:
+                sys.stderr.write('Already paused\n')
+            else:
+                client.pause()
+                sys.stderr.write('Pausing syncer ... ')
+                try:
+                    client.wait_until_paused()
+                except AssertionError:
+                    sys.stderr.write('\n')
+                    raise
+                sys.stderr.write('OK\n')
+        else:
+            sys.stderr.write('Not running (use "start" to launch)\n')
+        sys.stderr.flush()
+
+    def do_shutdown(self, line):
+        """Shutdown Agkyra, if it is running"""
         client = self.client
         if client:
             client.shutdown()
+            sys.stderr.write('Shutting down Agkyra ... ')
             success = self.helper.wait_session_to_stop()
             sys.stderr.write('Stopped' if success else 'Still up (timed out)')
             sys.stderr.write('\n')
         else:
-            sys.stderr.write('No daemons running\n')
+            sys.stderr.write('Not running\n')
         sys.stderr.flush()
