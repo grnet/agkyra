@@ -20,6 +20,7 @@ import threading
 import watchdog.utils
 import sys
 import logging
+import platform
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ from agkyra.syncer.common import OBJECT_DIRSEP
 
 ENCODING = sys.getfilesystemencoding() or sys.getdefaultencoding()
 PLATFORM = sys.platform
+NODE = platform.node()
 
 
 def to_local_sep(filename):

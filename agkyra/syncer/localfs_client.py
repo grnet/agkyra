@@ -99,9 +99,28 @@ def file_is_open(path):
     return False
 
 
+def is_iso_date(tstamp):
+    try:
+        datetime.datetime.strptime(tstamp, "%Y-%m-%dT%H:%M:%S.%f")
+        return True
+    except ValueError:
+        return False
+
+
+def get_orig_name(filename):
+    parts = filename.split('_')
+    if len(parts) < 3 or parts[-1] != utils.NODE or not is_iso_date(parts[-2]):
+        return filename
+    orig = "_".join(parts[:-2])
+    if not orig:
+        return filename
+    return orig
+
+
 def mk_stash_name(filename):
-    tstamp = datetime.datetime.now().strftime("%s")
-    return filename + '.' + tstamp + '.local'
+    tstamp = datetime.datetime.now().isoformat()
+    orig = get_orig_name(filename)
+    return orig + '_' + tstamp + '_' + utils.NODE
 
 
 def eq_float(f1, f2):
