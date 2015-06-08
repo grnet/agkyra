@@ -16,7 +16,7 @@
 import cmd
 import sys
 import logging
-import time
+import inspect
 from agkyra import config, protocol, protocol_client
 
 
@@ -122,11 +122,23 @@ class AgkyraCLI(cmd.Cmd):
         self.prompt = '\xe2\x9a\x93 '
         self.default('')
 
-    def precmd(self):
-        print 'PRE'
-
-    def postcmd(self):
-        print 'POST'
+    def do_help(self, line):
+        """Get help
+            help <cmd>            for an individual command
+            help <--list | -l>    for all commands
+        """
+        if line and line in ('-l', '--list'):
+            prefix = 'do_'
+            for c in self.get_names():
+                if c.startswith(prefix):
+                    actual_name = c[len(prefix):]
+                    print '-', actual_name, '-'
+                    self.do_help(actual_name)
+                    print
+        else:
+            if not line:
+                cmd.Cmd.do_help(self, 'help')
+            cmd.Cmd.do_help(self, line)
 
     def config_list(self, args):
         """List (all or some) options
