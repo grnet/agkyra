@@ -69,11 +69,15 @@ class SessionHelper(object):
         r = self.db.execute('SELECT * FROM %s' % self.session_relation)
         sessions = r.fetchall()
         if sessions:
-            last = sessions[-1]
+            last, expected_id = sessions[-1], getattr(self, 'ui_id', None)
+            if expected_id and last[0] != '%s' % expected_id:
+                LOG.debug('Session ID is old')
+                return None
             now, last_beat = time.time(), float(last[2])
             if now - last_beat < self.session_timeout:
                 # Found an active session
                 return dict(ui_id=last[0], address=last[1])
+        LOG.debug('No active sessions found')
         return None
 
     def create_session(self):
@@ -89,7 +93,6 @@ class SessionHelper(object):
             server_class=WSGIServer,
             handler_class=WebSocketWSGIRequestHandler,
             app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
-        WebSocketProtocol.server = server
         server.initialize_websockets_manager()
         address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
         self.server = server
@@ -100,6 +103,7 @@ class SessionHelper(object):
             self.session_relation, ui_id, address, time.time()))
         self.db.commit()
 
+        self.ui_id = ui_id
         return dict(ui_id=ui_id, address=address)
 
     def wait_session_to_load(self, timeout=20, step=2):
@@ -128,10 +132,23 @@ class SessionHelper(object):
     def start(self):
         """Start the helper server in a thread"""
         if getattr(self, 'server', None):
-            Thread(target=self.server.serve_forever).start()
+            Thread(target=self._shutdown_daemon).start()
+            self.server.serve_forever()
 
-    def shutdown(self):
+    def _shutdown_daemon(self):
         """Shutdown the server (needs another thread) and join threads"""
+        LOG.debug('The Shutdown Daemon is up')
+        self.db = sqlite3.connect(self.session_db)
+        # Do not hurry to kill the server, make sure it does not actually work
+        retry = 3
+        while retry:
+            while self.load_active_session():
+                time.sleep(4)
+                retry = 3
+            time.sleep(3)
+            retry -= 1
+        LOG.debug('Daemon server is down, removing WSGI server')
+        self.db.close()
         if getattr(self, 'server', None):
             t = Thread(target=self.server.shutdown)
             t.start()
@@ -206,6 +223,7 @@ class WebSocketProtocol(WebSocket):
         progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
+    _alive = True
 
     @property
     def syncer(self):
@@ -215,13 +233,21 @@ class WebSocketProtocol(WebSocket):
         return None
 
     def heartbeat(self):
+        if not self._alive:
+            return
         db = sqlite3.connect(self.session_db)
-        while True:
-            db.execute('BEGIN')
-            db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
-                self.session_relation, time.time(), self.ui_id))
-            db.commit()
+        while self._alive:
             time.sleep(2)
+            db.execute('BEGIN')
+            r = db.execute('SELECT ui_id FROM %s WHERE ui_id="%s"' % (
+                self.session_relation, self.ui_id))
+            if r.fetchall():
+                db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
+                    self.session_relation, time.time(), self.ui_id))
+            else:
+                self._alive = False
+            db.commit()
+        self._shutdown()
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
@@ -436,12 +462,15 @@ class WebSocketProtocol(WebSocket):
         LOG.debug('Stop protocol heart for this session')
         self.heart.stop()
 
-    def shutdown(self):
+    def _shutdown(self):
         """Shutdown the service"""
+        LOG.debug('Shutdown daemon')
         self.close()
-        LOG.debug('Clean database')
-        self.clean_db()
-        Thread(target=self.server.shutdown).start()
+        if self.can_sync():
+            self.syncer.stop_all_daemons()
+            LOG.debug('Wait open syncs to complete')
+            self.syncer.wait_sync_threads()
+        LOG.debug('Daemon is now shut down')
 
     def clean_db(self):
         """Clean DB from session traces"""
@@ -462,11 +491,7 @@ class WebSocketProtocol(WebSocket):
         if self.accepted:
             action = r['path']
             if action == 'shutdown':
-                if self.can_sync():
-                    self.syncer.stop_all_daemons()
-                    LOG.debug('Wait open syncs to complete')
-                    self.syncer.wait_sync_threads()
-                self.shutdown()
+                self.clean_db()
                 return
             {
                 'start': self.start_sync,

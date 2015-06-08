@@ -213,7 +213,7 @@ class AgkyraCLI(cmd.Cmd):
             sys.stdout.write('Not running\n')
         sys.stdout.flush()
 
-    def do_launch(self, line):
+    def do_start_daemon(self, line):
         """Start the Agkyra daemon if it is not running"""
         if self.client:
             sys.stderr.write('An Agkyra daemon is already running\n')
@@ -225,7 +225,7 @@ class AgkyraCLI(cmd.Cmd):
             self.do_status('')
         sys.stderr.flush()
 
-    def do_stop(self, line):
+    def do_stop_daemon(self, line):
         """Stop the Agkyra daemon, if it is running"""
         client = self.client
         if client:

@@ -34,10 +34,11 @@ def main():
     helper = SessionHelper()
     if not helper.load_active_session():
         helper.create_session()
-        helper.server.serve_forever()
+        helper.start()
     else:
         LOGGER.info('Another session is running, aborting')
         exit(1)
+    LOGGER.debug('Session Helper is now down')
 
 
 if __name__ == "__main__":

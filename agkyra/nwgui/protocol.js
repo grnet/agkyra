@@ -13,12 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+var DEBUG = false;
+
 var gui = require('nw.gui');
 var path = require('path');
+var fs = require('fs');
 
 // Read config file
-var DEBUG = false;
-var fs = require('fs');
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
 
 function log_debug(msg) { if (DEBUG) console.log(msg); }
