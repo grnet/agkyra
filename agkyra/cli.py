@@ -209,6 +209,13 @@ class AgkyraCLI(cmd.Cmd):
         except AttributeError:
             self.do_help('config')
 
+    @staticmethod
+    def _status_string(status=None):
+        """Get the status string (Syncing, Paused, Not running)"""
+        if status:
+            return 'Paused' if status['paused'] else 'Syncing'
+        return 'Not running'
+
     def do_status(self, line):
         """Get Agkyra client status. Status may be one of the following:
             Syncing     There is a process syncing right now
@@ -216,13 +223,8 @@ class AgkyraCLI(cmd.Cmd):
             Not running No active processes
         """
         client = self.client
-        if client:
-            # Ask the server for the status
-            status = client.get_status()
-            msg = 'Paused' if status['paused'] else 'Syncing'
-            sys.stdout.write('%s\n' % msg)
-        else:
-            sys.stdout.write('Not running\n')
+        status = client.get_status() if client else None
+        sys.stdout.write('%s\n' % self._status_string(status))
         sys.stdout.flush()
 
     # def do_start_daemon(self, line):
@@ -241,7 +243,7 @@ class AgkyraCLI(cmd.Cmd):
         """Start the session. If no daemons are running, start one first"""
         client = self.client
         if not client:
-            sys.stderr.write('No Agkyra daemons running, starting one ...')
+            sys.stderr.write('No Agkyra daemons running, starting one')
             protocol.launch_server()
             sys.stderr.write(' ... ')
             self.helper.wait_session_to_load()
@@ -258,8 +260,9 @@ class AgkyraCLI(cmd.Cmd):
                     raise
                 sys.stderr.write('OK\n')
             else:
-                sys.stderr.write('Already syncing\n')
+                sys.stderr.write('Already ')
         sys.stderr.flush()
+        self.do_status(line)
 
     def do_pause(self, line):
         """Pause a session (stop it from syncing, but keep it running)"""
@@ -267,19 +270,18 @@ class AgkyraCLI(cmd.Cmd):
         if client:
             status = client.get_status()
             if status['paused']:
-                sys.stderr.write('Already paused\n')
+                sys.stderr.write('Already ')
             else:
                 client.pause()
                 sys.stderr.write('Pausing syncer ... ')
                 try:
                     client.wait_until_paused()
                 except AssertionError:
-                    sys.stderr.write('\n')
+                    sys.stderr.write('Failed\n')
                     raise
                 sys.stderr.write('OK\n')
-        else:
-            sys.stderr.write('Not running (use "start" to launch)\n')
         sys.stderr.flush()
+        self.do_status(line)
 
     def do_shutdown(self, line):
         """Shutdown Agkyra, if it is running"""
