@@ -16,7 +16,6 @@
 import cmd
 import sys
 import logging
-import inspect
 from agkyra import config, protocol, protocol_client
 
 
