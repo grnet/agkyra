@@ -35,6 +35,21 @@ LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
 
+def retry_on_locked_db(method, *args, **kwargs):
+    """If DB is locked, wait and try again"""
+    wait = kwargs.get('wait', 0.2)
+    retries = kwargs.get('retries', 2)
+    while retries:
+        try:
+            return method(*args, **kwargs)
+        except sqlite3.OperationalError as oe:
+            if 'locked' not in '%s' % oe:
+                raise
+            LOG.debug('%s, retry' % oe)
+        time.sleep(wait)
+        retries -= 1
+
+
 class SessionHelper(object):
     """Agkyra Helper Server sets a WebSocket server with the Helper protocol
     It also provided methods for running and killing the Helper server
@@ -81,7 +96,17 @@ class SessionHelper(object):
         return None
 
     def create_session(self):
-        """Create session credentials"""
+        """Return the active session or create a new one"""
+
+        def get_session():
+                self.db.execute('BEGIN')
+                return self.load_active_session()
+
+        session = retry_on_locked_db(get_session)
+        if session:
+            self.db.rollback()
+            return session
+
         ui_id = sha1(os.urandom(128)).hexdigest()
 
         LOCAL_ADDR = '127.0.0.1'
@@ -95,14 +120,12 @@ class SessionHelper(object):
             app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
         server.initialize_websockets_manager()
         address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
-        self.server = server
 
-        self.db.execute('BEGIN')
-        self.db.execute('DELETE FROM %s' % self.session_relation)
         self.db.execute('INSERT INTO %s VALUES ("%s", "%s", "%s")' % (
             self.session_relation, ui_id, address, time.time()))
         self.db.commit()
 
+        self.server = server
         self.ui_id = ui_id
         return dict(ui_id=ui_id, address=address)
 
@@ -491,7 +514,8 @@ class WebSocketProtocol(WebSocket):
         if self.accepted:
             action = r['path']
             if action == 'shutdown':
-                self.clean_db()
+                retry_on_locked_db(self.clean_db)
+                self.terminate()
                 return
             {
                 'start': self.start_sync,
