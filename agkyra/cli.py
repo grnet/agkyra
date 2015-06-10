@@ -217,7 +217,7 @@ class AgkyraCLI(cmd.Cmd):
             if status['paused']:
                 return ('Pausing, %s remain' % remain) if remain else 'Paused'
             else:
-                return 'Syncing%s' % (', %s remain' % remain) if remain else ''
+                return 'Syncing, %s remain' % remain
         return 'Not running'
 
     def do_status(self, line):
