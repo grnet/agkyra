@@ -213,7 +213,11 @@ class AgkyraCLI(cmd.Cmd):
     def _status_string(status=None):
         """Get the status string (Syncing, Paused, Not running)"""
         if status:
-            return 'Paused' if status['paused'] else 'Syncing'
+            remain = status.get('unsynced', 0) - status.get('synced', 0)
+            if status['paused']:
+                return ('Pausing, %s remain' % remain) if remain else 'Paused'
+            else:
+                return 'Syncing%s' % (', %s remain' % remain) if remain else ''
         return 'Not running'
 
     def do_status(self, line):

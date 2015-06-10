@@ -247,11 +247,11 @@ window.setInterval(function() {
     var remaining = status.unsynced - status.synced;
     if (status.paused){
       if (remaining)
-        new_progress = 'Pausing, ' + remaining + ' remaining';
+        new_progress = 'Pausing, ' + remaining + ' remain';
       else new_progress = 'Paused';
     } else {
       if (remaining)
-        new_progress = 'Syncing, ' + remaining + ' remaining';
+        new_progress = 'Syncing, ' + remaining + ' remain';
       else new_progress = 'Running, all synced';
     }
   }
