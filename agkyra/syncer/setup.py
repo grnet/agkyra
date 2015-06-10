@@ -20,7 +20,7 @@ import logging
 from functools import wraps
 
 from agkyra.syncer.utils import join_path, ThreadSafeDict
-from agkyra.syncer.database import SqliteFileStateDB
+from agkyra.syncer.database import SqliteFileStateDB, transaction
 from agkyra.syncer.messaging import Messager
 from agkyra.syncer import utils
 
@@ -99,6 +99,8 @@ class SyncerSettings():
         self.endpoint = self._get_pithos_client(
             auth_url, auth_token, container)
 
+        container_exists = self.check_container_exists(container)
+
         home_dir = utils.to_unicode(os.path.expanduser('~'))
         default_settings_path = join_path(home_dir, GLOBAL_SETTINGS_NAME)
         self.settings_path = utils.to_unicode(
@@ -109,7 +111,25 @@ class SyncerSettings():
         self.create_dir(self.instances_path)
 
         self.local_root_path = utils.normalize_local_suffix(local_root_path)
-        self.create_dir(self.local_root_path)
+        local_root_path_exists = os.path.isdir(self.local_root_path)
+
+        self.cache_name = utils.to_unicode(
+            kwargs.get("cache_name", DEFAULT_CACHE_NAME))
+        self.cache_path = join_path(self.local_root_path, self.cache_name)
+
+        self.cache_hide_name = utils.to_unicode(
+            kwargs.get("cache_hide_name", DEFAULT_CACHE_HIDE_NAME))
+        self.cache_hide_path = join_path(self.cache_path, self.cache_hide_name)
+
+        self.cache_stage_name = utils.to_unicode(
+            kwargs.get("cache_stage_name", DEFAULT_CACHE_STAGE_NAME))
+        self.cache_stage_path = join_path(self.cache_path,
+                                          self.cache_stage_name)
+
+        self.cache_fetch_name = utils.to_unicode(
+            kwargs.get("cache_fetch_name", DEFAULT_CACHE_FETCH_NAME))
+        self.cache_fetch_path = join_path(self.cache_path,
+                                          self.cache_fetch_name)
 
         self.user_id = self.endpoint.account
         self.instance = get_instance(
@@ -120,29 +140,22 @@ class SyncerSettings():
 
         self.dbname = utils.to_unicode(kwargs.get("dbname", DEFAULT_DBNAME))
         self.full_dbname = join_path(self.instance_path, self.dbname)
-        self.get_db(initialize=True)
 
-        self.cache_name = utils.to_unicode(
-            kwargs.get("cache_name", DEFAULT_CACHE_NAME))
-        self.cache_path = join_path(self.local_root_path, self.cache_name)
-        self.create_dir(self.cache_path)
+        db_existed = os.path.isfile(self.full_dbname)
+        if not db_existed:
+            self.get_db(initialize=True)
 
-        self.cache_hide_name = utils.to_unicode(
-            kwargs.get("cache_hide_name", DEFAULT_CACHE_HIDE_NAME))
-        self.cache_hide_path = join_path(self.cache_path, self.cache_hide_name)
-        self.create_dir(self.cache_hide_path)
-
-        self.cache_stage_name = utils.to_unicode(
-            kwargs.get("cache_stage_name", DEFAULT_CACHE_STAGE_NAME))
-        self.cache_stage_path = join_path(self.cache_path,
-                                          self.cache_stage_name)
-        self.create_dir(self.cache_stage_path)
-
-        self.cache_fetch_name = utils.to_unicode(
-            kwargs.get("cache_fetch_name", DEFAULT_CACHE_FETCH_NAME))
-        self.cache_fetch_path = join_path(self.cache_path,
-                                          self.cache_fetch_name)
-        self.create_dir(self.cache_fetch_path)
+        if not db_existed:
+            self.set_localfs_enabled(True)
+            self.create_local_dirs()
+            self.set_pithos_enabled(True)
+            if not container_exists:
+                self.mk_container(container)
+        else:
+            if not local_root_path_exists:
+                self.set_localfs_enabled(False)
+            if not container_exists:
+                self.set_pithos_enabled(False)
 
         self.heartbeat = ThreadSafeDict()
         self.action_max_wait = kwargs.get("action_max_wait",
@@ -155,8 +168,14 @@ class SyncerSettings():
         self.endpoint.CONNECTION_RETRY_LIMIT = self.connection_retry_limit
 
         self.messager = Messager()
+        self.mtime_lag = 0 #self.determine_mtime_lag()
 
-        self.mtime_lag = self.determine_mtime_lag()
+    def create_local_dirs(self):
+        self.create_dir(self.local_root_path)
+        self.create_dir(self.cache_path)
+        self.create_dir(self.cache_hide_path)
+        self.create_dir(self.cache_stage_path)
+        self.create_dir(self.cache_fetch_path)
 
     def determine_mtime_lag(self):
         st = os.stat(self.cache_path)
@@ -204,22 +223,71 @@ class SyncerSettings():
             raise
         try:
             account = astakos.user_info['id']
-            client = PithosClient(PITHOS_URL, token, account, container)
+            return PithosClient(PITHOS_URL, token, account, container)
         except ClientError:
             logger.error("Failed to initialize Pithos client")
             raise
+
+    def check_container_exists(self, container):
         try:
-            client.get_container_info(container)
+            self.endpoint.get_container_info(container)
+            return True
         except ClientError as e:
             if e.status == 404:
-                logger.warning(
-                    "Container '%s' does not exist, creating..." % container)
-                try:
-                    client.create_container(container)
-                except ClientError:
-                    logger.error("Failed to create container '%s'" % container)
-                    raise
+                return False
             else:
                 raise
 
-        return client
+    def mk_container(self, container):
+        try:
+            self.endpoint.create_container(container)
+            logger.warning("Creating container '%s'" % container)
+        except ClientError:
+            logger.error("Failed to create container '%s'" % container)
+            raise
+
+    @transaction()
+    def set_localfs_enabled(self, enabled):
+        db = self.get_db()
+        self._set_localfs_enabled(db, enabled)
+
+    def _set_localfs_enabled(self, db, enabled):
+        db.set_config("localfs_enabled", enabled)
+
+    @transaction()
+    def set_pithos_enabled(self, enabled):
+        db = self.get_db()
+        self._set_pithos_enabled(db, enabled)
+
+    def _set_pithos_enabled(self, db, enabled):
+        db.set_config("pithos_enabled", enabled)
+
+    @transaction()
+    def localfs_is_enabled(self):
+        db = self.get_db()
+        return self._localfs_is_enabled(db)
+
+    def _localfs_is_enabled(self, db):
+        return db.get_config("localfs_enabled")
+
+    @transaction()
+    def pithos_is_enabled(self):
+        db = self.get_db()
+        return self._pithos_is_enabled(db)
+
+    def _pithos_is_enabled(self, db):
+        return db.get_config("pithos_enabled")
+
+    def _sync_is_enabled(self, db):
+        return self._localfs_is_enabled(db) and self._pithos_is_enabled(db)
+
+    @transaction()
+    def purge_db_archives_and_enable(self):
+        db = self.get_db()
+        db.purge_archives()
+        if not self._localfs_is_enabled(db):
+            self.create_local_dirs()
+            self._set_localfs_enabled(db, True)
+        if not self._pithos_is_enabled(db):
+            self._set_pithos_enabled(db, True)
+            self.mk_container(self.container)

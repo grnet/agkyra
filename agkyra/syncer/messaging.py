@@ -167,3 +167,15 @@ class ConflictStashMessage(Message):
         self.stash_name = kwargs["stash_name"]
         self.logger.warning("Stashing file '%s' to '%s'" %
                             (self.objname, self.stash_name))
+
+
+class LocalfsSyncDisabled(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.logger.warning("Localfs sync is disabled")
+
+
+class PithosSyncDisabled(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.logger.warning("Pithos sync is disabled")

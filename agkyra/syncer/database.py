@@ -66,6 +66,10 @@ class SqliteFileStateDB(FileStateDB):
              "primary key (cachename))")
         db.execute(Q)
 
+        Q = ("create table if not exists "
+             "config(key text, value text, primary key (key))")
+        db.execute(Q)
+
         self.commit()
 
     def begin(self):
@@ -193,6 +197,22 @@ class SqliteFileStateDB(FileStateDB):
             state = common.FileState(
                 archive=archive, objname=objname, serial=-1, info={})
         return state
+
+    def get_config(self, key):
+        Q = "select value from config where key = ?"
+        c = self.db.execute(Q, (key,))
+        r = c.fetchone()
+        if not r:
+            return None
+        return json.loads(r[0])
+
+    def set_config(self, key, value):
+        Q = "insert or replace into config(key, value) values (?, ?)"
+        self.db.execute(Q, (key, json.dumps(value)))
+
+    def purge_archives(self):
+        self.db.execute("delete from archives")
+        self.db.execute("delete from serials")
 
 
 def rand(lim):

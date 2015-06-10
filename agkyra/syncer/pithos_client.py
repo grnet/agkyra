@@ -283,6 +283,12 @@ class PithosFileClient(FileClient):
         self.endpoint = settings.endpoint
         self.last_modification = "0000-00-00"
         self.probe_candidates = utils.ThreadSafeDict()
+        self.check_enabled()
+
+    def check_enabled(self):
+        if not self.settings.pithos_is_enabled():
+            msg = messaging.PithosSyncDisabled(logger=logger)
+            self.settings.messager.put(msg)
 
     def remove_candidates(self, objnames, ident):
         with self.probe_candidates.lock() as d:
@@ -302,10 +308,17 @@ class PithosFileClient(FileClient):
             return d.keys()
 
     def get_pithos_candidates(self, last_modified=None):
+        if not self.settings.pithos_is_enabled():
+            return {}
         try:
             objects = self.endpoint.list_objects()
         except ClientError as e:
-            logger.error(e)
+            if e.status == 404:
+                self.settings.set_pithos_enabled(False)
+                msg = messaging.PithosSyncDisabled(logger=logger)
+                self.settings.messager.put(msg)
+            else:
+                logger.error(e)
             return {}
         self.objects = objects
         upstream_all = {}

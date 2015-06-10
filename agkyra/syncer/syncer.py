@@ -16,6 +16,7 @@
 import time
 import threading
 import logging
+from collections import defaultdict
 
 from agkyra.syncer import common
 from agkyra.syncer.setup import SyncerSettings
@@ -161,6 +162,26 @@ class FileSyncer(object):
                 info={})
             db.put_state(sync_state)
 
+    @transaction()
+    def dry_run_decisions(self, objnames, master=None, slave=None):
+        if master is None:
+            master = self.MASTER
+        if slave is None:
+            slave = self.SLAVE
+        decisions = []
+        for objname in objnames:
+            decision = self._dry_run_decision(objname, master, slave)
+            decisions.append(decision)
+        return decisions
+
+    def _dry_run_decision(self, objname, master=None, slave=None):
+        if master is None:
+            master = self.MASTER
+        if slave is None:
+            slave = self.SLAVE
+        ident = utils.time_stamp()
+        return self._do_decide_file_sync(objname, master, slave, ident, True)
+
     def decide_file_sync(self, objname, master=None, slave=None):
         if master is None:
             master = self.MASTER
@@ -177,6 +198,10 @@ class FileSyncer(object):
 
     @transaction()
     def _decide_file_sync(self, objname, master, slave, ident):
+        db = self.get_db()
+        if not self.settings._sync_is_enabled(db):
+            logger.warning("Cannot decide '%s'; sync disabled." % objname)
+            return
         states = self._do_decide_file_sync(objname, master, slave, ident)
         if states is not None:
             with self.heartbeat.lock() as hb:
@@ -184,7 +209,8 @@ class FileSyncer(object):
                 hb[objname] = beat
         return states
 
-    def _do_decide_file_sync(self, objname, master, slave, ident):
+    def _do_decide_file_sync(self, objname, master, slave, ident,
+                             dry_run=False):
         db = self.get_db()
         logger.info("Deciding object: '%s'" % objname)
         master_state = db.get_state(master, objname)
@@ -201,15 +227,17 @@ class FileSyncer(object):
             logger.debug("object: %s heartbeat: %s" % (objname, beat))
             if beat is not None:
                 if beat["ident"] == ident:
-                    msg = messaging.HeartbeatReplayDecideMessage(
-                        objname=objname, heartbeat=beat, logger=logger)
-                    self.messager.put(msg)
+                    if not dry_run:
+                        msg = messaging.HeartbeatReplayDecideMessage(
+                            objname=objname, heartbeat=beat, logger=logger)
+                        self.messager.put(msg)
                 else:
                     if utils.younger_than(
                             beat["tstamp"], self.settings.action_max_wait):
-                        msg = messaging.HeartbeatNoDecideMessage(
-                            objname=objname, heartbeat=beat, logger=logger)
-                        self.messager.put(msg)
+                        if not dry_run:
+                            msg = messaging.HeartbeatNoDecideMessage(
+                                objname=objname, heartbeat=beat, logger=logger)
+                            self.messager.put(msg)
                         return None
                     logger.warning("Ignoring previous run: %s %s" %
                                    (objname, beat))
@@ -231,20 +259,23 @@ class FileSyncer(object):
                         "does not match any archive." %
                         (decision_serial, objname))
             else:
-                msg = messaging.FailedSyncIgnoreDecisionMessage(
-                    objname=objname, serial=decision_serial, logger=logger)
-                self.messager.put(msg)
+                if not dry_run:
+                    msg = messaging.FailedSyncIgnoreDecisionMessage(
+                        objname=objname, serial=decision_serial, logger=logger)
+                    self.messager.put(msg)
 
         if master_serial > sync_serial:
             if master_serial == decision_serial:  # this is a failed serial
                 return None
-            self._make_decision_state(decision_state, master_state)
+            if not dry_run:
+                self._make_decision_state(decision_state, master_state)
             return master_state, slave_state, sync_state
         elif master_serial == sync_serial:
             if slave_serial > sync_serial:
                 if slave_serial == decision_serial:  # this is a failed serial
                     return None
-                self._make_decision_state(decision_state, slave_state)
+                if not dry_run:
+                    self._make_decision_state(decision_state, slave_state)
                 return slave_state, master_state, sync_state
             elif slave_serial == sync_serial:
                 return None
@@ -367,8 +398,14 @@ class FileSyncer(object):
         new_decision_state = new_sync_state.set(archive=self.DECISION)
         db.put_state(new_decision_state)
 
-    @transaction()
     def list_deciding(self, archives=None):
+        try:
+            return self._list_deciding(archives=archives)
+        except DatabaseError:
+            return self.list_deciding(archives=archives)
+
+    @transaction()
+    def _list_deciding(self, archives=None):
         db = self.get_db()
         if archives is None:
             archives = (self.MASTER, self.SLAVE)
@@ -408,6 +445,17 @@ class FileSyncer(object):
                 self.decide_all_archives()
                 time.sleep(interval)
         return utils.start_daemon(DecideThread)
+
+    def check_decisions(self):
+        deciding = self.list_deciding()
+        decisions = self.dry_run_decisions(deciding)
+        by_source = defaultdict(list)
+        for decision in decisions:
+            source_state = decision[0]
+            source = source_state.archive
+            objname = source_state.objname
+            by_source[source].append(objname)
+        return by_source
 
     # TODO cleanup db of objects deleted in all clients
     # def cleanup(self):

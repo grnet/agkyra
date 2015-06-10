@@ -548,6 +548,12 @@ class LocalfsFileClient(FileClient):
         self.CACHEPATH = settings.cache_path
         self.get_db = settings.get_db
         self.probe_candidates = utils.ThreadSafeDict()
+        self.check_enabled()
+
+    def check_enabled(self):
+        if not self.settings.localfs_is_enabled():
+            msg = messaging.LocalfsSyncDisabled(logger=logger)
+            self.settings.messager.put(msg)
 
     def remove_candidates(self, objnames, ident):
         with self.probe_candidates.lock() as d:
@@ -560,6 +566,14 @@ class LocalfsFileClient(FileClient):
                     pass
 
     def list_candidate_files(self, forced=False):
+        if not self.settings.localfs_is_enabled():
+            return {}
+        if not os.path.isdir(self.ROOTPATH):
+            self.settings.set_localfs_enabled(False)
+            msg = messaging.LocalfsSyncDisabled(logger=logger)
+            self.settings.messager.put(msg)
+            return {}
+
         with self.probe_candidates.lock() as d:
             if forced:
                 candidates = self.walk_filesystem()
@@ -658,6 +672,7 @@ class LocalfsFileClient(FileClient):
             with self.probe_candidates.lock() as d:
                 d[objname] = self.none_info()
 
+        root_path = utils.from_unicode(self.ROOTPATH)
         class EventHandler(FileSystemEventHandler):
             def on_created(this, event):
                 # if not event.is_directory:
@@ -669,6 +684,10 @@ class LocalfsFileClient(FileClient):
             def on_deleted(this, event):
                 path = event.src_path
                 logger.debug("Handling %s" % event)
+                if path == root_path:
+                    self.settings.set_localfs_enabled(False)
+                    msg = messaging.LocalfsSyncDisabled(logger=logger)
+                    self.settings.messager.put(msg)
                 handle_path(path)
 
             def on_modified(this, event):
@@ -685,9 +704,8 @@ class LocalfsFileClient(FileClient):
                 handle_path(src_path)
                 handle_path(dest_path)
 
-        path = utils.from_unicode(self.ROOTPATH)
         event_handler = EventHandler()
         observer = Observer()
-        observer.schedule(event_handler, path, recursive=True)
+        observer.schedule(event_handler, root_path, recursive=True)
         observer.start()
         return observer
