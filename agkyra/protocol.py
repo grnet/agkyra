@@ -456,6 +456,7 @@ class WebSocketProtocol(WebSocket):
             except KeyError:
                 pass
 
+        syncer_ = None
         try:
             syncer_settings = setup.SyncerSettings(
                 self.settings['url'], self.settings['token'],
@@ -466,9 +467,6 @@ class WebSocketProtocol(WebSocket):
             syncer_ = syncer.FileSyncer(syncer_settings, master, slave)
             self.syncer_settings = syncer_settings
             syncer_.initiate_probe()
-        except setup.ClientError:
-            syncer_ = None
-            raise
         finally:
             with SYNCERS.lock() as d:
                 d[0] = syncer_
