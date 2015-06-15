@@ -252,12 +252,17 @@ class WebSocketProtocol(WebSocket):
     GUI: {"method": "get", "path": "status"}
     HELPER: {
         "can_sync": <boolean>,
-        "progress": <int>,
+        "notification": <int>,
         "paused": <boolean>,
         "action": "get status"} or
         {<ERROR>: <ERROR CODE>, "action": "get status"}
     """
-
+    notification = {
+        0: 'Syncer is consistent',
+        1: 'Local directory is not accessible',
+        2: 'Remote container is not accessible',
+        100: 'unknown error'
+    }
     ui_id = None
     session_db, session_relation = None, None
     accepted = False
@@ -266,7 +271,7 @@ class WebSocketProtocol(WebSocket):
         container=None, directory=None,
         exclude=None)
     status = dict(
-        progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
+        notification=0, synced=0, unsynced=0, paused=True, can_sync=False)
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
 
@@ -281,7 +286,7 @@ class WebSocketProtocol(WebSocket):
         """Shutdown the service"""
         LOG.debug('Shutdown syncer')
         self.close()
-        if self.can_sync():
+        if self.syncer and self.can_sync():
             self.syncer.stop_all_daemons()
             LOG.debug('Wait open syncs to complete')
             self.syncer.wait_sync_threads()
@@ -291,7 +296,8 @@ class WebSocketProtocol(WebSocket):
         LOG.debug('Remove session traces')
         db = sqlite3.connect(self.session_db)
         db.execute('BEGIN')
-        db.execute('DELETE FROM %s' % self.session_relation)
+        db.execute('DELETE FROM %s WHERE ui_id="%s"' % (
+            self.session_relation, self.ui_id))
         db.commit()
         db.close()
 
@@ -411,8 +417,8 @@ class WebSocketProtocol(WebSocket):
         return all([
             self.settings[e] == self.settings[e] for e in self.essentials])
 
-    def _update_statistics(self):
-        """Update statistics by consuming and understanding syncer messages"""
+    def _consume_messages(self):
+        """Update status by consuming and understanding syncer messages"""
         if self.can_sync():
             msg = self.syncer.get_next_message()
             if not msg:
@@ -421,17 +427,24 @@ class WebSocketProtocol(WebSocket):
                     self.status['synced'] = 0
             while (msg):
                 if isinstance(msg, messaging.SyncMessage):
-                    LOG.info('Start syncing "%s"' % msg.objname)
+                    # LOG.info('Start syncing "%s"' % msg.objname)
                     self.status['unsynced'] += 1
                 elif isinstance(msg, messaging.AckSyncMessage):
-                    LOG.info('Finished syncing "%s"' % msg.objname)
+                    # LOG.info('Finished syncing "%s"' % msg.objname)
                     self.status['synced'] += 1
-                elif isinstance(msg, messaging.CollisionMessage):
-                    LOG.info('Collision for "%s"' % msg.objname)
-                elif isinstance(msg, messaging.ConflictStashMessage):
-                    LOG.info('Conflict for "%s"' % msg.objname)
-                else:
-                    LOG.debug('Consumed msg %s' % msg)
+                # elif isinstance(msg, messaging.CollisionMessage):
+                #     LOG.info('Collision for "%s"' % msg.objname)
+                # elif isinstance(msg, messaging.ConflictStashMessage):
+                #     LOG.info('Conflict for "%s"' % msg.objname)
+                if isinstance(msg, messaging.LocalfsSyncDisabled):
+                    # LOG.debug('Local FS is dissabled, noooo!')
+                    self.status['notification'] = 1
+                    self.syncer.stop_all_daemons()
+                elif isinstance(msg, messaging.PithosSyncDisabled):
+                    # LOG.debug('Pithos sync is disabled, noooooo!')
+                    self.status['notification'] = 2
+                    self.syncer.stop_all_daemons()
+                LOG.debug('Backend message: %s' % msg.name)
                 msg = self.syncer.get_next_message()
 
     def can_sync(self):
@@ -466,20 +479,38 @@ class WebSocketProtocol(WebSocket):
             slave = localfs_client.LocalfsFileClient(syncer_settings)
             syncer_ = syncer.FileSyncer(syncer_settings, master, slave)
             self.syncer_settings = syncer_settings
-            syncer_.initiate_probe()
+            # Check if syncer is ready, by consumming messages
+            msg = syncer_.get_next_message()
+            # while not msg:
+            #     time.sleep(0.2)
+            #     msg = syncer_.get_next_message()
+            if msg:
+                if isinstance(msg, messaging.LocalfsSyncDisabled):
+                    LOG.debug('Local FS is dissabled, noooo!')
+                    self.status['notification'] = 1
+                elif isinstance(msg, messaging.PithosSyncDisabled):
+                    LOG.debug('Pithos sync is disabled, noooooo!')
+                    self.status['notification'] = 2
+                else:
+                    LOG.debug("Unexpected message: %s" % msg)
+                    msg = None
+            if msg:
+                syncer_ = None
+            else:
+                syncer_.initiate_probe()
         finally:
             with SYNCERS.lock() as d:
                 d[0] = syncer_
 
     # Syncer-related methods
     def get_status(self):
-        if getattr(self, 'syncer', None) and self.can_sync():
-            self._update_statistics()
+        if self.syncer and self.can_sync():
+            self._consume_messages()
             self.status['paused'] = self.syncer.paused
             self.status['can_sync'] = self.can_sync()
         else:
-            self.status = dict(
-                progress=0, synced=0, unsynced=0, paused=True, can_sync=False)
+            self.status.update(dict(
+                synced=0, unsynced=0, paused=True, can_sync=False))
         return self.status
 
     def get_settings(self):
@@ -488,7 +519,7 @@ class WebSocketProtocol(WebSocket):
     def set_settings(self, new_settings):
         """Set the settings and dump them to permanent storage if needed"""
         # Prepare setting save
-        could_sync = getattr(self, 'syncer', None) and self.can_sync()
+        could_sync = self.syncer and self.can_sync()
         was_active = False
         if could_sync and not self.syncer.paused:
             was_active = True
@@ -540,7 +571,8 @@ class WebSocketProtocol(WebSocket):
             self._load_settings()
             if (not self.syncer) and self.can_sync():
                 self.init_sync()
-                self.start_sync()
+                if self.syncer:
+                    self.start_sync()
         else:
             action = r.get('path', 'ui_id')
             self.send_json({'REJECTED': 401, 'action': 'post %s' % action})
@@ -602,7 +634,8 @@ class WebSocketProtocol(WebSocket):
             return
         except Exception as e:
             self.send_json({'INTERNAL ERROR': 500})
-            LOG.error('EXCEPTION: %s' % e)
+            reason = '%s %s' % (method or '', r)
+            LOG.error('EXCEPTION (%s): %s' % (reason, e))
             self.terminate()
 
 

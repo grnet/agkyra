@@ -25,7 +25,7 @@ HANDLER = logging.FileHandler(LOGFILE)
 FORMATTER = logging.Formatter("%(name)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 
 
 def main():
