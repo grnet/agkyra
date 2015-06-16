@@ -67,7 +67,6 @@ class SessionHelper(object):
 
         self._init_db_relation()
         # self.session = self._load_active_session() or self._create_session()
-
         # self.db.close()
 
     def _init_db_relation(self):
@@ -282,15 +281,6 @@ class WebSocketProtocol(WebSocket):
                 return sync_obj
         return None
 
-    def _shutdown(self):
-        """Shutdown the service"""
-        LOG.debug('Shutdown syncer')
-        self.close()
-        if self.syncer and self.can_sync():
-            self.syncer.stop_all_daemons()
-            LOG.debug('Wait open syncs to complete')
-            self.syncer.wait_sync_threads()
-
     def clean_db(self):
         """Clean DB from session traces"""
         LOG.debug('Remove session traces')
@@ -300,6 +290,16 @@ class WebSocketProtocol(WebSocket):
             self.session_relation, self.ui_id))
         db.commit()
         db.close()
+
+    def shutdown_syncer(self, syncer_key=0):
+        """Shutdown the service"""
+        LOG.debug('Shutdown syncer')
+        with SYNCERS.lock() as d:
+            syncer = d.pop(syncer_key, None)
+            if syncer and self.can_sync():
+                syncer.stop_all_daemons()
+                LOG.debug('Wait open syncs to complete')
+                syncer.wait_sync_threads()
 
     def heartbeat(self):
         """Check if socket should be alive"""
@@ -319,7 +319,8 @@ class WebSocketProtocol(WebSocket):
             except sqlite3.OperationalError:
                 alive = True
         db.close()
-        self._shutdown()
+        self.shutdown_syncer()
+        self.close()
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
