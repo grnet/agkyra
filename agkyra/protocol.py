@@ -437,7 +437,7 @@ class WebSocketProtocol(WebSocket):
                 #     LOG.info('Collision for "%s"' % msg.objname)
                 # elif isinstance(msg, messaging.ConflictStashMessage):
                 #     LOG.info('Conflict for "%s"' % msg.objname)
-                if isinstance(msg, messaging.LocalfsSyncDisabled):
+                elif isinstance(msg, messaging.LocalfsSyncDisabled):
                     # LOG.debug('Local FS is dissabled, noooo!')
                     self.status['notification'] = 1
                     self.syncer.stop_all_daemons()
@@ -485,12 +485,18 @@ class WebSocketProtocol(WebSocket):
             # while not msg:
             #     time.sleep(0.2)
             #     msg = syncer_.get_next_message()
+
+            # This should be activated only on accepting a positive message
+            self.status['notification'] = 0
+            self.status['unsynced'] = 0
+            self.status['synced'] = 0
+
             if msg:
                 if isinstance(msg, messaging.LocalfsSyncDisabled):
-                    LOG.debug('Local FS is dissabled, noooo!')
+                    LOG.debug('Local FS is disabled')
                     self.status['notification'] = 1
                 elif isinstance(msg, messaging.PithosSyncDisabled):
-                    LOG.debug('Pithos sync is disabled, noooooo!')
+                    LOG.debug('Pithos sync is disabled')
                     self.status['notification'] = 2
                 else:
                     LOG.debug("Unexpected message: %s" % msg)

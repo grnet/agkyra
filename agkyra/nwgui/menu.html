@@ -16,10 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <html>
-<head><title>GUI for Agkyra Pithos+ Syncing Client</title></head>
+<head>
+  <meta charset="UTF-8" />
+  <title>GUI for Agkyra Pithos+ Syncing Client</title>
+</head>
 <body>
     <script src="protocol.js"></script>
     <script src="settings.js"></script>
+    <script src="notify.js"></script>
     <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
@@ -214,7 +218,14 @@ window.setInterval(function() {
   var status = globals['status'];
   var new_progress = progress_item.label;
   var new_pause = pause_item.label;
-  if (!status.can_sync) {
+  if (status.notification !== 0) {
+    new_progress = notifications[status.notification];
+    new_pause = 'inactive';
+    if (progress_item.label !== new_progress) {
+      notify_user(new_progress, 'critical');
+    }
+  }
+  else if (!status.can_sync) {
     if (globals.just_opened) new_progress = 'Connecting...'
     else new_progress = 'Not able to sync'
     new_pause = 'inactive'

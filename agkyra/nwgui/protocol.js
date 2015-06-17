@@ -28,6 +28,13 @@ function send_json(socket, msg) {
   socket.send(JSON.stringify(msg));
 }
 
+var notifications = {
+    0: 'Syncer is consistent',
+    1: 'Local directory is not accessible',
+    2: 'Remote container is not accessible',
+    100: 'Unknown error'
+}
+
 var globals = {
   settings: {
     token: null,
@@ -36,7 +43,8 @@ var globals = {
     directory: null,
     exclude: null
   },
-  status: {synced: 0, unsynced: 0, paused: null, can_sync: false},
+  status: {
+    synced: 0, unsynced: 0, paused: null, can_sync: false, notification: 0},
   authenticated: false,
   just_opened: false,
   open_settings: false,
