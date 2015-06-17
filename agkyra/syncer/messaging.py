@@ -179,3 +179,15 @@ class PithosSyncDisabled(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
         self.logger.warning("Pithos sync is disabled")
+
+
+class LocalfsSyncEnabled(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.logger.info("Localfs sync is enabled")
+
+
+class PithosSyncEnabled(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.logger.info("Pithos sync is enabled")

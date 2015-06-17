@@ -288,7 +288,9 @@ class PithosFileClient(FileClient):
     def check_enabled(self):
         if not self.settings.pithos_is_enabled():
             msg = messaging.PithosSyncDisabled(logger=logger)
-            self.settings.messager.put(msg)
+        else:
+            msg = messaging.PithosSyncEnabled(logger=logger)
+        self.settings.messager.put(msg)
 
     def remove_candidates(self, objnames, ident):
         with self.probe_candidates.lock() as d:

@@ -104,6 +104,10 @@ class AgkyraTest(unittest.TestCase):
         cls.pithos = cls.master.endpoint
         cls.pithos.create_container(cls.ID)
         cls.db = cls.s.get_db()
+        m = cls.s.get_next_message(block=True)
+        assert isinstance(m, messaging.PithosSyncEnabled)
+        m = cls.s.get_next_message(block=True)
+        assert isinstance(m, messaging.LocalfsSyncEnabled)
 
     def assert_message(self, mtype):
         m = self.s.get_next_message(block=True)
