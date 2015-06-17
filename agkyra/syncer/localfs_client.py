@@ -21,6 +21,7 @@ import psutil
 import time
 import filecmp
 import shutil
+import errno
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -39,11 +40,6 @@ LOCAL_MISSING = 3
 LOCAL_SOFTLINK = 4
 LOCAL_OTHER = 5
 
-OS_FILE_EXISTS = 17
-OS_NOT_A_DIR = 20
-OS_NO_FILE_OR_DIR = 2
-OS_IS_DIR = 21
-
 DEFAULT_MTIME_PRECISION = 1e-4
 
 exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
@@ -55,15 +51,16 @@ class DirMissing(BaseException):
 
 
 def link_file(src, dest):
+    cmd = os.rename if utils.iswin() else os.link
     try:
-        os.link(src, dest)
+        cmd(src, dest)
     except OSError as e:
-        if e.errno == OS_FILE_EXISTS:
+        if e.errno == errno.EEXIST:
             raise common.ConflictError("Cannot link, '%s' exists." % dest)
-        if e.errno == OS_NOT_A_DIR:
+        if e.errno in [errno.ENOTDIR, errno.EINVAL]:
             raise common.ConflictError(
                 "Cannot link, missing path for '%s'." % dest)
-        if e.errno == OS_NO_FILE_OR_DIR:
+        if e.errno == errno.ENOENT:
             raise DirMissing()
 
 
@@ -71,9 +68,9 @@ def make_dirs(path):
     try:
         os.makedirs(path)
     except OSError as e:
-        if e.errno == OS_FILE_EXISTS and os.path.isdir(path):
+        if e.errno == errno.EEXIST and os.path.isdir(path):
             return
-        if e.errno in [OS_FILE_EXISTS, OS_NOT_A_DIR]:
+        if e.errno in [errno.EEXIST, errno.ENOTDIR, errno.ENOENT]:
             raise common.ConflictError("Cannot make dir '%s'." % path)
         raise
 
@@ -118,7 +115,7 @@ def get_orig_name(filename):
 
 
 def mk_stash_name(filename):
-    tstamp = datetime.datetime.now().isoformat()
+    tstamp = utils.str_time_stamp()
     orig = get_orig_name(filename)
     return orig + '_' + tstamp + '_' + utils.NODE
 
@@ -132,7 +129,7 @@ def files_equal(f1, f2):
     try:
         return filecmp.cmp(f1, f2, shallow=False)
     except OSError as e:
-        if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
+        if e.errno in [errno.ENOENT, errno.ENOTDIR]:
             return False
         raise
 
@@ -170,7 +167,7 @@ def stat_file(path):
     try:
         return os.lstat(path)
     except OSError as e:
-        if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
+        if e.errno in [errno.ENOENT, errno.ENOTDIR]:
             return None
         raise
 
@@ -299,10 +296,14 @@ class LocalfsTargetHandle(object):
             logger.debug("Hiding file '%s' to '%s'" %
                          (fspath, hidden_path))
         except OSError as e:
-            if e.errno in [OS_NO_FILE_OR_DIR, OS_NOT_A_DIR]:
+            if e.errno in [errno.ENOENT, errno.ENOTDIR]:
                 self.unregister_hidden_name(hidden_filename)
                 logger.debug("File '%s' does not exist" % fspath)
                 return
+            elif e.errno == errno.EACCES:
+                self.unregister_hidden_name(hidden_filename)
+                raise common.BusyError("File '%' is open. Undoing." %
+                                       hidden_path)
             else:
                 raise e
 
@@ -434,7 +435,7 @@ class LocalfsSourceHandle(object):
         try:
             shutil.copy2(fspath, stage_path)
         except IOError as e:
-            if e.errno in [OS_NO_FILE_OR_DIR, OS_IS_DIR]:
+            if e.errno in [errno.ENOENT, errno.EISDIR]:
                 logger.debug("Source is not a regular file: '%s'" % fspath)
                 self.unregister_stage_name(stage_filename)
                 return

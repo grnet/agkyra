@@ -30,6 +30,13 @@ ENCODING = sys.getfilesystemencoding() or sys.getdefaultencoding()
 PLATFORM = sys.platform
 NODE = platform.node()
 
+def iswin():
+    return PLATFORM.startswith("win")
+
+
+def islinux():
+    return PLATFORM.startswith("linux")
+
 
 def to_local_sep(filename):
     return filename.replace(OBJECT_DIRSEP, os.path.sep)
@@ -79,13 +86,16 @@ def hash_string(s):
 
 
 def time_stamp():
-    return datetime.datetime.now().strftime("%s.%f")
+    return datetime.datetime.now()
+
+
+def str_time_stamp():
+    return time_stamp().isoformat().replace(':', '.')
 
 
 def younger_than(tstamp, seconds):
     now = datetime.datetime.now()
-    ts = datetime.datetime.fromtimestamp(int(float(tstamp)))
-    delta = now - ts
+    delta = now - tstamp
     return delta < datetime.timedelta(seconds=seconds)
 
 

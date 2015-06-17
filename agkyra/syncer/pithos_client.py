@@ -99,7 +99,7 @@ class PithosSourceHandle(object):
     def register_fetch_name(self, filename):
         db = self.get_db()
         f = utils.hash_string(filename) + "_" + \
-            utils.time_stamp()
+            utils.str_time_stamp()
         fetch_name = utils.join_path(self.cache_fetch_name, f)
         self.fetch_name = fetch_name
         db.insert_cachename(fetch_name, self.SIGNATURE, filename)

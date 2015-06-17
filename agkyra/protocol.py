@@ -24,6 +24,7 @@ import time
 import os
 import json
 import logging
+import subprocess
 from agkyra.syncer import (
     syncer, setup, pithos_client, localfs_client, messaging, utils)
 from agkyra.config import AgkyraConfig, AGKYRA_DIR
@@ -704,7 +705,11 @@ class WebSocketProtocol(WebSocket):
 def launch_server():
     """Launch the server in a separate process"""
     LOG.info('Start SessionHelper session')
-    pid = os.fork()
-    if not pid:
-        server_path = os.path.join(CURPATH, 'scripts', 'server.py')
-        os.execlp("python", "python", server_path)
+    server_path = os.path.join(CURPATH, 'scripts', 'server.py')
+    if utils.iswin():
+        subprocess.Popen(["pythonw.exe", server_path],
+                         close_fds=True)
+    else:
+        pid = os.fork()
+        if not pid:
+            os.execlp("python", "python", server_path)
