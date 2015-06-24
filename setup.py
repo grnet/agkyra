@@ -41,7 +41,6 @@ INSTALL_REQUIRES = [
     'psutil',
     'ws4py',
     'certifi',
-    'sqlite3',
 ]
 
 EXTRAS_REQUIRES = {
