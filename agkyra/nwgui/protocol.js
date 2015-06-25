@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-var DEBUG = false;
+var DEBUG = true;
 
 var gui = require('nw.gui');
 var path = require('path');
@@ -21,6 +21,7 @@ var fs = require('fs');
 
 // Read config file
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
+var UI_COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_common.json')));
 
 function log_debug(msg) { if (DEBUG) console.log(msg); }
 
@@ -28,12 +29,7 @@ function send_json(socket, msg) {
   socket.send(JSON.stringify(msg));
 }
 
-var notifications = {
-    0: 'Syncer is consistent',
-    1: 'Local directory is not accessible',
-    2: 'Remote container is not accessible',
-    100: 'Unknown error'
-}
+var STATUS = UI_COMMON['STATUS'];
 
 var globals = {
   settings: {
@@ -43,10 +39,8 @@ var globals = {
     directory: null,
     exclude: null
   },
-  status: {
-    synced: 0, unsynced: 0, paused: null, can_sync: false, notification: 0},
+  status: {synced: 0, unsynced: 0, code: STATUS['UNINITIALIZED']},
   authenticated: false,
-  just_opened: false,
   open_settings: false,
   settings_are_open: false
 }
@@ -87,7 +81,7 @@ function put_settings(socket, new_settings) {
 
 function get_status(socket) {
   send_json(socket, {'method': 'get', 'path': 'status'});
-} // expected response {"synced":.., "unsynced":.., "paused":.., "can_sync":..}
+} // expected response {"synced":.., "unsynced":.., "code":..}
 
 
 // Connect to helper
@@ -111,7 +105,6 @@ socket.onmessage = function(e) {
         get_settings(this);
         get_status(this);
         globals.authenticated = true;
-        globals.just_opened = true;
       } else {
         log_debug('Helper: ' + JSON.stringify(r));
         closeWindows();
@@ -139,10 +132,8 @@ socket.onmessage = function(e) {
     break;
     case 'get status':
       globals['status'] = r;
-      if (globals.just_opened) {
-        globals.just_opened = false;
-        globals.open_settings = !r.can_sync;
-      }
+      if (!globals.open_settings)
+        globals.open_settings = has_settings_error(r.code);
     break;
     default:
       console.log('Incomprehensible response ' + JSON.stringify(r));

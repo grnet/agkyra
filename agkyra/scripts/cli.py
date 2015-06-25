@@ -31,10 +31,10 @@ LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
 LOGGER = logging.getLogger('agkyra')
 HANDLER = logging.FileHandler(LOGFILE)
 FORMATTER = logging.Formatter(
-    "[CLI]%(name)s %(levelname)s:%(asctime)s:%(message)s")
+    "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 
 
 def main():

@@ -66,7 +66,9 @@ pause_item = new gui.MenuItem({
   label: 'NOT READY',
   type: 'normal',
   click: function() {
-    if (paused) {post_start(socket);} else {post_pause(socket);}
+    if (globals.status.code == STATUS['PAUSED']) post_start(socket);
+    else if (globals.status.code == STATUS['SYNCING']) post_pause(socket);
+    else log_debug('Illegal click - status code is ' + globals.status.code);
   }
 });
 pause_item.enabled = false;
@@ -159,12 +161,28 @@ menu.append(new gui.MenuItem({
 }));
 
 
+function activate_menu() {
+  if (!pause_item.enabled) pause_item.enabled = true;
+  if (!settings_menu.enabled) {
+    if (globals.settings.url) refresh_endpoints(globals.settings.url);
+    settings_menu.enabled = true;
+    tray.menu = menu;
+  }
+  if ((!pithos_page_menu.enabled) && get_pithos_ui() != null){
+    pithos_page_menu.enabled = true;
+    tray.menu = menu;
+  }
+  if ((!local_folder_menu.enabled) && globals.settings.directory) {
+    local_folder_menu.enabled = true;
+    tray.menu = menu;
+  }
+}
+
 function deactivate_menu() {
   if (
       pause_item.enabled ||
       local_folder_menu.enabled ||
       pithos_page_menu.enabled) {
-    progress_item.label = 'Settings window is open';
     pause_item.enabled = false;
     local_folder_menu.enabled = false;
     pithos_page_menu.enabled = false;
@@ -172,109 +190,57 @@ function deactivate_menu() {
   }
 }
 
-
 // Update progress
-var client_ready = false;
 window.setInterval(function() {
-  if (globals.settings_are_open) {
-    deactivate_menu();
-    return;
+  var new_progress = notification[globals.status.code];
+  var new_pause = '';
+  switch(globals.status.code) {
+    case STATUS['UNINITIALIZED']:
+    case STATUS['INITIALIZING']:
+    case STATUS['SHUTING DOWN']:
+      deactivate_menu();
+      new_pause = 'inactive';
+    break;
+    case STATUS['SYNCING']:
+      activate_menu();
+      new_progress += ', ' + remaining(globals.status) + ' remaining';
+      new_pause = 'Pause'
+    break;
+    case STATUS['PAUSING']:
+      new_progress += ', ' + remaining(globals.status) + ' remaining';
+      new_pause = 'waiting...'
+      pause_item.enabled = false;
+    break;
+    case STATUS['PAUSED']:
+      activate_menu();
+      new_pause = 'Start syncing';
+      if (remaining(globals.status) > 0)
+        new_progress += ', ' + remaining(globals.status) + ' remaining';
+    break;
+    case STATUS['SETTINGS MISSING']:
+    case STATUS['AUTH URL ERROR']:
+    case STATUS['TOKEN ERROR']:
+    case STATUS['DIRECTORY ERROR']:
+    case STATUS['CONTAINER ERROR']:
+      deactivate_menu();
+      new_pause = 'inactive';
+      settings_menu.enabled = true;
+    break;
   }
 
   if (globals.open_settings) {
+    new_progress = 'Settings window is open';
     globals.open_settings = false;
     settings_menu.click();
     deactivate_menu();
-    return;
-  }
+  } else if (globals.settings_are_open) deactivate_menu();
 
-  var menu_modified = false;
-  if (!client_ready) {
-    if (!globals.authenticated) return;
-    client_ready = true;
-  }
-
-  if (client_ready) {
-    pause_item.enabled = (pause_item.label !== 'inactive');
-    if (!settings_menu.enabled) {
-      if (globals.settings.url) refresh_endpoints(globals.settings.url);
-      settings_menu.enabled = true;
-      tray.menu = menu;
-    }
-    if (globals.settings.url && !pithos_page_menu.enabled) {
-      if (get_pithos_ui() != null) {
-        pithos_page_menu.enabled = true;
-        tray.menu = menu;
-      } else { refresh_endpoints(globals.settings.url); }
-    }
-    if (!local_folder_menu.enabled) {
-      if (globals.settings.directory) {
-        local_folder_menu.enabled = true;
-        tray.menu = menu;
-      }
-    }
-  }
-
-  var status = globals['status'];
-  var new_progress = progress_item.label;
-  var new_pause = pause_item.label;
-  if (status.notification !== 0) {
-    new_progress = notifications[status.notification];
-    new_pause = 'inactive';
-    if (progress_item.label !== new_progress) {
-      notify_user(new_progress, 'critical');
-    }
-  }
-  else if (!status.can_sync) {
-    if (globals.just_opened) new_progress = 'Connecting...'
-    else new_progress = 'Not able to sync'
-    new_pause = 'inactive'
-    pause_item.enabled = false;
-  } else {
-    if (status.paused !== null) {
-      switch(pause_item.label) {
-        case pause_syncing: if (status.paused) {
-            // Update to "Paused - start syncing"
-            paused = true;
-            new_pause = start_syncing;
-            menu_modified = true;
-          } // else continue syncing
-        break;
-        case start_syncing: if (!status.paused) {
-            //update to "Syncing - pause syncing"
-            paused = false;
-            new_pause = pause_syncing;
-            menu_modified = true;
-          }
-        break;
-        default:
-          if (status.paused) {new_pause = start_syncing; paused=true;}
-          else {new_pause = pause_syncing; paused=false;}
-          pause_item.enabled = true;
-          menu_modified = true;
-      }
-    }
-
-    var remaining = status.unsynced - status.synced;
-    if (status.paused){
-      if (remaining)
-        new_progress = 'Pausing, ' + remaining + ' remain';
-      else new_progress = 'Paused';
-    } else {
-      if (remaining)
-        new_progress = 'Syncing, ' + remaining + ' remain';
-      else new_progress = 'Running, all synced';
-    }
-  }
-  if (new_pause !== pause_item.label.slice(0, new_pause.length)) {
-    pause_item.label = new_pause;
-    menu_modified = true;
-  }
-  if (new_progress !== progress_item.label) {
+  if (new_progress !== progress_item.label
+  ||  new_pause !== pause_item.label) {
     progress_item.label = new_progress;
-    menu_modified = true;
+    pause_item.label = new_pause;
+    tray.menu = menu;
   }
-  if (menu_modified) tray.menu = menu;
   get_status(socket);
 }, 1500);
 

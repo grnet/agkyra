@@ -22,7 +22,8 @@ import logging
 LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
 LOGGER = logging.getLogger('agkyra')
 HANDLER = logging.FileHandler(LOGFILE)
-FORMATTER = logging.Formatter("%(name)s %(levelname)s:%(asctime)s:%(message)s")
+FORMATTER = logging.Formatter(
+    "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
 LOGGER.setLevel(logging.DEBUG)

@@ -34,6 +34,10 @@ CURPATH = os.path.dirname(os.path.abspath(__file__))
 LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
+with open(os.path.join(CURPATH, 'ui_common.json')) as f:
+    UI_COMMON = json.load(f)
+STATUS = UI_COMMON['STATUS']
+
 
 def retry_on_locked_db(method, *args, **kwargs):
     """If DB is locked, wait and try again"""
@@ -66,8 +70,6 @@ class SessionHelper(object):
         self.db = sqlite3.connect(self.session_db)
 
         self._init_db_relation()
-        # self.session = self._load_active_session() or self._create_session()
-        # self.db.close()
 
     def _init_db_relation(self):
         """Create the session relation"""
@@ -152,7 +154,7 @@ class SessionHelper(object):
         return not bool(self.load_active_session())
 
     def heartbeat(self):
-        """General session heartbeat - when heart stops, WSGI server dies"""
+        """Periodically update the session database timestamp"""
         db, alive = sqlite3.connect(self.session_db), True
         while alive:
             time.sleep(2)
@@ -249,19 +251,16 @@ class WebSocketProtocol(WebSocket):
 
     -- GET STATUS --
     GUI: {"method": "get", "path": "status"}
-    HELPER: {
-        "can_sync": <boolean>,
-        "notification": <int>,
-        "paused": <boolean>,
-        "action": "get status"} or
-        {<ERROR>: <ERROR CODE>, "action": "get status"}
+    HELPER: {"code": <int>,
+            "synced": <int>,
+            "unsynced": <int>,
+            "action": "get status"
+        } or {<ERROR>: <ERROR CODE>, "action": "get status"}
     """
-    notification = {
-        0: 'Syncer is consistent',
-        1: 'Local directory is not accessible',
-        2: 'Remote container is not accessible',
-        100: 'unknown error'
-    }
+    status = utils.ThreadSafeDict()
+    with status.lock() as d:
+        d.update(code=STATUS['UNINITIALIZED'], synced=0, unsynced=0)
+
     ui_id = None
     session_db, session_relation = None, None
     accepted = False
@@ -269,21 +268,37 @@ class WebSocketProtocol(WebSocket):
         token=None, url=None,
         container=None, directory=None,
         exclude=None)
-    status = dict(
-        notification=0, synced=0, unsynced=0, paused=True, can_sync=False)
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
 
+    def get_status(self, key=None):
+        """:return: updated status dict or value of specified key"""
+        if self.syncer and self.can_sync():
+            self._consume_messages()
+            with self.status.lock() as d:
+                if self.syncer.paused:
+                    d['code'] = STATUS['PAUSED']
+                elif d['code'] != STATUS['PAUSING'] or (
+                        d['unsynced'] == d['synced']):
+                    d['code'] = STATUS['SYNCING']
+        with self.status.lock() as d:
+            return d.get(key, None) if key else dict(d)
+
+    def set_status(self, **kwargs):
+        with self.status.lock() as d:
+            d.update(kwargs)
+
     @property
     def syncer(self):
+        """:returns: the first syncer object or None"""
         with SYNCERS.lock() as d:
             for sync_key, sync_obj in d.items():
                 return sync_obj
         return None
 
     def clean_db(self):
-        """Clean DB from session traces"""
-        LOG.debug('Remove session traces')
+        """Clean DB from current session trace"""
+        LOG.debug('Remove current session trace')
         db = sqlite3.connect(self.session_db)
         db.execute('BEGIN')
         db.execute('DELETE FROM %s WHERE ui_id="%s"' % (
@@ -292,7 +307,7 @@ class WebSocketProtocol(WebSocket):
         db.close()
 
     def shutdown_syncer(self, syncer_key=0):
-        """Shutdown the service"""
+        """Shutdown the syncer backend object"""
         LOG.debug('Shutdown syncer')
         with SYNCERS.lock() as d:
             syncer = d.pop(syncer_key, None)
@@ -302,7 +317,7 @@ class WebSocketProtocol(WebSocket):
                 syncer.wait_sync_threads()
 
     def heartbeat(self):
-        """Check if socket should be alive"""
+        """Update session DB timestamp as long as session is alive"""
         db, alive = sqlite3.connect(self.session_db), True
         while alive:
             time.sleep(1)
@@ -320,6 +335,7 @@ class WebSocketProtocol(WebSocket):
                 alive = True
         db.close()
         self.shutdown_syncer()
+        self.set_status(code=STATUS['UNINITIALIZED'])
         self.close()
 
     def _get_default_sync(self):
@@ -358,10 +374,12 @@ class WebSocketProtocol(WebSocket):
             self.settings['url'] = self.cnf.get_cloud(cloud, 'url')
         except Exception:
             self.settings['url'] = None
+            self.set_status(code=STATUS['SETTINGS MISSING'])
         try:
             self.settings['token'] = self.cnf.get_cloud(cloud, 'token')
         except Exception:
             self.settings['url'] = None
+            self.set_status(code=STATUS['SETTINGS MISSING'])
 
         # for option in ('container', 'directory', 'exclude'):
         for option in ('container', 'directory'):
@@ -369,6 +387,7 @@ class WebSocketProtocol(WebSocket):
                 self.settings[option] = self.cnf.get_sync(sync, option)
             except KeyError:
                 LOG.debug('No %s is set' % option)
+                self.set_status(code=STATUS['SETTINGS MISSING'])
 
         LOG.debug('Finished loading settings')
 
@@ -418,35 +437,31 @@ class WebSocketProtocol(WebSocket):
         return all([
             self.settings[e] == self.settings[e] for e in self.essentials])
 
-    def _consume_messages(self):
+    def _consume_messages(self, max_consumption=10):
         """Update status by consuming and understanding syncer messages"""
         if self.can_sync():
             msg = self.syncer.get_next_message()
             if not msg:
-                if self.status['unsynced'] == self.status['synced']:
-                    self.status['unsynced'] = 0
-                    self.status['synced'] = 0
-            while (msg):
+                with self.status.lock() as d:
+                    if d['unsynced'] == d['synced']:
+                        d.update(unsynced=0, synced=0)
+            while msg:
                 if isinstance(msg, messaging.SyncMessage):
-                    # LOG.info('Start syncing "%s"' % msg.objname)
-                    self.status['unsynced'] += 1
+                    self.set_status(unsynced=self.get_status('unsynced') + 1)
                 elif isinstance(msg, messaging.AckSyncMessage):
-                    # LOG.info('Finished syncing "%s"' % msg.objname)
-                    self.status['synced'] += 1
-                # elif isinstance(msg, messaging.CollisionMessage):
-                #     LOG.info('Collision for "%s"' % msg.objname)
-                # elif isinstance(msg, messaging.ConflictStashMessage):
-                #     LOG.info('Conflict for "%s"' % msg.objname)
+                    self.set_status(synced=self.get_status('synced') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
-                    # LOG.debug('Local FS is dissabled, noooo!')
-                    self.status['notification'] = 1
+                    self.set_status(code=STATUS['DIRECTORY ERROR'])
                     self.syncer.stop_all_daemons()
                 elif isinstance(msg, messaging.PithosSyncDisabled):
-                    # LOG.debug('Pithos sync is disabled, noooooo!')
-                    self.status['notification'] = 2
+                    self.set_status(code=STATUS['CONTAINER ERROR'])
                     self.syncer.stop_all_daemons()
                 LOG.debug('Backend message: %s' % msg.name)
                 msg = self.syncer.get_next_message()
+                # Limit the amount of messages consumed each time
+                max_consumption -= 1
+                if not max_consumption:
+                    break
 
     def can_sync(self):
         """Check if settings are enough to setup a syncing proccess"""
@@ -454,6 +469,7 @@ class WebSocketProtocol(WebSocket):
 
     def init_sync(self):
         """Initialize syncer"""
+        self.set_status(code=STATUS['INITIALIZING'])
         sync = self._get_default_sync()
 
         kwargs = dict(agkyra_path=AGKYRA_DIR)
@@ -480,46 +496,41 @@ class WebSocketProtocol(WebSocket):
             slave = localfs_client.LocalfsFileClient(syncer_settings)
             syncer_ = syncer.FileSyncer(syncer_settings, master, slave)
             self.syncer_settings = syncer_settings
-            # Check if syncer is ready, by consumming messages
-            msg = syncer_.get_next_message()
-            # while not msg:
-            #     time.sleep(0.2)
-            #     msg = syncer_.get_next_message()
+            # Check if syncer is ready, by consuming messages
+            local_ok, remote_ok = False, False
+            for i in range(2):
 
-            # This should be activated only on accepting a positive message
-            self.status['notification'] = 0
-            self.status['unsynced'] = 0
-            self.status['synced'] = 0
+                LOG.debug('Get message %s' % (i + 1))
+                msg = syncer_.get_next_message(block=True)
+                LOG.debug('Got message: %s' % msg)
 
-            if msg:
                 if isinstance(msg, messaging.LocalfsSyncDisabled):
-                    LOG.debug('Local FS is disabled')
-                    self.status['notification'] = 1
+                    self.set_status(code=STATUS['DIRECTORY ERROR'])
+                    local_ok = False
+                    break
                 elif isinstance(msg, messaging.PithosSyncDisabled):
-                    LOG.debug('Pithos sync is disabled')
-                    self.status['notification'] = 2
+                    self.set_status(code=STATUS['CONTAINER ERRIR'])
+                    remote_ok = False
+                    break
+                elif isinstance(msg, messaging.LocalfsSyncEnabled):
+                    local_ok = True
+                elif isinstance(msg, messaging.PithosSyncEnabled):
+                    remote_ok = True
                 else:
-                    LOG.debug("Unexpected message: %s" % msg)
-                    msg = None
-            if msg:
-                syncer_ = None
-            else:
+                    LOG.error('Unexpected message %s' % msg)
+                    self.set_status(code=STATUS['CRITICAL ERROR'])
+                    break
+            if local_ok and remote_ok:
                 syncer_.initiate_probe()
+                self.set_status(code=STATUS['SYNCING'])
+            else:
+                syncer_ = None
         finally:
+            self.set_status(synced=0, unsynced=0)
             with SYNCERS.lock() as d:
                 d[0] = syncer_
 
     # Syncer-related methods
-    def get_status(self):
-        if self.syncer and self.can_sync():
-            self._consume_messages()
-            self.status['paused'] = self.syncer.paused
-            self.status['can_sync'] = self.can_sync()
-        else:
-            self.status.update(dict(
-                synced=0, unsynced=0, paused=True, can_sync=False))
-        return self.status
-
     def get_settings(self):
         return self.settings
 
@@ -544,10 +555,17 @@ class WebSocketProtocol(WebSocket):
             if was_active:
                 self.start_sync()
 
-    def pause_sync(self):
-        self.syncer.stop_decide()
+    def _pause_syncer(self):
+        syncer_ = self.syncer
+        syncer_.stop_decide()
         LOG.debug('Wait open syncs to complete')
-        self.syncer.wait_sync_threads()
+        syncer_.wait_sync_threads()
+
+    def pause_sync(self):
+        syncer_ = self.syncer
+        if syncer_ and not syncer_.paused:
+            Thread(target=self._pause_syncer).start()
+            self.set_status(code=STATUS['PAUSING'])
 
     def start_sync(self):
         self.syncer.start_decide()
@@ -562,6 +580,8 @@ class WebSocketProtocol(WebSocket):
         if self.accepted:
             action = r['path']
             if action == 'shutdown':
+                # Clean db to cause syncer backend to shut down
+                self.set_status(code=STATUS['SHUTTING DOWN'])
                 retry_on_locked_db(self.clean_db)
                 # self._shutdown()
                 # self.terminate()
