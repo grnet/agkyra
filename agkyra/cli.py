@@ -306,7 +306,3 @@ class AgkyraCLI(cmd.Cmd):
         else:
             sys.stderr.write('Not running\n')
         sys.stderr.flush()
-
-    def do_florist(self, line):
-        """RUN FLORIST, RUN!"""
-        sys.stderr.write('RUN: %s\n' % STATUS)
