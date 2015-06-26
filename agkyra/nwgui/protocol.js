@@ -42,7 +42,8 @@ var globals = {
   status: {synced: 0, unsynced: 0, code: STATUS['UNINITIALIZED']},
   authenticated: false,
   open_settings: false,
-  settings_are_open: false
+  settings_are_open: false,
+  notification: STATUS['UNINITIALIZED']
 }
 
 // Protocol: requests ::: responses

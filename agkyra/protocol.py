@@ -447,8 +447,10 @@ class WebSocketProtocol(WebSocket):
                         d.update(unsynced=0, synced=0)
             while msg:
                 if isinstance(msg, messaging.SyncMessage):
+                    LOG.error('UNSYNCED +1')
                     self.set_status(unsynced=self.get_status('unsynced') + 1)
                 elif isinstance(msg, messaging.AckSyncMessage):
+                    LOG.error('SYNCED +1')
                     self.set_status(synced=self.get_status('synced') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
                     self.set_status(code=STATUS['DIRECTORY ERROR'])
@@ -457,11 +459,12 @@ class WebSocketProtocol(WebSocket):
                     self.set_status(code=STATUS['CONTAINER ERROR'])
                     self.syncer.stop_all_daemons()
                 LOG.debug('Backend message: %s' % msg.name)
-                msg = self.syncer.get_next_message()
                 # Limit the amount of messages consumed each time
                 max_consumption -= 1
                 if not max_consumption:
                     break
+                else:
+                    msg = self.syncer.get_next_message()
 
     def can_sync(self):
         """Check if settings are enough to setup a syncing proccess"""
@@ -562,10 +565,13 @@ class WebSocketProtocol(WebSocket):
         syncer_.wait_sync_threads()
 
     def pause_sync(self):
-        syncer_ = self.syncer
-        if syncer_ and not syncer_.paused:
-            Thread(target=self._pause_syncer).start()
+        if self.syncer:
+            self.syncer.stop_decide()
             self.set_status(code=STATUS['PAUSING'])
+        # syncer_ = self.syncer
+        # if syncer_ and not syncer_.paused:
+        #     Thread(target=self._pause_syncer).start()
+        #     self.set_status(code=STATUS['PAUSING'])
 
     def start_sync(self):
         self.syncer.start_decide()

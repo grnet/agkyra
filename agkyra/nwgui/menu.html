@@ -190,28 +190,40 @@ function deactivate_menu() {
   }
 }
 
+function notify(level) {
+  if (globals.notification !== globals.status.code) {
+    // Notification has changed, raise notifier box
+    globals.notification = globals.status.code;
+    notify_user(NOTIFICATION[globals.status.code], level);
+  }
+}
+
 // Update progress
 window.setInterval(function() {
-  var new_progress = notification[globals.status.code];
+  var new_progress = NOTIFICATION[globals.status.code];
   var new_pause = '';
   switch(globals.status.code) {
     case STATUS['UNINITIALIZED']:
     case STATUS['INITIALIZING']:
     case STATUS['SHUTING DOWN']:
+      notify('info');
       deactivate_menu();
       new_pause = 'inactive';
     break;
     case STATUS['SYNCING']:
+      notify('info');
       activate_menu();
       new_progress += ', ' + remaining(globals.status) + ' remaining';
-      new_pause = 'Pause'
+      new_pause = 'Pause';
     break;
     case STATUS['PAUSING']:
+      notify('info');
       new_progress += ', ' + remaining(globals.status) + ' remaining';
-      new_pause = 'waiting...'
+      new_pause = 'waiting...';
       pause_item.enabled = false;
     break;
     case STATUS['PAUSED']:
+      notify('info');
       activate_menu();
       new_pause = 'Start syncing';
       if (remaining(globals.status) > 0)
@@ -225,7 +237,9 @@ window.setInterval(function() {
       deactivate_menu();
       new_pause = 'inactive';
       settings_menu.enabled = true;
+      notify('error');
     break;
+    default: notify('warning'); break;
   }
 
   if (globals.open_settings) {
