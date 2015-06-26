@@ -20,6 +20,21 @@ from agkyra import config, protocol, protocol_client
 
 
 LOG = logging.getLogger(__name__)
+STATUS = protocol.STATUS
+NOTIFICATION = {
+    0: 'Not initialized',
+    1: 'Initializing ...',
+    2: 'Shutting down',
+    100: 'Syncing',
+    101: 'Pausing',
+    102: 'Paused',
+    200: 'Settings are incomplete',
+    201: 'Cloud URL error',
+    202: 'Authentication error',
+    203: 'Local directory error',
+    204: 'Remote container error',
+    1000: 'Critical error'
+}
 
 
 class ConfigCommands:
@@ -209,17 +224,6 @@ class AgkyraCLI(cmd.Cmd):
         except AttributeError:
             self.do_help('config')
 
-    @staticmethod
-    def _status_string(status=None):
-        """Get the status string (Syncing, Paused, Not running)"""
-        if status:
-            remain = status.get('unsynced', 0) - status.get('synced', 0)
-            if status['paused']:
-                return ('Pausing, %s remain' % remain) if remain else 'Paused'
-            else:
-                return 'Syncing, %s remain' % remain
-        return 'Not running'
-
     def do_status(self, line):
         """Get Agkyra client status. Status may be one of the following:
             Syncing     There is a process syncing right now
@@ -227,8 +231,13 @@ class AgkyraCLI(cmd.Cmd):
             Not running No active processes
         """
         client = self.client
-        status = client.get_status() if client else None
-        sys.stdout.write('%s\n' % self._status_string(status))
+        status, msg = client.get_status() if client else None, 'Not running'
+        if status:
+            msg = NOTIFICATION[status['code']]
+            diff = status['unsynced'] - status['synced']
+            if diff:
+                msg = '%s, %s remaining' % (msg, diff)
+        sys.stdout.write('%s\n' % msg)
         sys.stdout.flush()
 
     # def do_start_daemon(self, line):
@@ -254,15 +263,14 @@ class AgkyraCLI(cmd.Cmd):
             sys.stderr.write('OK\n')
         else:
             status = client.get_status()
-            if status['paused']:
+            if status['code'] == STATUS['PAUSED']:
                 client.start()
                 sys.stderr.write('Starting syncer ... ')
                 try:
                     client.wait_until_syncing()
-                except AssertionError:
-                    sys.stderr.write('\n')
-                    raise
-                sys.stderr.write('OK\n')
+                    sys.stderr.write('OK\n')
+                except AssertionError as ae:
+                    sys.stderr.write('%s\n' % ae)
             else:
                 sys.stderr.write('Already ')
         sys.stderr.flush()
@@ -273,17 +281,16 @@ class AgkyraCLI(cmd.Cmd):
         client = self.client
         if client:
             status = client.get_status()
-            if status['paused']:
+            if status['code'] == STATUS['PAUSED']:
                 sys.stderr.write('Already ')
             else:
                 client.pause()
                 sys.stderr.write('Pausing syncer ... ')
                 try:
                     client.wait_until_paused()
-                except AssertionError:
-                    sys.stderr.write('Failed\n')
-                    raise
-                sys.stderr.write('OK\n')
+                    sys.stderr.write('OK\n')
+                except AssertionError as ae:
+                    sys.stderr.write('%s\n' % ae)
         sys.stderr.flush()
         self.do_status(line)
 
@@ -299,3 +306,7 @@ class AgkyraCLI(cmd.Cmd):
         else:
             sys.stderr.write('Not running\n')
         sys.stderr.flush()
+
+    def do_florist(self, line):
+        """RUN FLORIST, RUN!"""
+        sys.stderr.write('RUN: %s\n' % STATUS)

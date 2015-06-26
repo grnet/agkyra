@@ -38,7 +38,6 @@ with open(os.path.join(CURPATH, 'ui_common.json')) as f:
     UI_COMMON = json.load(f)
 STATUS = UI_COMMON['STATUS']
 
-
 def retry_on_locked_db(method, *args, **kwargs):
     """If DB is locked, wait and try again"""
     wait = kwargs.get('wait', 0.2)

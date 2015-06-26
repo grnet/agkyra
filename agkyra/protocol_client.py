@@ -17,6 +17,7 @@ from ws4py.client.threadedclient import WebSocketClient
 import json
 import time
 import logging
+from protocol import STATUS
 
 
 LOG = logging.getLogger(__name__)
@@ -52,20 +53,22 @@ class UIClient(WebSocketClient):
     def wait_until_syncing(self, timeout=20):
         """Wait until session reaches syncing status"""
         status = self.get_status()
-        while timeout and status['paused']:
+        while timeout and status['code'] != STATUS['SYNCING']:
             time.sleep(1)
             status = self.get_status()
             timeout -= 1
-        assert not status['paused'], 'Timed out, still in paused status'
+        msg = 'Timed out, still not syncing'
+        assert status['code'] == STATUS['SYNCING'], msg
 
     def wait_until_paused(self, timeout=20):
         """Wait until session reaches paused status"""
         status = self.get_status()
-        while timeout and not status['paused']:
+        while timeout and status['code'] != STATUS['PAUSED']:
             time.sleep(1)
             status = self.get_status()
             timeout -= 1
-        assert status['paused'], 'Timed out, still in syncing status'
+        msg = 'Timed out, still not paused'
+        assert status['code'] == STATUS['PAUSED'], msg
 
     def received_message(self, m):
         """handle server responces according to the protocol"""
@@ -98,7 +101,7 @@ class UIClient(WebSocketClient):
 
     def recv_get_status(self, msg):
         """Receive: GET STATUS"""
-        assert 'can_sync' in msg, json.dumps(msg)
+        assert 'code' in msg, json.dumps(msg)
         self.buf[msg['action']] = msg
 
     # API methods
