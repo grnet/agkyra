@@ -36,6 +36,8 @@ NOTIFICATION = {
     1000: 'Critical error'
 }
 
+remaining = lambda st: st['unsynced'] - (st['synced'] + st['failed'])
+
 
 class ConfigCommands:
     """Commands for handling Agkyra config options"""
@@ -234,7 +236,7 @@ class AgkyraCLI(cmd.Cmd):
         status, msg = client.get_status() if client else None, 'Not running'
         if status:
             msg = NOTIFICATION[status['code']]
-            diff = status['unsynced'] - status['synced']
+            diff = remaining(status)
             if diff:
                 msg = '%s, %s remaining' % (msg, diff)
         sys.stdout.write('%s\n' % msg)
