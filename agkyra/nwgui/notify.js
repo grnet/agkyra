@@ -17,7 +17,9 @@ var NOTIFICATION = {
 
 function is_up(code) { return (code / 100 >> 0) === 1; }
 function has_settings_error(code) { return (code / 200 >> 0) === 2; }
-function remaining(status) { return status.unsynced - status.synced; }
+function remaining(status) {
+    return status.unsynced - (status.synced + status.failed);
+}
 
 var ntf_title = {
     'info': 'Agkyra Notification',

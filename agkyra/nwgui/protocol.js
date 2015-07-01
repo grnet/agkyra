@@ -39,7 +39,7 @@ var globals = {
     directory: null,
     exclude: null
   },
-  status: {synced: 0, unsynced: 0, code: STATUS['UNINITIALIZED']},
+  status: {synced: 0, unsynced: 0, failed: 0, code: STATUS['UNINITIALIZED']},
   authenticated: false,
   open_settings: false,
   settings_are_open: false,
@@ -82,7 +82,7 @@ function put_settings(socket, new_settings) {
 
 function get_status(socket) {
   send_json(socket, {'method': 'get', 'path': 'status'});
-} // expected response {"synced":.., "unsynced":.., "code":..}
+} // expected response {"synced":.., "unsynced":.., "failed":..., code":..}
 
 
 // Connect to helper

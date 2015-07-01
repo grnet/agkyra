@@ -252,14 +252,13 @@ class WebSocketProtocol(WebSocket):
     -- GET STATUS --
     GUI: {"method": "get", "path": "status"}
     HELPER: {"code": <int>,
-            "synced": <int>,
-            "unsynced": <int>,
+            "synced": <int>, "unsynced": <int>, "failed": <int>,
             "action": "get status"
         } or {<ERROR>: <ERROR CODE>, "action": "get status"}
     """
     status = utils.ThreadSafeDict()
     with status.lock() as d:
-        d.update(code=STATUS['UNINITIALIZED'], synced=0, unsynced=0)
+        d.update(code=STATUS['UNINITIALIZED'], synced=0, unsynced=0, failed=0)
 
     ui_id = None
     session_db, session_relation = None, None
@@ -279,7 +278,7 @@ class WebSocketProtocol(WebSocket):
                 if self.syncer.paused:
                     d['code'] = STATUS['PAUSED']
                 elif d['code'] != STATUS['PAUSING'] or (
-                        d['unsynced'] == d['synced']):
+                        d['unsynced'] == d['synced'] + d['failed']):
                     d['code'] = STATUS['SYNCING']
         with self.status.lock() as d:
             return d.get(key, None) if key else dict(d)
@@ -441,10 +440,10 @@ class WebSocketProtocol(WebSocket):
         """Update status by consuming and understanding syncer messages"""
         if self.can_sync():
             msg = self.syncer.get_next_message()
-            if not msg:
-                with self.status.lock() as d:
-                    if d['unsynced'] == d['synced']:
-                        d.update(unsynced=0, synced=0)
+            # if not msg:
+            #     with self.status.lock() as d:
+            #         if d['unsynced'] == d['synced'] + d['failed']:
+            #             d.update(unsynced=0, synced=0, failed=0)
             while msg:
                 if isinstance(msg, messaging.SyncMessage):
                     LOG.error('UNSYNCED +1')
@@ -452,6 +451,9 @@ class WebSocketProtocol(WebSocket):
                 elif isinstance(msg, messaging.AckSyncMessage):
                     LOG.error('SYNCED +1')
                     self.set_status(synced=self.get_status('synced') + 1)
+                elif isinstance(msg, messaging.SyncErrorMessage):
+                    LOG.error('FAILED +1')
+                    self.set_status(failed=self.get_status('failed') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
                     self.set_status(code=STATUS['DIRECTORY ERROR'])
                     self.syncer.stop_all_daemons()
@@ -461,10 +463,10 @@ class WebSocketProtocol(WebSocket):
                 LOG.debug('Backend message: %s' % msg.name)
                 # Limit the amount of messages consumed each time
                 max_consumption -= 1
-                if not max_consumption:
-                    break
-                else:
+                if max_consumption:
                     msg = self.syncer.get_next_message()
+                else:
+                    break
 
     def can_sync(self):
         """Check if settings are enough to setup a syncing proccess"""
