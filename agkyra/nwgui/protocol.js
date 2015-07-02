@@ -21,15 +21,16 @@ var fs = require('fs');
 
 // Read config file
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
-var UI_COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_common.json')));
+var COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_data/common.json')));
+
+var STATUS = COMMON['STATUS'];
+var NOTIFICATION = COMMON['NOTIFICATION'];
 
 function log_debug(msg) { if (DEBUG) console.log(msg); }
 
 function send_json(socket, msg) {
   socket.send(JSON.stringify(msg));
 }
-
-var STATUS = UI_COMMON['STATUS'];
 
 var globals = {
   settings: {

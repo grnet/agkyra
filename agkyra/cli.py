@@ -21,20 +21,7 @@ from agkyra import config, protocol, protocol_client
 
 LOG = logging.getLogger(__name__)
 STATUS = protocol.STATUS
-NOTIFICATION = {
-    0: 'Not initialized',
-    1: 'Initializing ...',
-    2: 'Shutting down',
-    100: 'Syncing',
-    101: 'Pausing',
-    102: 'Paused',
-    200: 'Settings are incomplete',
-    201: 'Cloud URL error',
-    202: 'Authentication error',
-    203: 'Local directory error',
-    204: 'Remote container error',
-    1000: 'Critical error'
-}
+NOTIFICATION = protocol.COMMON['NOTIFICATION']
 
 remaining = lambda st: st['unsynced'] - (st['synced'] + st['failed'])
 

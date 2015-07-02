@@ -34,9 +34,9 @@ CURPATH = os.path.dirname(os.path.abspath(__file__))
 LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
-with open(os.path.join(CURPATH, 'ui_common.json')) as f:
-    UI_COMMON = json.load(f)
-STATUS = UI_COMMON['STATUS']
+with open(os.path.join(CURPATH, 'ui_data/common.json')) as f:
+    COMMON = json.load(f)
+STATUS = COMMON['STATUS']
 
 
 def retry_on_locked_db(method, *args, **kwargs):
@@ -446,13 +446,13 @@ class WebSocketProtocol(WebSocket):
             #             d.update(unsynced=0, synced=0, failed=0)
             while msg:
                 if isinstance(msg, messaging.SyncMessage):
-                    LOG.error('UNSYNCED +1')
+                    LOG.error('UNSYNCED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(unsynced=self.get_status('unsynced') + 1)
                 elif isinstance(msg, messaging.AckSyncMessage):
-                    LOG.error('SYNCED +1')
+                    LOG.error('SYNCED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(synced=self.get_status('synced') + 1)
                 elif isinstance(msg, messaging.SyncErrorMessage):
-                    LOG.error('FAILED +1')
+                    LOG.error('FAILED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(failed=self.get_status('failed') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
                     self.set_status(code=STATUS['DIRECTORY ERROR'])
