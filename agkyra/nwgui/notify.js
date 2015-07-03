@@ -1,4 +1,5 @@
 var gui = require('nw.gui');
+var NOTIFIER = COMMON.NOTIFIER;
 
 function is_up(code) { return (code / 100 >> 0) === 1; }
 function has_settings_error(code) { return (code / 200 >> 0) === 2; }
@@ -7,9 +8,9 @@ function remaining(status) {
 }
 
 var ntf_title = {
-    'info': 'Agkyra Notification',
-    'warning': 'Agkyra Warning',
-    'error': 'Agkyra Error'
+    'info': NOTIFIER.INFO,
+    'warning': NOTIFIER.WARNING,
+    'error': NOTIFIER.ERROR
 }
 var ntf_icon = {
     'info': 'static/images/ntf_info.png',

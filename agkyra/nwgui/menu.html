@@ -27,6 +27,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
+var NOTIFICATION = COMMON.NOTIFICATION;
+var MENU = COMMON.MENU;
+
 // Setup GUI
 var windows = {
   "settings": null,
@@ -39,7 +42,7 @@ function closeWindows() {
 
 // GUI components
 var tray = new gui.Tray({
-  tooltip: 'Agkyra Syncing Client',
+  tooltip: MENU.TITLE,
   icon: 'static/images/tray.png',
   iconsAreTemplates: false
 });
@@ -47,9 +50,6 @@ var tray = new gui.Tray({
 var menu = new gui.Menu();
 
 // Progress and Pause
-var start_syncing = 'Start Syncing';
-var pause_syncing = 'Pause Syncing';
-var paused = true;
 
 progress_item = new gui.MenuItem({
   // progress menu item
@@ -63,7 +63,7 @@ pause_item = new gui.MenuItem({
   // pause menu item
   icon: 'static/images/play_pause.png',
   iconIsTemplate: false,
-  label: 'NOT READY',
+  label: MENU.INITIALIZING,
   type: 'normal',
   click: function() {
     if (globals.status.code == STATUS['PAUSED']) post_start(socket);
@@ -76,7 +76,7 @@ menu.append(pause_item);
 
 // Menu actions contents
 var local_folder_menu = new gui.MenuItem({
-  label: 'Open local folder',
+  label: MENU.FOLDER,
   icon: 'static/images/folder.png',
   iconIsTemplate: false,
   enabled: false,
@@ -89,7 +89,7 @@ var local_folder_menu = new gui.MenuItem({
 menu.append(local_folder_menu);
 
 var pithos_page_menu = new gui.MenuItem({
-  label: 'Launch Pithos+ page',
+  label: MENU.PITHOS,
   icon: 'static/images/pithos.png',
   iconIsTemplate: false,
   enabled: false,
@@ -103,7 +103,7 @@ menu.append(pithos_page_menu);
 // Settings and About
 menu.append(new gui.MenuItem({type: 'separator'}));
 var settings_menu = new gui.MenuItem({
-  label: 'Settings',
+  label: MENU.SETTINGS,
   icon: 'static/images/settings.png',
   iconIsTemplate: false,
   enabled: false,
@@ -139,7 +139,7 @@ var settings_menu = new gui.MenuItem({
 menu.append(settings_menu);
 
 menu.append(new gui.MenuItem({
-  label: 'About',
+  label: MENU.ABOUT,
   icon: 'static/images/about.png',
   iconIsTemplate: false,
   click: function () {
@@ -154,7 +154,7 @@ menu.append(new gui.MenuItem({
 // Quit
 menu.append(new gui.MenuItem({type: 'separator'}));
 menu.append(new gui.MenuItem({
-  label: 'Quit Agkyra',
+  label: MENU.QUIT,
   icon: 'static/images/exit.png',
   iconIsTemplate: false,
   click: function() {post_shutdown(socket);}
@@ -208,26 +208,29 @@ window.setInterval(function() {
     case STATUS['SHUTING DOWN']:
       notify('info');
       deactivate_menu();
-      new_pause = 'inactive';
+      new_pause = MENU.INACTIVE;
     break;
     case STATUS['SYNCING']:
       notify('info');
       activate_menu();
-      new_progress += ', ' + remaining(globals.status) + ' remaining';
-      new_pause = 'Pause';
+      new_progress += ', '
+                   + MENU.REMAINING.replace('%s', remaining(globals.status));
+      new_pause = MENU.PAUSE;
     break;
     case STATUS['PAUSING']:
       notify('info');
-      new_progress += ', ' + remaining(globals.status) + ' remaining';
-      new_pause = 'waiting...';
+      new_progress += ', '
+                   + MENU.REMAINING.replace('%s', remaining(globals.status));
+      new_pause = MENU.WAITING;
       pause_item.enabled = false;
     break;
     case STATUS['PAUSED']:
       notify('info');
       activate_menu();
-      new_pause = 'Start syncing';
+      new_pause = MENU.START;
       if (remaining(globals.status) > 0)
-        new_progress += ', ' + remaining(globals.status) + ' remaining';
+        new_progress += ', '
+                   + MENU.REMAINING.replace('%s', remaining(globals.status));
     break;
     case STATUS['SETTINGS MISSING']:
     case STATUS['AUTH URL ERROR']:
@@ -235,7 +238,7 @@ window.setInterval(function() {
     case STATUS['DIRECTORY ERROR']:
     case STATUS['CONTAINER ERROR']:
       deactivate_menu();
-      new_pause = 'inactive';
+      new_pause = MENU.INACTIVE;
       settings_menu.enabled = true;
       notify('error');
     break;
@@ -243,7 +246,7 @@ window.setInterval(function() {
   }
 
   if (globals.open_settings) {
-    new_progress = 'Settings window is open';
+    new_progress = MENU.SETTINGSOPEN;
     globals.open_settings = false;
     settings_menu.click();
     deactivate_menu();

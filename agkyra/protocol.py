@@ -34,7 +34,7 @@ CURPATH = os.path.dirname(os.path.abspath(__file__))
 LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
-with open(os.path.join(CURPATH, 'ui_data/common.json')) as f:
+with open(os.path.join(CURPATH, 'ui_data/common_en.json')) as f:
     COMMON = json.load(f)
 STATUS = COMMON['STATUS']
 

@@ -22,6 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <script src="static/js/jquery.js"></script>
         <script src="settings.js"></script>
         <script type="text/javascript">
+            var path = require('path');
+            var fs = require('fs');
+            var COMMON = JSON.parse(
+                fs.readFileSync(path.join('..', 'ui_data/common_en.json')));
+            var SETTINGS = COMMON.SETTINGS;
+
             var errors = {
                 cloud_url_empty: 'Provide a Cloud Authentication URL',
                 cloud_inaccessible: 'Cloud URL did not respond as expected',
@@ -200,14 +206,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <body>
         <div class="wrapper">
             <header>
-                <h2><img src="static/images/about.png"/> User Settings</h2>
+                <h2><img src="static/images/about.png"/> <span id="title">User Settings</span></h2>
             </header>
             <form>
                 <fieldset>
-                    <legend>Cloud</legend>
+                    <legend id="cloud_label">Cloud</legend>
                     <div class="clearfix">
                         <div class="small-3 columns">
-                            <label for="cloud-url" class="right inline">Cloud URL</label>
+                            <label id="url_label" for="cloud-url" class="right inline">Cloud URL</label>
 
                         </div>
                         <div class="small-9 columns" id="cloud-error">
@@ -222,7 +228,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                     <div class="clearfix">
                         <div class="small-3 columns">
-                            <label for="token" class="right inline">User token</label>
+                            <label id="token_label" for="token" class="right inline">User token</label>
                         </div>
                         <div class="small-9 columns" id="token-error">
                             <input type="text" id="token" placeholder="User token"
@@ -240,10 +246,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                 </fieldset>
                 <fieldset>
-                    <legend>What to sync</legend>
+                    <legend id="sync_label">What to sync</legend>
                     <div class="row clearfix">
                         <div class="small-3 columns">
-                            <label for="container" class="right inline">Remote container</label>
+                            <label id="container_label" for="container" class="right inline">Remote container</label>
                         </div>
                         <div class="small-9 columns" id="container-error">
                             <input type="text" id="container" placeholder="Pithos+ container"
@@ -253,11 +259,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     </div>
                     <div class="row clearfix">
                         <div class="small-3 columns">
-                            <label for="directory" class="right">
+                            <label id="directory_label" for="directory" class="right">
                             Local directory</label>
                         </div>
                         <div id="directory" class="small-6 columns"></div>
-                        <div onclick="$('#choose-dir').trigger('click');"
+                        <div id="dirdialogue_label" onclick="$('#choose-dir').trigger('click');"
                             class="small-3 columns pickdir" id="dirpick">
                             Select</div>
                     </div>
@@ -274,26 +280,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         onchange="$('#directory').html($(this).val());
                             settings['directory'] = $(this).val();
                             check_directory();" />
-                    <!--<div class="row clearfix">
-                        <div class="small-3 columns"><label class="right inline">
-                            Change the directory:</label></div>
-                        <div class="small-9 columns">
-                            <input type="file" nwdirectory
-                            onchange="$('#directory').html($(this).val());
-                                settings['directory'] = $(this).val();
-                            " />
-                        </div>
-                    </div>-->
-                    <!--<div class="row">
-                        <div class="small-3 columns">
-                            <label for="exclude" class="right inline">Exclude these items from syncing</label>
-                        </div>
-                        <div class="small-9 columns">
-                            <textarea id="exclude"
-                                onchange="update_exclude($(this).val())">
-                            </textarea>
-                        </div>
-                    </div> -->
                 </fieldset>
                 <div class="clearfix">
                     <a id="sync_button" class="button right"
@@ -307,5 +293,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </div>
             </form>
         </div>
+        <script type="text/javascript">
+            document.getElementById('title').innerHTML = SETTINGS.TITLE;
+            document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD;
+            document.getElementById('url_label').innerHTML = SETTINGS.URL;
+            document.getElementById('token_label').innerHTML = SETTINGS.TOKEN;
+            document.getElementById('get_creds').innerHTML = SETTINGS.RETRIEVE;
+            document.getElementById('sync_label').innerHTML = SETTINGS.SYNC;
+            document.getElementById('container_label').innerHTML = SETTINGS.CONTAINER;
+            document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY;
+            document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE;
+            document.getElementById('sync_button').innerHTML = SETTINGS.SAVE;
+        </script>
     </body>
 </html>

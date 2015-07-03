@@ -222,7 +222,7 @@ class AgkyraCLI(cmd.Cmd):
         client = self.client
         status, msg = client.get_status() if client else None, 'Not running'
         if status:
-            msg = NOTIFICATION[status['code']]
+            msg = NOTIFICATION[str(status['code'])]
             diff = remaining(status)
             if diff:
                 msg = '%s, %s remaining' % (msg, diff)

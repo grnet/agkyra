@@ -21,10 +21,9 @@ var fs = require('fs');
 
 // Read config file
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
-var COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_data/common.json')));
+var COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_data/common_en.json')));
 
 var STATUS = COMMON['STATUS'];
-var NOTIFICATION = COMMON['NOTIFICATION'];
 
 function log_debug(msg) { if (DEBUG) console.log(msg); }
 
