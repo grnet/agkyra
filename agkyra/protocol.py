@@ -234,7 +234,9 @@ class WebSocketProtocol(WebSocket):
             "url": <auth url>,
             "container": <container>,
             "directory": <local directory>,
-            "exclude": <file path>
+            "exclude": <file path>,
+            "language": <en|el>,
+            "sync_on_start": <true|false>
         } or {<ERROR>: <ERROR CODE>}
 
     -- PUT SETTINGS --
@@ -244,7 +246,9 @@ class WebSocketProtocol(WebSocket):
             "url": <auth url>,
             "container": <container>,
             "directory": <local directory>,
-            "exclude": <file path>
+            "exclude": <file path>,
+            "language": <en|el>,
+            "sync_on_start": <true|false>
         }
     HELPER: {"CREATED": 201, "action": "put settings",} or
         {<ERROR>: <ERROR CODE>, "action": "get settings",}
@@ -266,7 +270,7 @@ class WebSocketProtocol(WebSocket):
     settings = dict(
         token=None, url=None,
         container=None, directory=None,
-        exclude=None)
+        exclude=None, sync_on_start=True, language="en")
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
 
@@ -380,6 +384,10 @@ class WebSocketProtocol(WebSocket):
             self.settings['url'] = None
             self.set_status(code=STATUS['SETTINGS MISSING'])
 
+        self.settings['sync_on_start'] = (
+            self.cnf.get('global', 'sync_on_start') == 'on')
+        self.settings['language'] = self.cnf.get('global', 'language')
+
         # for option in ('container', 'directory', 'exclude'):
         for option in ('container', 'directory'):
             try:
@@ -424,6 +432,11 @@ class WebSocketProtocol(WebSocket):
         for option in ('directory', 'container'):
             self.cnf.set_sync(sync, option, self.settings[option] or '')
             changes = True
+
+        self.cnf.set('global', 'language', self.settings.get('language', 'en'))
+        sync_on_start = self.settings.get('sync_on_start', False)
+        self.cnf.set(
+            'global', 'sync_on_start', 'on' if sync_on_start else 'off')
 
         if changes:
             self.cnf.write()

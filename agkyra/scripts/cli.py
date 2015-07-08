@@ -34,7 +34,7 @@ FORMATTER = logging.Formatter(
     "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.INFO)
 
 
 def main():

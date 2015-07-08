@@ -24,9 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <script type="text/javascript">
             var path = require('path');
             var fs = require('fs');
-            var COMMON = JSON.parse(
-                fs.readFileSync(path.join('..', 'ui_data/common_en.json')));
-            var SETTINGS = COMMON.SETTINGS;
+            var LANG = JSON.parse(fs.readFileSync(path.join('..', 'ui_data/languages.json')));
 
             var errors = {
                 cloud_url_empty: 'Provide a Cloud Authentication URL',
@@ -41,6 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
             var fs = require('fs');
             var exclude = null;
+            var cur_lang = 'en';
             $(document).ready(function() {
                 var url = get_setting('url')
                 if (url) {
@@ -62,7 +61,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     $('#exclude').val(
                         fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
+                if (!get_setting('language')) set_setting('language', cur_lang);
+                if (get_setting('sync_on_start')) $('#start_sync_box').click();
+
             });
+            cur_lang = get_setting('language');
+
             function update_exclude(new_content) {
                 if (exclude) fs.writeFile(exclude, new_content);
             }
@@ -192,6 +196,42 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 return cloud && token && container && directory;
             }
 
+            function check_start_sync() {
+                settings['sync_on_start'] = $('#start_sync_box').is(':checked');
+            }
+
+            function localize() {
+                settings['language'] = cur_lang;
+                var COMMON = JSON.parse(
+                fs.readFileSync(path.join('..', 'ui_data/common_' + cur_lang + '.json')));
+                var SETTINGS = COMMON.SETTINGS;
+                document.getElementById('title').innerHTML = SETTINGS.TITLE;
+                document.getElementById('appearance_label').innerHTML = SETTINGS.APPEARANCE;
+                document.getElementById('language_label').innerHTML = SETTINGS.LANGUAGE;
+                document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD;
+                document.getElementById('url_label').innerHTML = SETTINGS.URL;
+                document.getElementById('token_label').innerHTML = SETTINGS.TOKEN;
+                document.getElementById('get_creds').innerHTML = SETTINGS.RETRIEVE;
+                document.getElementById('sync_label').innerHTML = SETTINGS.SYNC;
+                document.getElementById('container_label').innerHTML = SETTINGS.CONTAINER;
+                document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY;
+                document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE;
+                document.getElementById('sync_button').innerHTML = SETTINGS.SAVE;
+
+                var lang_code = '';
+                for (key in LANG) {
+                    var lang = LANG[key];
+                    var checked = ''
+                    if (key === cur_lang) checked = 'checked'
+                    lang_code += '<div class="small-1 columns">'
+                        + '<input type="radio" name="language" value="' + key + '" '
+                        + checked
+                        + ' onclick="cur_lang=\'' + key + '\'; localize();">'
+                        + lang.name + '<img src="' + lang.icon + '"/></input></div>';
+                }
+                document.getElementById('language_space').innerHTML = lang_code;
+            }
+
             window.setInterval(function() {
                 // Refresh get_creds visibility, until refresh_endpoints
                 // changes are in effect
@@ -210,11 +250,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             </header>
             <form>
                 <fieldset>
+                    <legend id="appearance_label">Appearance</legend>
+                    <div class="clearfix">
+                        <div class="small-3 columns">
+                            <label id="language_label" for="language_space" class="right inline">Language</label>
+                        </div>
+                        <div class="small-9 columns" id="language_space">
+                        <!-- This will be filled by scripts -->
+                        </div>
+                    </div>
+                    <div class="clearfix">
+                        <div class="small-3 columns">
+                            <label id="start_sync_label" for="start_sync" class="right inline">Sync on start up</label>
+                        </div>
+                        <div class="small-9 columns" id="start_sync">
+                            <input type="checkbox" name="start_sync_box" id="start_sync_box" onchange="check_start_sync();"/>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset>
                     <legend id="cloud_label">Cloud</legend>
                     <div class="clearfix">
                         <div class="small-3 columns">
                             <label id="url_label" for="cloud-url" class="right inline">Cloud URL</label>
-
                         </div>
                         <div class="small-9 columns" id="cloud-error">
                             <input type="text" id="cloud-url" placeholder="Authentication URL"
@@ -294,16 +352,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             </form>
         </div>
         <script type="text/javascript">
-            document.getElementById('title').innerHTML = SETTINGS.TITLE;
-            document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD;
-            document.getElementById('url_label').innerHTML = SETTINGS.URL;
-            document.getElementById('token_label').innerHTML = SETTINGS.TOKEN;
-            document.getElementById('get_creds').innerHTML = SETTINGS.RETRIEVE;
-            document.getElementById('sync_label').innerHTML = SETTINGS.SYNC;
-            document.getElementById('container_label').innerHTML = SETTINGS.CONTAINER;
-            document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY;
-            document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE;
-            document.getElementById('sync_button').innerHTML = SETTINGS.SAVE;
+            localize();
         </script>
     </body>
 </html>

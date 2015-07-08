@@ -48,6 +48,8 @@
     },
     "SETTINGS": {
         "TITLE": "User Settings",
+        "APPEARANCE": "Appearance",
+        "LANGUAGE": "Language",
         "CLOUD": "Cloud",
         "URL": "Cloud URL",
         "TOKEN": "User Token",

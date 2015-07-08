@@ -37,7 +37,9 @@ var globals = {
     url: null,
     container: null,
     directory: null,
-    exclude: null
+    exclude: null,
+    language: 'en',
+    sync_on_start: true
   },
   status: {synced: 0, unsynced: 0, failed: 0, code: STATUS['UNINITIALIZED']},
   authenticated: false,

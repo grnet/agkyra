@@ -1,0 +1,10 @@
+{
+    "en": {
+        "name": "English",
+        "icon": "static/images/language/en.png"
+    },
+    "el": {
+        "name": "Ελληνικά",
+        "icon": "static/images/language/el.png"
+    }
+}

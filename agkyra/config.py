@@ -59,6 +59,8 @@ SYNC_PREFIX = 'sync'
 config.DEFAULTS = {
     'global': {
         'agkyra_dir': AGKYRA_DIR,
+        'sync_on_start': 'on',
+        'language': 'en'
     },
     CLOUD_PREFIX: {
         # <cloud>: {
