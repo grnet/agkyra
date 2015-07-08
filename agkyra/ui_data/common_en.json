@@ -42,9 +42,9 @@
         "QUIT": "Quit Agkyra"
     },
     "NOTIFIER": {
-        "INFO": "Agkyra notification",
-        "WARNING": "Agkyra warning",
-        "ERROR": "Agkyra error"
+        "info": "Agkyra notification",
+        "warning": "Agkyra warning",
+        "error": "Agkyra error"
     },
     "SETTINGS": {
         "TITLE": "User Settings",

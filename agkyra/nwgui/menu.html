@@ -27,9 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <script src="static/js/jquery.js"></script>
     <script type="text/javascript">
 
-var NOTIFICATION = COMMON.NOTIFICATION;
-var MENU = COMMON.MENU;
-
 // Setup GUI
 var windows = {
   "settings": null,
@@ -42,7 +39,7 @@ function closeWindows() {
 
 // GUI components
 var tray = new gui.Tray({
-  tooltip: MENU.TITLE,
+  tooltip: COMMON.MENU.TITLE,
   icon: 'static/images/tray.png',
   iconsAreTemplates: false
 });
@@ -63,7 +60,7 @@ pause_item = new gui.MenuItem({
   // pause menu item
   icon: 'static/images/play_pause.png',
   iconIsTemplate: false,
-  label: MENU.INITIALIZING,
+  label: COMMON.MENU.INITIALIZING,
   type: 'normal',
   click: function() {
     if (globals.status.code == STATUS['PAUSED']) post_start(socket);
@@ -76,7 +73,7 @@ menu.append(pause_item);
 
 // Menu actions contents
 var local_folder_menu = new gui.MenuItem({
-  label: MENU.FOLDER,
+  label: COMMON.MENU.FOLDER,
   icon: 'static/images/folder.png',
   iconIsTemplate: false,
   enabled: false,
@@ -89,7 +86,7 @@ var local_folder_menu = new gui.MenuItem({
 menu.append(local_folder_menu);
 
 var pithos_page_menu = new gui.MenuItem({
-  label: MENU.PITHOS,
+  label: COMMON.MENU.PITHOS,
   icon: 'static/images/pithos.png',
   iconIsTemplate: false,
   enabled: false,
@@ -103,7 +100,7 @@ menu.append(pithos_page_menu);
 // Settings and About
 menu.append(new gui.MenuItem({type: 'separator'}));
 var settings_menu = new gui.MenuItem({
-  label: MENU.SETTINGS,
+  label: COMMON.MENU.SETTINGS,
   icon: 'static/images/settings.png',
   iconIsTemplate: false,
   enabled: false,
@@ -127,6 +124,7 @@ var settings_menu = new gui.MenuItem({
         log_debug('Compare ' + old_settings[key] + ' with ' + setting);
         if (old_settings[key] !== setting) {
           log_debug('Settings have been modified - updating...');
+          check_menu_lang();
           put_settings(socket, new_settings);
           get_status(socket);
           get_settings(socket);
@@ -138,8 +136,8 @@ var settings_menu = new gui.MenuItem({
 });
 menu.append(settings_menu);
 
-menu.append(new gui.MenuItem({
-  label: MENU.ABOUT,
+var about_menu = new gui.MenuItem({
+  label: COMMON.MENU.ABOUT,
   icon: 'static/images/about.png',
   iconIsTemplate: false,
   click: function () {
@@ -149,16 +147,18 @@ menu.append(new gui.MenuItem({
       width: 860, height: 620
     });
   }
-}));
+});
+menu.append(about_menu);
 
 // Quit
 menu.append(new gui.MenuItem({type: 'separator'}));
-menu.append(new gui.MenuItem({
-  label: MENU.QUIT,
+var quit_menu = new gui.MenuItem({
+  label: COMMON.MENU.QUIT,
   icon: 'static/images/exit.png',
   iconIsTemplate: false,
   click: function() {post_shutdown(socket);}
-}));
+});
+menu.append(quit_menu);
 
 
 function activate_menu() {
@@ -194,13 +194,27 @@ function notify(level) {
   if (globals.notification !== globals.status.code) {
     // Notification has changed, raise notifier box
     globals.notification = globals.status.code;
-    notify_user(NOTIFICATION[globals.status.code], level);
+    notify_user(
+      COMMON.NOTIFICATION[globals.status.code], level, COMMON.NOTIFIER);
+  }
+}
+
+function check_menu_lang() {
+  if (tray.tooltip !== COMMON.MENU.TITLE) {
+    tray.tooltip = COMMON.MENU.TITLE;
+    local_folder_menu.label = COMMON.MENU.FOLDER;
+    pithos_page_menu.label = COMMON.MENU.PITHOS;
+    settings_menu.label = COMMON.MENU.SETTINGS;
+    about_menu.label = COMMON.MENU.ABOUT;
+    quit_menu.label = COMMON.MENU.QUIT;
+    tray.menu = menu;
   }
 }
 
 // Update progress
 window.setInterval(function() {
-  var new_progress = NOTIFICATION[globals.status.code];
+  check_menu_lang();
+  var new_progress = COMMON.NOTIFICATION[globals.status.code];
   var new_pause = '';
   switch(globals.status.code) {
     case STATUS['UNINITIALIZED']:
@@ -208,29 +222,29 @@ window.setInterval(function() {
     case STATUS['SHUTING DOWN']:
       notify('info');
       deactivate_menu();
-      new_pause = MENU.INACTIVE;
+      new_pause = COMMON.MENU.INACTIVE;
     break;
     case STATUS['SYNCING']:
       notify('info');
       activate_menu();
-      new_progress += ', '
-                   + MENU.REMAINING.replace('%s', remaining(globals.status));
-      new_pause = MENU.PAUSE;
+      new_progress += ', '+ COMMON.MENU.REMAINING.replace(
+                    '%s', remaining(globals.status));
+      new_pause = COMMON.MENU.PAUSE;
     break;
     case STATUS['PAUSING']:
       notify('info');
-      new_progress += ', '
-                   + MENU.REMAINING.replace('%s', remaining(globals.status));
-      new_pause = MENU.WAITING;
+      new_progress += ', ' + COMMON.MENU.REMAINING.replace(
+                      '%s', remaining(globals.status));
+      new_pause = COMMON.MENU.WAITING;
       pause_item.enabled = false;
     break;
     case STATUS['PAUSED']:
       notify('info');
       activate_menu();
-      new_pause = MENU.START;
+      new_pause = COMMON.MENU.START;
       if (remaining(globals.status) > 0)
-        new_progress += ', '
-                   + MENU.REMAINING.replace('%s', remaining(globals.status));
+        new_progress += ', '+ COMMON.MENU.REMAINING.replace(
+                    '%s', remaining(globals.status));
     break;
     case STATUS['SETTINGS MISSING']:
     case STATUS['AUTH URL ERROR']:
@@ -238,7 +252,7 @@ window.setInterval(function() {
     case STATUS['DIRECTORY ERROR']:
     case STATUS['CONTAINER ERROR']:
       deactivate_menu();
-      new_pause = MENU.INACTIVE;
+      new_pause = COMMON.MENU.INACTIVE;
       settings_menu.enabled = true;
       notify('error');
     break;
@@ -246,7 +260,7 @@ window.setInterval(function() {
   }
 
   if (globals.open_settings) {
-    new_progress = MENU.SETTINGSOPEN;
+    new_progress = COMMON.MENU.SETTINGSOPEN;
     globals.open_settings = false;
     settings_menu.click();
     deactivate_menu();

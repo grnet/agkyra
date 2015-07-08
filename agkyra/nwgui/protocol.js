@@ -21,15 +21,16 @@ var fs = require('fs');
 
 // Read config file
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
-var COMMON = JSON.parse(fs.readFileSync(path.join('..', 'ui_data/common_en.json')));
-
-var STATUS = COMMON['STATUS'];
-
-function log_debug(msg) { if (DEBUG) console.log(msg); }
-
-function send_json(socket, msg) {
-  socket.send(JSON.stringify(msg));
+function load_common(lang) {
+  var common_path = 'common_en.json';
+  if (lang && lang !== globals.language) {
+    common_path = 'common_' + lang + '.json';
+    globals.language = lang;
+  }
+  return JSON.parse(fs.readFileSync(path.join('..', 'ui_data', common_path)));
 }
+var COMMON = load_common();
+var STATUS = COMMON.STATUS;
 
 var globals = {
   settings: {
@@ -46,6 +47,12 @@ var globals = {
   open_settings: false,
   settings_are_open: false,
   notification: STATUS['UNINITIALIZED']
+}
+
+function log_debug(msg) { if (DEBUG) console.log(msg); }
+
+function send_json(socket, msg) {
+  socket.send(JSON.stringify(msg));
 }
 
 // Protocol: requests ::: responses
@@ -86,7 +93,6 @@ function get_status(socket) {
   send_json(socket, {'method': 'get', 'path': 'status'});
 } // expected response {"synced":.., "unsynced":.., "failed":..., code":..}
 
-
 // Connect to helper
 var socket = new WebSocket(cnf['address']);
 socket.onopen = function() {
@@ -124,6 +130,7 @@ socket.onmessage = function(e) {
     break;
     case 'get settings':
       log_debug(r);
+      if (r.language !== globals.language) COMMON = load_common(r.language);
       globals['settings'] = r;
     break;
     case 'put settings':

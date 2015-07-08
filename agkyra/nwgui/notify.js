@@ -1,5 +1,4 @@
 var gui = require('nw.gui');
-var NOTIFIER = COMMON.NOTIFIER;
 
 function is_up(code) { return (code / 100 >> 0) === 1; }
 function has_settings_error(code) { return (code / 200 >> 0) === 2; }
@@ -7,11 +6,6 @@ function remaining(status) {
     return status.unsynced - (status.synced + status.failed);
 }
 
-var ntf_title = {
-    'info': NOTIFIER.INFO,
-    'warning': NOTIFIER.WARNING,
-    'error': NOTIFIER.ERROR
-}
 var ntf_icon = {
     'info': 'static/images/ntf_info.png',
     'warning': 'static/images/ntf_warning.png',
@@ -30,7 +24,7 @@ var notify_menu = new gui.MenuItem({
     iconIsTemplate: false,
 });
 
-function notify_user(msg, level) {
+function notify_user(msg, level, ntf_title) {
     var n = new Notification(ntf_title[level], {
         lang: 'utf-8', body: msg, icon: ntf_icon[level]
     });
