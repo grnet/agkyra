@@ -50,6 +50,7 @@
         "TITLE": "User Settings",
         "APPEARANCE": "Appearance",
         "LANGUAGE": "Language",
+        "SYNCONSTART": "Sync on start up",
         "CLOUD": "Cloud",
         "URL": "Cloud URL",
         "TOKEN": "User Token",

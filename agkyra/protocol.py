@@ -619,7 +619,7 @@ class WebSocketProtocol(WebSocket):
             self._load_settings()
             if (not self.syncer) and self.can_sync():
                 self.init_sync()
-                if self.syncer:
+                if self.syncer and self.settings['sync_on_start']:
                     self.start_sync()
         else:
             action = r.get('path', 'ui_id')
