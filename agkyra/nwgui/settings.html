@@ -205,6 +205,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 var COMMON = JSON.parse(
                 fs.readFileSync(path.join('..', 'ui_data/common_' + cur_lang + '.json')));
                 var SETTINGS = COMMON.SETTINGS;
+                document.title = SETTINGS.TITLE;
                 document.getElementById('title').innerHTML = SETTINGS.TITLE;
                 document.getElementById('appearance_label').innerHTML = SETTINGS.APPEARANCE;
                 document.getElementById('language_label').innerHTML = SETTINGS.LANGUAGE;

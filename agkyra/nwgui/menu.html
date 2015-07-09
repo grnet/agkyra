@@ -142,7 +142,8 @@ var about_menu = new gui.MenuItem({
   iconIsTemplate: false,
   click: function () {
     if (windows['about']) windows['about'].close();
-    windows['about'] = gui.Window.open("about.html", {
+    windows['about'] = gui.Window.open(
+        "about_" + globals.settings.language + ".html", {
       toolbar: false, resizable: false, focus: true,
       width: 860, height: 620
     });
