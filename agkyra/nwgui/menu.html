@@ -38,9 +38,12 @@ function closeWindows() {
 }
 
 // GUI components
+var tray_icon = {
+  on: 'static/images/tray.png',
+  off: 'static/images/tray_off.png'}
 var tray = new gui.Tray({
   tooltip: COMMON.MENU.TITLE,
-  icon: 'static/images/tray.png',
+  icon: tray_icon.off,
   iconsAreTemplates: false
 });
 
@@ -217,6 +220,7 @@ window.setInterval(function() {
   check_menu_lang();
   var new_progress = COMMON.NOTIFICATION[globals.status.code];
   var new_pause = '';
+  var tray_icon_off = false;
   switch(globals.status.code) {
     case STATUS['UNINITIALIZED']:
     case STATUS['INITIALIZING']:
@@ -224,6 +228,7 @@ window.setInterval(function() {
       notify('info');
       deactivate_menu();
       new_pause = COMMON.MENU.INACTIVE;
+      tray_icon_off = true;
     break;
     case STATUS['SYNCING']:
       notify('info');
@@ -273,6 +278,10 @@ window.setInterval(function() {
     pause_item.label = new_pause;
     tray.menu = menu;
   }
+  if (tray_icon_off && tray.icon !== tray_icon.off)
+    tray.icon = tray_icon.off;
+  else if (!(tray_icon_off || tray.icon === tray_icon.on))
+    tray.icon = tray_icon.on;
   get_status(socket);
 }, 1500);
 
