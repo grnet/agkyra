@@ -172,7 +172,7 @@ function activate_menu() {
     settings_menu.enabled = true;
     tray.menu = menu;
   }
-  if ((!pithos_page_menu.enabled) && get_pithos_ui() != null){
+  if ((!pithos_page_menu.enabled) && get_pithos_ui()){
     pithos_page_menu.enabled = true;
     tray.menu = menu;
   }

@@ -217,3 +217,17 @@ textarea {
 #directory {
     word-break: break-all;
 }
+
+#start_sync,
+#language_space {
+    padding: 0.5625rem 0px;
+}
+
+.lang {
+    display: inline-block;
+    margin-right: 1rem;
+}
+.lang label {
+    display: inline-block;
+    vertical-align: top;
+}

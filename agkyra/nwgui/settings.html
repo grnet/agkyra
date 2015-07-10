@@ -225,11 +225,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     var lang = LANG[key];
                     var checked = ''
                     if (key === cur_lang) checked = 'checked'
-                    lang_code += '<div class="small-1 columns">'
-                        + '<input type="radio" name="language" value="' + key + '" '
+                    lang_code += '<div class="lang">'
+                        + '<input type="radio" name="language" '
+                        + 'id="button_' + key+ '" value="' + key + '" '
                         + checked
                         + ' onclick="cur_lang=\'' + key + '\'; localize();">'
-                        + lang.name + '<img src="' + lang.icon + '"/></input></div>';
+                        + '<label for="button_' + key + '">' + lang.name
+                        + ' <img src="' + lang.icon + '"/></label></input></div>';
                 }
                 document.getElementById('language_space').innerHTML = lang_code;
             }
