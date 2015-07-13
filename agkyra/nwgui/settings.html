@@ -282,7 +282,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                             <input type="text" id="cloud-url" placeholder="Authentication URL"
                             onchange="
                             var identity_url = $(this).val().replace(/\/+$/, '');
-                            settings['url'] = identity_url;                            refresh_endpoints(identity_url);
+                            settings['url'] = identity_url;
+                            refresh_endpoints(identity_url);
                             check_cloud_url();">
                             <small>Invalid entry</small>
                         </div>

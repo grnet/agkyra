@@ -29,8 +29,16 @@ function get_setting(key) {
     return global.settings[key];
 }
 
+function get_dialogue() {
+    return global.dialogue;
+}
+
 function set_setting(key, val) {
     global.settings[key] = val;
+}
+
+function set_dialogue(msg, terms, response) {
+    global.dialogue = {msg: msg, terms: terms, response: response};
 }
 
 function refresh_endpoints(identity_url) {

@@ -79,6 +79,11 @@ function post_start(socket) {
   send_json(socket, {'method': 'post', 'path': 'start'});
 } // expected response: {"OK": 200}
 
+function post_force(socket) {
+  log_debug('SEND post force');
+  send_json(socket, {'method': 'post', 'path': 'force'});
+}
+
 function get_settings(socket) {
   send_json(socket, {'method': 'get', 'path': 'settings'});
 } // expected response: {settings JSON}

@@ -27,6 +27,12 @@
         "204": "Remote container error",
         "1000": "Critical error"
     },
+    "DIALOGUE": {
+        "203": "Local directory \"%s\" does not exist. Would you like Agkyra to create a new one and restart the syncing process?",
+        "204": "Remote container \"%s\" does not exist. Would you like Agkyra to create a new one and restart the syncing process?",
+        "OK": "OK",
+        "CANCEL": "Cancel"
+    },
     "MENU": {
         "TITLE": "Agkyra Syncing Client",
         "START": "Start syncing",

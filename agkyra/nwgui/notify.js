@@ -33,12 +33,6 @@ var ntf_timeout = {
     'error': 4000
 }
 
-var notify_menu = new gui.MenuItem({
-    label: 'Notifications',
-    icon: 'static/images/play_pause.png',
-    iconIsTemplate: false,
-});
-
 function notify_user(msg, level, ntf_title) {
     var n = new Notification(ntf_title[level], {
         lang: 'utf-8', body: msg, icon: ntf_icon[level]

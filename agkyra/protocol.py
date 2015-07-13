@@ -225,6 +225,10 @@ class WebSocketProtocol(WebSocket):
     GUI: {"method": "post", "path": "start"}
     HELPER: {"OK": 200, "action": "post start"} or error
 
+    -- FORCE START --
+    GUI: {"method": "post", "path": "force"}
+    HELPER: {"OK": 200, "action": "post force"} or error
+
     -- GET SETTINGS --
     GUI: {"method": "get", "path": "settings"}
     HELPER:
@@ -459,13 +463,13 @@ class WebSocketProtocol(WebSocket):
             #             d.update(unsynced=0, synced=0, failed=0)
             while msg:
                 if isinstance(msg, messaging.SyncMessage):
-                    LOG.error('UNSYNCED +1 %s' % getattr(msg, 'objname', ''))
+                    LOG.debug('UNSYNCED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(unsynced=self.get_status('unsynced') + 1)
                 elif isinstance(msg, messaging.AckSyncMessage):
-                    LOG.error('SYNCED +1 %s' % getattr(msg, 'objname', ''))
+                    LOG.debug('SYNCED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(synced=self.get_status('synced') + 1)
                 elif isinstance(msg, messaging.SyncErrorMessage):
-                    LOG.error('FAILED +1 %s' % getattr(msg, 'objname', ''))
+                    LOG.debug('FAILED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(failed=self.get_status('failed') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
                     self.set_status(code=STATUS['DIRECTORY ERROR'])
@@ -527,7 +531,7 @@ class WebSocketProtocol(WebSocket):
                     local_ok = False
                     break
                 elif isinstance(msg, messaging.PithosSyncDisabled):
-                    self.set_status(code=STATUS['CONTAINER ERRIR'])
+                    self.set_status(code=STATUS['CONTAINER ERROR'])
                     remote_ok = False
                     break
                 elif isinstance(msg, messaging.LocalfsSyncEnabled):
@@ -580,16 +584,25 @@ class WebSocketProtocol(WebSocket):
         syncer_.wait_sync_threads()
 
     def pause_sync(self):
+        """Pause syncing (assuming it is up and running)"""
         if self.syncer:
             self.syncer.stop_decide()
             self.set_status(code=STATUS['PAUSING'])
-        # syncer_ = self.syncer
-        # if syncer_ and not syncer_.paused:
-        #     Thread(target=self._pause_syncer).start()
-        #     self.set_status(code=STATUS['PAUSING'])
 
     def start_sync(self):
+        """Start syncing"""
         self.syncer.start_decide()
+
+    def force_sync(self):
+        """Force syncing, assuming there is a directory or container problem"""
+        self.set_status(code=STATUS['INITIALIZING'])
+        self.syncer_settings.purge_db_archives_and_enable()
+        self.init_sync()
+        if self.syncer:
+            self.syncer.start_decide()
+            self.set_status(code=STATUS['SYNCING'])
+        else:
+            self.set_status(code=STATUS['CRITICAL ERROR'])
 
     def send_json(self, msg):
         LOG.debug('send: %s' % msg)
@@ -609,7 +622,8 @@ class WebSocketProtocol(WebSocket):
                 return
             {
                 'start': self.start_sync,
-                'pause': self.pause_sync
+                'pause': self.pause_sync,
+                'force': self.force_sync
             }[action]()
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['ui_id'] == self.ui_id:

@@ -31,7 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 var windows = {
   "settings": null,
   "about": null,
-  "index": gui.Window.get()
+  "index": gui.Window.get(),
+  "dialogue": null
 }
 function closeWindows() {
   for (win in windows) if (windows[win]) windows[win].close();
@@ -221,6 +222,7 @@ window.setInterval(function() {
   var new_progress = COMMON.NOTIFICATION[globals.status.code];
   var new_pause = '';
   var tray_icon_off = false;
+  var dialogue_msg = null;
   switch(globals.status.code) {
     case STATUS['UNINITIALIZED']:
     case STATUS['INITIALIZING']:
@@ -252,11 +254,27 @@ window.setInterval(function() {
         new_progress += ', '+ COMMON.MENU.REMAINING.replace(
                     '%s', remaining(globals.status));
     break;
-    case STATUS['SETTINGS MISSING']:
+    case STATUS['DIRECTORY ERROR']:
+      dialogue_msg = COMMON.DIALOGUE[globals.status.code].replace(
+        '%s', globals.settings.directory);
+    case STATUS['CONTAINER ERROR']:
+      if (!dialogue_msg)
+        dialogue_msg = COMMON.DIALOGUE[globals.status.code].replace(
+          '%s', globals.settings.container);
+      set_dialogue(dialogue_msg, COMMON.DIALOGUE, false);
+      if (windows.dialogue === null) {
+        windows['dialogue'] = gui.Window.open(
+          'dialogue.html', {
+            toolbar: false, focus: true,
+            width: 550, height: 220});
+        windows['dialogue'].on('closed', function() {
+          var d = get_dialogue();
+          if (d.response) post_force(socket);
+        });
+      }
     case STATUS['AUTH URL ERROR']:
     case STATUS['TOKEN ERROR']:
-    case STATUS['DIRECTORY ERROR']:
-    case STATUS['CONTAINER ERROR']:
+    case STATUS['SETTINGS MISSING']:
       deactivate_menu();
       new_pause = COMMON.MENU.INACTIVE;
       settings_menu.enabled = true;
@@ -282,6 +300,7 @@ window.setInterval(function() {
     tray.icon = tray_icon.off;
   else if (!(tray_icon_off || tray.icon === tray_icon.on))
     tray.icon = tray_icon.on;
+
   get_status(socket);
 }, 1500);
 
