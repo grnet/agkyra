@@ -145,6 +145,8 @@ class SyncerSettings():
         if not db_existed:
             self.get_db(initialize=True)
 
+        self.mtime_lag = 0
+
         if not db_existed:
             self.set_localfs_enabled(True)
             self.create_local_dirs()
@@ -168,7 +170,6 @@ class SyncerSettings():
         self.endpoint.CONNECTION_RETRY_LIMIT = self.connection_retry_limit
 
         self.messager = Messager()
-        self.mtime_lag = 0 #self.determine_mtime_lag()
 
     def create_local_dirs(self):
         self.create_dir(self.local_root_path)
@@ -183,6 +184,9 @@ class SyncerSettings():
         if mtime.is_integer():
             return 1.1
         return 0
+
+    def set_mtime_lag(self):
+        self.mtime_lag = self.determine_mtime_lag()
 
     def get_db(self, initialize=False):
         dbs = getattr(thread_local_data, "dbs", None)
@@ -253,6 +257,8 @@ class SyncerSettings():
 
     def _set_localfs_enabled(self, db, enabled):
         db.set_config("localfs_enabled", enabled)
+        if enabled:
+            self.set_mtime_lag()
 
     @transaction()
     def set_pithos_enabled(self, enabled):
