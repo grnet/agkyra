@@ -20,7 +20,7 @@ import json
 import logging
 import random
 
-from agkyra.syncer import common
+from agkyra.syncer import common, utils
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,17 @@ class SqliteFileStateDB(FileStateDB):
 
         Q += " order by objname"
         c = self.db.execute(Q, tpl)
+        fetchone = c.fetchone
+        while True:
+            r = fetchone()
+            if not r:
+                break
+            yield r[0]
+
+    def get_dir_contents(self, archive, objname):
+        Q = ("select objname from archives where archive = ? and info != '{}'"
+             " and objname like ?")
+        c = self.db.execute(Q, (archive, utils.join_objname(objname, '%')))
         fetchone = c.fetchone
         while True:
             r = fetchone()

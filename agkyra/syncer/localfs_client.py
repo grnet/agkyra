@@ -683,8 +683,13 @@ class LocalfsFileClient(FileClient):
     def prepare_target(self, target_state):
         return LocalfsTargetHandle(self.settings, target_state)
 
+    @transaction()
+    def get_dir_contents(self, objname):
+        db = self.get_db()
+        return db.get_dir_contents(self.SIGNATURE, objname)
+
     def notifier(self):
-        def handle_path(path):
+        def handle_path(path, rec=False):
             try:
                 path = utils.to_unicode(path)
             except UnicodeDecodeError as e:
@@ -695,6 +700,10 @@ class LocalfsFileClient(FileClient):
             objname = utils.to_standard_sep(rel_path)
             with self.probe_candidates.lock() as d:
                 d[objname] = self.none_info()
+                if rec:
+                    leaves = self.get_dir_contents(objname)
+                    for leaf in leaves:
+                        d[leaf] = self.none_info()
 
         root_path = utils.from_unicode(self.ROOTPATH)
         class EventHandler(FileSystemEventHandler):
@@ -712,7 +721,7 @@ class LocalfsFileClient(FileClient):
                     self.settings.set_localfs_enabled(False)
                     msg = messaging.LocalfsSyncDisabled(logger=logger)
                     self.settings.messager.put(msg)
-                handle_path(path)
+                handle_path(path, rec=utils.iswin())
 
             def on_modified(this, event):
                 if event.is_directory:
