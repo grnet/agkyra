@@ -99,6 +99,12 @@ def younger_than(tstamp, seconds):
     return delta < datetime.timedelta(seconds=seconds)
 
 
+def reg_name(objname):
+    if iswin():
+        return objname.lower()
+    return objname
+
+
 BaseStoppableThread = watchdog.utils.BaseThread
 
 

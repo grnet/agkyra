@@ -34,12 +34,13 @@ def heartbeat_event(settings, heartbeat, objname):
 
     def set_log():
         with heartbeat.lock() as hb:
-            beat = hb.get(objname)
+            registered_name = utils.reg_name(objname)
+            beat = hb.get(registered_name)
             assert beat is not None
             new_beat = {"ident": beat["ident"],
                         "tstamp": utils.time_stamp()}
-            hb[objname] = new_beat
-            logger.debug("HEARTBEAT '%s' %s" % (objname, new_beat))
+            hb[registered_name] = new_beat
+            logger.debug("HEARTBEAT '%s' %s" % (registered_name, new_beat))
 
     def go():
         interval = 0.2
