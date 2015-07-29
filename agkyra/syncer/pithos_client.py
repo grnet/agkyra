@@ -34,7 +34,7 @@ def heartbeat_event(settings, heartbeat, objname):
 
     def set_log():
         with heartbeat.lock() as hb:
-            registered_name = utils.reg_name(objname)
+            registered_name = utils.reg_name(settings, objname)
             beat = hb.get(registered_name)
             assert beat is not None
             new_beat = {"ident": beat["ident"],

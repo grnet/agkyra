@@ -105,6 +105,9 @@ class FileSyncer(object):
         except common.DatabaseError:
             pass
 
+    def reg_name(self, objname):
+        return utils.reg_name(self.settings, objname)
+
     @transaction()
     def _probe_files(self, archive, objnames, ident):
         for objname in objnames:
@@ -117,7 +120,7 @@ class FileSyncer(object):
         db_state = db.get_state(archive, objname)
         ref_state = db.get_state(self.SYNC, objname)
         with self.heartbeat.lock() as hb:
-            beat = hb.get(utils.reg_name(objname))
+            beat = hb.get(self.reg_name(objname))
             if beat is not None:
                 if utils.younger_than(
                         beat["tstamp"], self.settings.action_max_wait):
@@ -206,7 +209,7 @@ class FileSyncer(object):
         if states is not None:
             with self.heartbeat.lock() as hb:
                 beat = {"ident": ident, "tstamp": utils.time_stamp()}
-                hb[utils.reg_name(objname)] = beat
+                hb[self.reg_name(objname)] = beat
         return states
 
     def _do_decide_file_sync(self, objname, master, slave, ident,
@@ -223,7 +226,7 @@ class FileSyncer(object):
         decision_serial = decision_state.serial
 
         with self.heartbeat.lock() as hb:
-            beat = hb.get(utils.reg_name(objname))
+            beat = hb.get(self.reg_name(objname))
             logger.debug("object: %s heartbeat: %s" % (objname, beat))
             if beat is not None:
                 if beat["ident"] == ident:
@@ -325,7 +328,7 @@ class FileSyncer(object):
         serial = state.serial
         objname = state.objname
         with self.heartbeat.lock() as hb:
-            hb.pop(utils.reg_name(objname))
+            hb.pop(self.reg_name(objname))
         if hard:
             logger.warning(
                 "Marking failed serial %s for archive: %s, object: '%s'" %
@@ -348,7 +351,7 @@ class FileSyncer(object):
         objname = synced_source_state.objname
         target = synced_target_state.archive
         with self.heartbeat.lock() as hb:
-            hb.pop(utils.reg_name(objname))
+            hb.pop(self.reg_name(objname))
         msg = messaging.AckSyncMessage(
             archive=target, objname=objname, serial=serial,
             logger=logger)

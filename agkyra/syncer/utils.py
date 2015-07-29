@@ -103,8 +103,8 @@ def younger_than(tstamp, seconds):
     return delta < datetime.timedelta(seconds=seconds)
 
 
-def reg_name(objname):
-    if iswin():
+def reg_name(settings, objname):
+    if settings.case_insensitive:
         return objname.lower()
     return objname
 
