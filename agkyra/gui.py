@@ -16,6 +16,7 @@
 from ws4py.client import WebSocketBaseClient
 from agkyra.protocol import SessionHelper, launch_server
 from agkyra.config import AGKYRA_DIR
+from agkyra.syncer import utils
 import subprocess
 import os
 import stat
@@ -24,6 +25,12 @@ import logging
 
 CURPATH = os.path.dirname(os.path.abspath(__file__))
 LOG = logging.getLogger(__name__)
+
+OSX_DEFAULT_NW_PATH = os.path.join(
+    CURPATH, 'nwjs', 'nwjs.app', 'Contents', 'MacOS', 'nwjs')
+STANDARD_DEFAULT_NW_PATH = os.path.join(CURPATH, 'nwjs', 'nw')
+DEFAULT_NW_PATH = OSX_DEFAULT_NW_PATH if utils.isosx() \
+    else STANDARD_DEFAULT_NW_PATH
 
 
 class GUI(WebSocketBaseClient):
@@ -37,8 +44,7 @@ class GUI(WebSocketBaseClient):
         self.session_file = kwargs.get(
             'session_file', os.path.join(AGKYRA_DIR, 'session.info'))
         self.start = self.connect
-        self.nw = kwargs.get(
-            'nw', os.path.join(os.path.join(CURPATH, 'nwjs'), 'nw'))
+        self.nw = kwargs.get('nw', DEFAULT_NW_PATH)
         self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'nwgui'))
         assert not self._gui_running(session), (
             'Failed to initialize GUI, because another GUI is running')
