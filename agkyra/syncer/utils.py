@@ -38,6 +38,10 @@ def islinux():
     return PLATFORM.startswith("linux")
 
 
+def isosx():
+    return PLATFORM.startswith("darwin")
+
+
 def to_local_sep(filename):
     return filename.replace(OBJECT_DIRSEP, os.path.sep)
 
