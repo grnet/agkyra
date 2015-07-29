@@ -146,6 +146,7 @@ class SyncerSettings():
             self.get_db(initialize=True)
 
         self.mtime_lag = 0
+        self.case_insensitive = False
 
         if not db_existed:
             self.set_localfs_enabled(True)
@@ -156,6 +157,8 @@ class SyncerSettings():
         else:
             if not local_root_path_exists:
                 self.set_localfs_enabled(False)
+            else:
+                self.create_local_dirs()
             if not container_exists:
                 self.set_pithos_enabled(False)
 
@@ -178,6 +181,7 @@ class SyncerSettings():
         self.create_dir(self.cache_stage_path)
         self.create_dir(self.cache_fetch_path)
         self.set_mtime_lag()
+        self.set_case_insensitive()
 
     def determine_mtime_lag(self):
         st = os.stat(self.cache_path)
@@ -188,8 +192,23 @@ class SyncerSettings():
 
     def set_mtime_lag(self):
         lag = self.determine_mtime_lag()
-        logger.debug("Setting mtime_lag = %s" % lag)
+        logger.info("Setting mtime_lag = %s" % lag)
         self.mtime_lag = lag
+
+    def determine_fs_case_insensitive(self):
+        path = self.cache_hide_path
+        altered = path.upper() if not path.isupper() else path.lower()
+        try:
+            os.stat(altered)
+            return True
+        except OSError:
+            return False
+
+    def set_case_insensitive(self):
+        case_insensitive = self.determine_fs_case_insensitive()
+        case = "in" if case_insensitive else ""
+        logger.info("Filesystem is case-%ssensitive" % case)
+        self.case_insensitive = case_insensitive
 
     def get_db(self, initialize=False):
         dbs = getattr(thread_local_data, "dbs", None)
