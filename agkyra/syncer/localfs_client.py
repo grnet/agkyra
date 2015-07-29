@@ -139,8 +139,8 @@ def info_is_unhandled(info):
     return info != {} and info[LOCALFS_TYPE] == common.T_UNHANDLED
 
 
-def local_path_changes(path, state, unhandled_equal=True):
-    live_info = get_live_info(path)
+def local_path_changes(settings, path, state, unhandled_equal=True):
+    live_info = get_live_info(settings, path)
     info = state.info
     if is_info_eq(live_info, info, unhandled_equal):
         return None
@@ -160,15 +160,20 @@ def get_actual_windows_path(path):
     return buf.value
 
 
-def get_live_info(path):
+def is_actual_path(path):
+    prefix = path.rstrip(os.path.sep)
+    while True:
+        prefix, basename = os.path.split(prefix)
+        if not basename:
+            return True
+        if not basename in os.listdir(prefix):
+            return False
+
+def get_live_info(settings, path):
     if path is None:
         return {}
-    if utils.iswin():
-        try:
-            actual_path = get_actual_windows_path(path)
-            if path != actual_path:
-                return {}
-        except ValueError:
+    if settings.case_insensitive:
+        if not is_actual_path(path):
             return {}
     stats, status = get_local_status(path)
     if status == LOCAL_MISSING:
@@ -359,7 +364,7 @@ class LocalfsTargetHandle(object):
 
     def prepare(self, fetched_path, sync_state):
         self.hide_file()
-        info_changed = local_path_changes(
+        info_changed = local_path_changes(self.settings,
             self.hidden_path, sync_state, unhandled_equal=False)
         if info_changed is not None and info_changed != {}:
             if not files_equal(self.hidden_path, fetched_path):
@@ -405,7 +410,7 @@ class LocalfsTargetHandle(object):
 
     def pull(self, source_handle, sync_state):
         fetched_path = source_handle.send_file(sync_state)
-        fetched_live_info = get_live_info(fetched_path)
+        fetched_live_info = get_live_info(self.settings, fetched_path)
         self.apply(fetched_path, fetched_live_info, sync_state)
         self.cleanup(fetched_path)
         return self.target_state.set(info=fetched_live_info)
@@ -465,7 +470,7 @@ class LocalfsSourceHandle(object):
 
     def stage_file(self):
         self.copy_file()
-        live_info = get_live_info(self.fspath)
+        live_info = get_live_info(self.settings, self.fspath)
         self.check_staged(live_info)
         self.check_update_source_state(live_info)
 
@@ -645,7 +650,7 @@ class LocalfsFileClient(FileClient):
 
     def _local_path_changes(self, name, state):
         local_path = utils.join_path(self.ROOTPATH, name)
-        return local_path_changes(local_path, state)
+        return local_path_changes(self.settings, local_path, state)
 
     def exclude_file(self, objname):
         parts = objname.split(common.OBJECT_DIRSEP)
