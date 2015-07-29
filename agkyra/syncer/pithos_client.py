@@ -188,10 +188,11 @@ class PithosTargetHandle(object):
 
     def _move_object(self, objname, etag, del_name):
         container = self.endpoint.container
+        dest = common.OBJECT_DIRSEP + utils.join_objname(container, del_name)
         try:
             self.endpoint.object_move(
                 objname,
-                destination='/%s/%s' % (container, del_name),
+                destination=dest,
                 if_etag_match=etag)
         except ClientError as e:
             if e.status == 404:
