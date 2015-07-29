@@ -177,6 +177,7 @@ class SyncerSettings():
         self.create_dir(self.cache_hide_path)
         self.create_dir(self.cache_stage_path)
         self.create_dir(self.cache_fetch_path)
+        self.set_mtime_lag()
 
     def determine_mtime_lag(self):
         st = os.stat(self.cache_path)
@@ -186,7 +187,9 @@ class SyncerSettings():
         return 0
 
     def set_mtime_lag(self):
-        self.mtime_lag = self.determine_mtime_lag()
+        lag = self.determine_mtime_lag()
+        logger.debug("Setting mtime_lag = %s" % lag)
+        self.mtime_lag = lag
 
     def get_db(self, initialize=False):
         dbs = getattr(thread_local_data, "dbs", None)
@@ -257,8 +260,6 @@ class SyncerSettings():
 
     def _set_localfs_enabled(self, db, enabled):
         db.set_config("localfs_enabled", enabled)
-        if enabled:
-            self.set_mtime_lag()
 
     @transaction()
     def set_pithos_enabled(self, enabled):
