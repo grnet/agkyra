@@ -16,6 +16,7 @@
 import os
 import threading
 import logging
+import ctypes
 
 from functools import wraps
 
@@ -76,6 +77,10 @@ def check_encoding():
             raise Exception(
                 "Cannot operate with encoding %s. Please use UTF-8."
                 % encoding)
+
+
+def win_hide_file(path):
+    ctypes.windll.kernel32.SetFileAttributesW(path, 2)
 
 
 class SyncerSettings():
@@ -177,6 +182,8 @@ class SyncerSettings():
     def create_local_dirs(self):
         self.create_dir(self.local_root_path)
         self.create_dir(self.cache_path)
+        if utils.iswin():
+            win_hide_file(self.cache_path)
         self.create_dir(self.cache_hide_path)
         self.create_dir(self.cache_stage_path)
         self.create_dir(self.cache_fetch_path)
