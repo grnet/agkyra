@@ -22,7 +22,6 @@ import time
 import filecmp
 import shutil
 import errno
-import ctypes
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -154,19 +153,6 @@ def local_path_changes(settings, path, state, unhandled_equal=True):
     if is_info_eq(live_info, info, unhandled_equal):
         return None
     return live_info
-
-
-def get_actual_windows_path(path):
-    SIZE = 1024
-    buf = ctypes.create_unicode_buffer(SIZE)
-    rv = ctypes.windll.kernel32.GetShortPathNameW(path, buf, SIZE)
-    if rv == 0 or rv > SIZE:
-        raise ValueError('Error in computing short %s' % rv)
-    short = buf.value
-    rv = ctypes.windll.kernel32.GetLongPathNameW(short, buf, SIZE)
-    if rv == 0 or rv > SIZE:
-        raise ValueError('Error in computing long %s' % rv)
-    return buf.value
 
 
 def is_actual_path(path):
