@@ -76,6 +76,15 @@ def make_dirs(path):
         raise
 
 
+def list_dir(path):
+    try:
+        return os.listdir(path)
+    except OSError as e:
+        if e.errno in [errno.ENOTDIR, errno.ENOENT, errno.EINVAL]:
+            return []
+        raise
+
+
 psutil_open_files = \
     (lambda proc: proc.open_files()) if psutil.version_info[0] >= 2 else \
     (lambda proc: proc.get_open_files())
@@ -166,7 +175,7 @@ def is_actual_path(path):
         prefix, basename = os.path.split(prefix)
         if not basename:
             return True
-        if not basename in os.listdir(prefix):
+        if not basename in list_dir(prefix):
             return False
 
 def get_live_info(settings, path):
@@ -234,7 +243,7 @@ def _get_local_status_from_stats(stats, path):
     if stat.S_ISREG(mode):
         return LOCAL_FILE
     if stat.S_ISDIR(mode):
-        if os.listdir(path):
+        if list_dir(path):
             return LOCAL_NONEMPTY_DIR
         return LOCAL_EMPTY_DIR
     return LOCAL_OTHER
