@@ -790,7 +790,8 @@ class AgkyraTest(unittest.TestCase):
 
         handle.copy_file()
         self.assertIsNotNone(handle.staged_path)
-        live_info = localfs_client.get_live_info(handle.fspath)
+        live_info = localfs_client.get_live_info(
+            self.s.settings, handle.fspath)
         handle.check_staged(live_info)
 
         with open(fmissing_path, "w") as f:
@@ -806,7 +807,8 @@ class AgkyraTest(unittest.TestCase):
             handle.check_staged(live_info)
 
         # info of dir
-        live_info = localfs_client.get_live_info(handle.fspath)
+        live_info = localfs_client.get_live_info(
+            self.s.settings, handle.fspath)
         handle.check_staged(live_info)
 
 
