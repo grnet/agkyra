@@ -48,7 +48,7 @@ if os.path.exists(AGKYRA_DIR):
     if not os.path.isdir(AGKYRA_DIR):
         raise Exception("Cannot create dir '%s'; file exists" % AGKYRA_DIR)
 else:
-    os.mkdir(AGKYRA_DIR)
+    os.makedirs(AGKYRA_DIR)
 
 CONFIG_PATH = os.path.join(AGKYRA_DIR, 'config.rc')
 config.CONFIG_PATH = CONFIG_PATH

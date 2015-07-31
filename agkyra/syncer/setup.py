@@ -239,7 +239,7 @@ class SyncerSettings():
                 return
             raise Exception("Cannot create dir '%s'; file exists" % path)
         logger.warning("Creating dir: '%s'" % path)
-        os.mkdir(path)
+        os.makedirs(path)
         return path
 
     @ssl_fall_back
