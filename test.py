@@ -30,6 +30,7 @@ import shutil
 import unittest
 import mock
 import sqlite3
+import tempfile
 
 from functools import wraps
 from agkyra.config import AgkyraConfig, CONFIG_PATH
@@ -50,7 +51,7 @@ logger.setLevel(logging.INFO)
 # kamakirecv_logger.addHandler(handler)
 # kamakirecv_logger.setLevel(logging.DEBUG)
 
-TMP = "/tmp"
+TMP = os.path.realpath(tempfile.gettempdir())
 
 
 def hash_file(fil):
@@ -89,7 +90,7 @@ class AgkyraTest(unittest.TestCase):
 
         cls.ID = "ΑΓΚΥΡΑTEST" + str(random.random()).split('.')[1]
 
-        cls.LOCAL_ROOT_PATH = utils.join_path("/tmp", cls.ID)
+        cls.LOCAL_ROOT_PATH = utils.join_path(TMP, cls.ID)
 
         cls.settings = SyncerSettings(
             auth_url=AUTHENTICATION_URL,
