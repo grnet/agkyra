@@ -49,6 +49,8 @@ cd $TMPDIR
 ARCHIVENAME=$CURPWD/agkyra-snapshot-${os}
 if [[ "$os" =~ ^(linux64|linux32)$ ]]; then
     tar czf ${ARCHIVENAME}.tar.gz agkyra
-else
-    zip -r ${ARCHIVENAME}.zip agkyra
+elif [[ "$os" =~ ^(osx64|osx32)$ ]]; then
+    mkdir -p agkyra.app/Contents
+    mv agkyra agkyra.app/Contents/MacOS
+    zip -r ${ARCHIVENAME}.zip agkyra.app
 fi
