@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-VERSION="v0.12.2"
+VERSION="v0.12.3"
 
 CURPWD=$(pwd)
 cd "$(dirname "$0")"
