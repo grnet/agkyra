@@ -14,6 +14,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
+
+SCRIPTSPATH = os.path.dirname(os.path.realpath(__file__))
+AGKYRAPATH = os.path.dirname(SCRIPTSPATH)
+LIBPATH = os.path.dirname(AGKYRAPATH)
+
+sys.path.insert(0, LIBPATH)
 
 from agkyra import config
 AGKYRA_DIR = config.AGKYRA_DIR
