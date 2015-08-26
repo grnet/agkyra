@@ -1,3 +1,5 @@
+.. _installation:
+
 Installation
 ============
 
@@ -55,6 +57,9 @@ agkyra source directory.
     $ mv nwjs `$AGKYRA_SOURCE/agkyra/nwjs
 
 TODO: Different names between operating systems
+
+
+.. _setup:
 
 Setup
 =====
