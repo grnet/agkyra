@@ -1,3 +1,5 @@
+.. _gui:
+
 Graphical User Interface (GUI)
 ==============================
 
@@ -60,6 +62,8 @@ In the above cases, a pop up dialog informs the user about the incident and
 suggest a reset of the application, resulting in creating the deleted end and
 filling it up with the contents of the existing end. The user can discard the
 suggestion and solve the problem manually.
+
+.. _guivscli:
 
 GUI and CLI in parallel
 -----------------------
