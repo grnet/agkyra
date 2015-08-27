@@ -14,9 +14,13 @@ Click on the agkyra application icon or execute `agkyra` from the command
 line. After launch, an agkyra icon will appear on the system tray of your
 desktop.
 
+.. image:: images/tray_icon.png
+
 If it is a vanilla installation or some essential settings are missing, a
 `Settings` pop up window will appear. Provide the `URL`, `token`, `container`
 and `directory` information and press ``Save``.
+
+.. image:: images/settings_empty.png
 
 Otherwise, if the settings have been provided in a previous session and are
 sane and functional, agkyra will start running (syncing by default).
@@ -26,6 +30,8 @@ Menu
 
 Click on the tray icon to open the agkyra menu. Usually a right click is
 required, but in some systems you have to left-click instead.
+
+.. image:: images/syncing.png
 
 The first line of the menu will provide information on the status of the
 application, i.e. if it is ``initializing``, ``syncing``, ``pausing``,
