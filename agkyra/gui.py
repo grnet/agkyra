@@ -18,17 +18,28 @@ from agkyra.protocol import SessionHelper, launch_server
 from agkyra.config import AGKYRA_DIR
 from agkyra.syncer import utils
 import subprocess
+import sys
 import os
 import stat
 import json
 import logging
 
-CURPATH = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    # we are running in a |PyInstaller| bundle
+    BASEDIR = sys._MEIPASS
+    ISFROZEN = True
+else:
+    # we are running in a normal Python environment
+    BASEDIR = os.path.dirname(os.path.realpath(__file__))
+    ISFROZEN = False
+
+RESOURCES = os.path.join(BASEDIR, 'resources')
+
 LOG = logging.getLogger(__name__)
 
 OSX_DEFAULT_NW_PATH = os.path.join(
-    CURPATH, 'nwjs', 'nwjs.app', 'Contents', 'MacOS', 'nwjs')
-STANDARD_DEFAULT_NW_PATH = os.path.join(CURPATH, 'nwjs', 'nw')
+    RESOURCES, 'nwjs', 'nwjs.app', 'Contents', 'MacOS', 'nwjs')
+STANDARD_DEFAULT_NW_PATH = os.path.join(RESOURCES, 'nwjs', 'nw')
 DEFAULT_NW_PATH = OSX_DEFAULT_NW_PATH if utils.isosx() \
     else STANDARD_DEFAULT_NW_PATH
 
@@ -45,7 +56,7 @@ class GUI(WebSocketBaseClient):
             'session_file', os.path.join(AGKYRA_DIR, 'session.info'))
         self.start = self.connect
         self.nw = kwargs.get('nw', DEFAULT_NW_PATH)
-        self.gui_code = kwargs.get('gui_code', os.path.join(CURPATH, 'nwgui'))
+        self.gui_code = kwargs.get('gui_code', os.path.join(RESOURCES, 'nwgui'))
         assert not self._gui_running(session), (
             'Failed to initialize GUI, because another GUI is running')
         self._dump_session_file(session)
@@ -85,9 +96,9 @@ class GUI(WebSocketBaseClient):
         LOG.debug('GUI finished, close GUI wrapper connection')
 
 
-def run():
+def run(callback):
     """Prepare SessionHelper and GUI and run them in the proper order"""
-    launch_server()
+    launch_server(callback)
     LOG.info('Client blocks until session is ready')
     session = SessionHelper().wait_session_to_load()
     assert session, 'UI server failed to load...'

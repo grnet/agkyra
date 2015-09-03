@@ -22,6 +22,7 @@ from threading import Thread
 import sqlite3
 import time
 import os
+import sys
 import json
 import logging
 import subprocess
@@ -29,13 +30,21 @@ from agkyra.syncer import (
     syncer, setup, pithos_client, localfs_client, messaging, utils)
 from agkyra.config import AgkyraConfig, AGKYRA_DIR
 
+if getattr(sys, 'frozen', False):
+    # we are running in a |PyInstaller| bundle
+    BASEDIR = sys._MEIPASS
+    ISFROZEN = True
+else:
+    # we are running in a normal Python environment
+    BASEDIR = os.path.dirname(os.path.realpath(__file__))
+    ISFROZEN = False
 
-CURPATH = os.path.dirname(os.path.abspath(__file__))
+RESOURCES = os.path.join(BASEDIR, 'resources')
 
 LOG = logging.getLogger(__name__)
 SYNCERS = utils.ThreadSafeDict()
 
-with open(os.path.join(CURPATH, 'ui_data/common_en.json')) as f:
+with open(os.path.join(RESOURCES, 'ui_data/common_en.json')) as f:
     COMMON = json.load(f)
 STATUS = COMMON['STATUS']
 
@@ -702,14 +711,13 @@ class WebSocketProtocol(WebSocket):
             self.terminate()
 
 
-def launch_server():
+def launch_server(callback):
     """Launch the server in a separate process"""
     LOG.info('Start SessionHelper session')
-    server_path = os.path.join(CURPATH, 'scripts', 'server.py')
     if utils.iswin():
-        subprocess.Popen(["pythonw.exe", server_path],
+        subprocess.Popen([callback, "server"],
                          close_fds=True)
     else:
         pid = os.fork()
         if not pid:
-            os.execlp("python", "python", server_path)
+            os.execlp(callback, callback, "server")
