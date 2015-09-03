@@ -1,6 +1,13 @@
 # -*- mode: python -*-
 import glob
 import os
+import sys
+
+def iswin():
+    return sys.platform.startswith("win")
+
+def isosx():
+    return sys.platform.startswith("darwin")
 
 HERE = os.getcwd()
 
@@ -39,7 +46,7 @@ pyz = PYZ(a.pure)
 exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
-          name='agkyra',
+          name='agkyra.exe' if iswin() else 'agkyra',
           debug=False,
           strip=None,
           upx=True,
@@ -51,6 +58,7 @@ coll = COLLECT(exe,
                strip=None,
                upx=True,
                name='agkyra')
-app = BUNDLE(coll,
-             name='agkyra.app',
-             icon=None)
+if isosx():
+    app = BUNDLE(coll,
+                 name='agkyra.app',
+                 icon=None)
