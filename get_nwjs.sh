@@ -39,7 +39,7 @@ url="http://dl.nwjs.io/${VERSION}/"$file
 
 echo "Will first download nwjs."
 AGKPATH=agkyra
-NWJSPATH=$AGKPATH/nwjs
+NWJSPATH=$AGKPATH/resources/nwjs
 if [ -d $NWJSPATH ]; then
     echo "Warning: cleaning up $NWJSPATH."
     rm -r $NWJSPATH

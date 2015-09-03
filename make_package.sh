@@ -42,15 +42,13 @@ rm -r $WHEELHOUSE
 
 cp $ROOTPATH/COPYING $TMPAGKYRA
 cp $ROOTPATH/README.md $TMPAGKYRA
-cp $ROOTPATH/agkyra/scripts/gui.py $TMPAGKYRA/agkyra
+cp $ROOTPATH/agkyra/scripts/agkyra $TMPAGKYRA/agkyra
 cp $ROOTPATH/agkyra/scripts/cli.py $TMPAGKYRA/agkyra-cli
 
 cd $TMPDIR
 ARCHIVENAME=$CURPWD/agkyra-snapshot-${os}
 if [[ "$os" =~ ^(linux64|linux32)$ ]]; then
     tar czf ${ARCHIVENAME}.tar.gz agkyra
-elif [[ "$os" =~ ^(osx64|osx32)$ ]]; then
-    mkdir -p agkyra.app/Contents
-    mv agkyra agkyra.app/Contents/MacOS
-    zip -r ${ARCHIVENAME}.zip agkyra.app
+else
+    zip -r ${ARCHIVENAME}.zip agkyra
 fi
