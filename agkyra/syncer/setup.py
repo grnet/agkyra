@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import threading
 import logging
 import ctypes
@@ -47,6 +48,18 @@ INSTANCES_NAME = 'instances'
 
 thread_local_data = threading.local()
 
+if getattr(sys, 'frozen', False):
+    # we are running in a |PyInstaller| bundle
+    BASEDIR = sys._MEIPASS
+    ISFROZEN = True
+else:
+    # we are running in a normal Python environment
+    CURDIR = os.path.dirname(os.path.realpath(__file__))
+    BASEDIR = os.path.dirname(CURDIR)
+    ISFROZEN = False
+
+RESOURCES = os.path.join(BASEDIR, 'resources')
+https.patch_with_certs(os.path.join(RESOURCES, 'cacert.pem'))
 
 def get_instance(elems):
     data = "".join(elems)
