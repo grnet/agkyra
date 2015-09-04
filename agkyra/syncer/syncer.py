@@ -75,7 +75,13 @@ class FileSyncer(object):
 
     def stop_notifiers(self):
         for notifier in self.notifiers.values():
-            notifier.stop()
+            try:
+                notifier.stop()
+            except KeyError as e:
+                # bypass watchdog inotify bug that causes a KeyError
+                # when attempting to stop a notifier after the watched
+                # directory has been deleted
+                logger.warning("Ignored KeyError: %s" % e)
 
     def start_decide(self):
         if not self.decide_active:
