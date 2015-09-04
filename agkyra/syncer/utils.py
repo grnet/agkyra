@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 from agkyra.syncer.common import OBJECT_DIRSEP
 
-ENCODING = sys.getfilesystemencoding() or sys.getdefaultencoding()
+ENCODING = sys.getfilesystemencoding() or 'UTF-8'
 PLATFORM = sys.platform
 NODE = platform.node()
 
