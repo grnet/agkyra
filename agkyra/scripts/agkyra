@@ -42,7 +42,7 @@ def set_debug(debug):
     LOGGER.setLevel(level)
 
 
-def run_server(debug):
+def run_server(debug, extras=None):
     set_debug(debug)
     from agkyra.protocol import SessionHelper
     LOGGER.debug('Start the session helper')
@@ -56,28 +56,42 @@ def run_server(debug):
     LOGGER.debug('Session Helper is now down')
 
 
-def run_gui(debug):
+def run_gui(debug, extras=None):
     set_debug(debug)
     from agkyra import gui
     gui.run(callback=CALLBACK, debug=debug)
 
+
+def run_cli(debug, extras=None):
+    set_debug(debug)
+    from agkyra.cli import AgkyraCLI
+    agkcli = AgkyraCLI(callback=CALLBACK, debug=debug)
+    agkcli.onecmd(' '.join(extras or ['help', ]))
+
+
 DISPATCH = {
     'server': run_server,
     'gui': run_gui,
+    'cli': run_cli,
 }
 
 parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
 parser.add_argument('--debug', '-d', action='store_true',
                     help="set logging level to 'debug'")
 parser.add_argument('component', nargs="?", default="gui",
-                    help="run 'server' or 'gui' (default)")
+                    help="run 'server', 'cli', or 'gui' (default)")
+parser.add_argument('command', nargs="*", help="command in case of cli")
 
 def main():
     args = parser.parse_args()
     debug = args.debug
     set_debug(debug)
     component = args.component
-    DISPATCH[component](debug)
+    action = DISPATCH.get(component)
+    if action is None:
+        print "No such component '%s'." % component
+        return
+    action(debug, extras=args.command)
 
 if __name__ == "__main__":
     main()

@@ -109,6 +109,11 @@ class AgkyraCLI(cmd.Cmd):
     cnf_cmds = ConfigCommands()
     helper = protocol.SessionHelper()
 
+    def __init__(self, *args, **kwargs):
+        self.callback = kwargs.pop('callback', None)
+        self.debug = kwargs.pop('debug', None)
+        cmd.Cmd.__init__(self, *args, **kwargs)
+
     @property
     def client(self):
         """Return the helper client instace or None"""
@@ -246,7 +251,7 @@ class AgkyraCLI(cmd.Cmd):
         client = self.client
         if not client:
             sys.stderr.write('No Agkyra daemons running, starting one')
-            protocol.launch_server()
+            protocol.launch_server(self.callback, self.debug)
             sys.stderr.write(' ... ')
             self.helper.wait_session_to_load()
             sys.stderr.write('OK\n')
