@@ -711,13 +711,21 @@ class WebSocketProtocol(WebSocket):
             self.terminate()
 
 
-def launch_server(callback):
+def launch_server(callback, debug):
     """Launch the server in a separate process"""
     LOG.info('Start SessionHelper session')
     if utils.iswin():
-        subprocess.Popen([callback, "server"],
+        command = [callback]
+        if debug:
+            command.append('-d')
+        command.append("server")
+        subprocess.Popen(command,
                          close_fds=True)
     else:
         pid = os.fork()
         if not pid:
-            os.execlp(callback, callback, "server")
+            command = [callback, callback]
+            if debug:
+                command.append('-d')
+            command.append("server")
+            os.execlp(*command)

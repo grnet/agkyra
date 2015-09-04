@@ -96,9 +96,9 @@ class GUI(WebSocketBaseClient):
         LOG.debug('GUI finished, close GUI wrapper connection')
 
 
-def run(callback):
+def run(callback, debug):
     """Prepare SessionHelper and GUI and run them in the proper order"""
-    launch_server(callback)
+    launch_server(callback, debug)
     LOG.info('Client blocks until session is ready')
     session = SessionHelper().wait_session_to_load()
     assert session, 'UI server failed to load...'

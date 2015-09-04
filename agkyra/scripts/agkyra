@@ -16,6 +16,7 @@
 
 import os
 import sys
+import argparse
 
 try:
     from agkyra import config
@@ -33,11 +34,16 @@ FORMATTER = logging.Formatter(
     "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
 HANDLER.setFormatter(FORMATTER)
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(logging.INFO)
 
 CALLBACK = os.path.realpath(sys.argv[0])
 
-def run_server():
+def set_debug(debug):
+    level = logging.DEBUG if debug else logging.INFO
+    LOGGER.setLevel(level)
+
+
+def run_server(debug):
+    set_debug(debug)
     from agkyra.protocol import SessionHelper
     LOGGER.debug('Start the session helper')
     helper = SessionHelper()
@@ -50,21 +56,28 @@ def run_server():
     LOGGER.debug('Session Helper is now down')
 
 
-def run_gui():
+def run_gui(debug):
+    set_debug(debug)
     from agkyra import gui
-    gui.run(callback=CALLBACK)
+    gui.run(callback=CALLBACK, debug=debug)
 
 DISPATCH = {
     'server': run_server,
     'gui': run_gui,
 }
 
+parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
+parser.add_argument('--debug', '-d', action='store_true',
+                    help="set logging level to 'debug'")
+parser.add_argument('component', nargs="?", default="gui",
+                    help="run 'server' or 'gui' (default)")
+
 def main():
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
-    else:
-        arg = 'gui'
-    DISPATCH[arg]()
+    args = parser.parse_args()
+    debug = args.debug
+    set_debug(debug)
+    component = args.component
+    DISPATCH[component](debug)
 
 if __name__ == "__main__":
     main()
