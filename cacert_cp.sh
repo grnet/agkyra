@@ -18,5 +18,7 @@ CURPWD=$(pwd)
 cd "$(dirname "$0")"
 ROOTDIR=$(pwd)
 
+pip install certifi
+
 echo "Copying certifi's cacert.pem"
 python -c "import certifi; import shutil; shutil.copy2(certifi.where(), 'agkyra/resources/cacert.pem')"
