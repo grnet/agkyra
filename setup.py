@@ -165,10 +165,5 @@ setup(
 
     dependency_links=['http://www.synnefo.org/packages/pypi'],
 
-    entry_points={
-     'console_scripts': [
-         'agkyra = agkyra.scripts.gui:main',
-         'agkyra-cli = agkyra.scripts.cli:main',
-     ],
-      },
+    scripts=['agkyra/scripts/agkyra'],
 )
