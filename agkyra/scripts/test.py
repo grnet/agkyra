@@ -31,6 +31,7 @@ import unittest
 import mock
 import sqlite3
 import tempfile
+import argparse
 
 from functools import wraps
 from agkyra.config import AgkyraConfig, CONFIG_PATH
@@ -813,5 +814,23 @@ class AgkyraTest(unittest.TestCase):
         handle.check_staged(live_info)
 
 
+def set_debug(debug):
+    level = logging.DEBUG if debug else logging.INFO
+    logger.setLevel(level)
+
+
+def main(debug):
+    set_debug(debug)
+    runner = unittest.TextTestRunner()
+    runner.run(unittest.makeSuite(AgkyraTest))
+
+
+parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
+parser.add_argument('--debug', '-d', action='store_true',
+                    help="set logging level to 'debug'")
+
+
 if __name__ == '__main__':
-    unittest.main()
+    args = parser.parse_args()
+    debug = args.debug
+    main(debug)

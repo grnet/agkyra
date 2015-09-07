@@ -69,17 +69,24 @@ def run_cli(debug, extras=None):
     agkcli.onecmd(' '.join(extras or ['help', ]))
 
 
+def run_test(debug, extras=None):
+    LOGGER.removeHandler(HANDLER)
+    from agkyra.scripts import test
+    test.main(debug)
+
+
 DISPATCH = {
     'server': run_server,
     'gui': run_gui,
     'cli': run_cli,
+    'test': run_test,
 }
 
 parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
 parser.add_argument('--debug', '-d', action='store_true',
                     help="set logging level to 'debug'")
 parser.add_argument('component', nargs="?", default="gui",
-                    help="run 'server', 'cli', or 'gui' (default)")
+                    help="run 'test', 'server', 'cli', or 'gui' (default)")
 parser.add_argument('command', nargs="*", help="command in case of cli")
 
 def main():
