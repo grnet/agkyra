@@ -18,4 +18,5 @@ CURPWD=$(pwd)
 cd "$(dirname "$0")"
 ROOTDIR=$(pwd)
 
-python -c 'import certifi; print certifi.where()' | xargs -I{} cp {} .
+echo "Copying certifi's cacert.pem"
+python -c "import certifi; import shutil; shutil.copy2(certifi.where(), 'agkyra/resources/cacert.pem')"

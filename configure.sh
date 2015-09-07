@@ -22,4 +22,10 @@ ROOTPATH=$(pwd)
 if [ $? -ne 0 ]; then
     exit 1
 fi
+
+./cacert_cp.sh
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
 echo "Now run 'python setup.py install'."
