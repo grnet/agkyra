@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     'psutil',
     'ws4py',
     'certifi',
+    'mock',
 ]
 
 EXTRAS_REQUIRES = {

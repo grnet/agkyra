@@ -18,6 +18,9 @@ CURPWD=$(pwd)
 cd "$(dirname "$0")"
 ROOTPATH=$(pwd)
 
+# this is needed for mock
+pip install --upgrade setuptools
+
 ./get_nwjs.sh $1
 if [ $? -ne 0 ]; then
     exit 1
