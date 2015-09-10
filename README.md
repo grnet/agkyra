@@ -1,19 +1,53 @@
-Agkyra
-======
+# Agkyra
 
-Overview
---------
+## Overview
 
 This is a syncing client for object storage.
 
-Installation
-------------
+## Installation and Packaging
 
-To install from source, run `configure.sh` and follow instructions.
+This will help you to install `agkyra` from source.
+
+### Prerequisites
+
+You need to have Python 2.7 installed. If it is not provided by your
+operating system, visit `https://www.python.org/downloads/`.
+
+### Installation process
+
+1. Run `python configure.py <platform>`. Paramater `platform` can be
+   one of `win64, win32, osx64, osx32, linux64, linux32`. This will
+   download `NW.js` and copy it into the source tree. It will also
+   copy SSL certificate from `certifi` package.
+
+2. Run `python setup.py install` (or `develop`).
+
+* Note that on Windows with Python >=2.7.9 this may fail with an SSL
+  verification error. If so, visit `https://pypi.python.org` with Internet
+  Explorer. You will be prompted to accept the website's certificate. Do so
+  and then retry step 2.
+
+### Packaging
+
+A package for Windows, OSX and Linux, that fully contains dependencies and
+the Python framework can be created with PyInstaller.
+
+1. Run `pip install pyinstaller`.
+
+* Note: On Linux, we currently need the development version of PyInstaller.
+  Get the code from `https://github.com/pyinstaller/pyinstaller`. No
+  installation is needed: `pyinstaller.py` can directly run from the repo's
+  root directory.
+
+* Note: On Windows, PyWin32 is a prerequisite. Visit
+  `http://sourceforge.net/projects/pywin32/files/` and pick the appropriate
+  version for your Python installation.
+
+3. Run `pyinstaller agkyra.spec`. This will make the application under
+   `dist/agkyra` (and `dist/agkyra.app` under OSX).
 
 
-Copyright and license
-=====================
+## Copyright and license
 
 Copyright (C) 2015 GRNET S.A.
 
