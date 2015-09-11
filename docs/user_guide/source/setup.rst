@@ -127,7 +127,7 @@ Here is a typical configuration:
 
 .. code-block:: text
 
-    # Agkyra configuration file version 0.2
+    # Agkyra configuration file version XXX
     [global]
     default_sync = CLD
     language = en
