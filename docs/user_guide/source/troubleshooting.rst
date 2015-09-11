@@ -12,7 +12,7 @@ check if the application is still running:
 
 .. code-block: console
 
-    $ agkyra-cli status
+    $ agkyra cli status
 
 If the status is ``Syncing``, ``Pausing`` or ``Paused``, then the application
 is running. Try running agkyra again and see if everything is OK.
@@ -31,7 +31,7 @@ To do that, remove the files ``$agkyra_dir/session.db`` and
 
     .. code-block:: console
 
-        $ agkyra-cli config list global agkyra_dir
+        $ agkyra cli config list global agkyra_dir
 
 Agkyra is still not starting
 ----------------------------

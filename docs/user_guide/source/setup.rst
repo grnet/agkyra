@@ -96,24 +96,24 @@ closed without saving, all changes will be lost.
 CLI
 ---
 
-Use the **agkyra-cli config** commands to set and update settings:
+Use the **agkyra cli config** commands to set and update settings:
 
 .. code-block:: console
 
     --- Set up a cloud named CLD ---
-    $ agkyra-cli config set cloud CLD url http://www.example.org/identity/v2.0
-    $ agkyra-cli config set cloud CLD token ex4mpl3-t0k3n
+    $ agkyra cli config set cloud CLD url http://www.example.org/identity/v2.0
+    $ agkyra cli config set cloud CLD token ex4mpl3-t0k3n
 
     --- Set up a sync (cloud, local directory, container) named SNC ---
-    $ agkyra-cli config set sync SNC directory /my/local/directory
-    $ agkyra-cli config set sync SNC cloud CLD
-    $ agkyra-cli config set sync SNC container remote_container
+    $ agkyra cli config set sync SNC directory /my/local/directory
+    $ agkyra cli config set sync SNC cloud CLD
+    $ agkyra cli config set sync SNC container remote_container
 
     --- Set the SNC sync as the default ---
-    $ agkyra-cli config set default_sync CLD
+    $ agkyra cli config set default_sync CLD
 
 
-.. note:: use the **agkyra-cli config list** command for the current settings
+.. note:: use the **agkyra cli config list** command for the current settings
 
 
 Config file

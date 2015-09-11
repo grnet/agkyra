@@ -11,12 +11,12 @@ In this section it is assumed agkyra is installed and properly setup.
 Agkyra CLI manages the agkyra back-end daemon (the module that
 performs the actual syncing).
 
-To run it, execute ``agkyra-cli`` from the command line. To get a list of
+To run it, execute ``agkyra cli`` from the command line. To get a list of
 arguments, run it without any
 
 .. code-block:: console
 
-    $ agkyra-cli
+    $ agkyra cli
     Get help
                 help <cmd>            for an individual command
                 help <--list | -l>    for all commands
@@ -38,7 +38,7 @@ Commands and examples
 
     List all settings
 
-    $ agkyra-cli config list
+    $ agkyra cli config list
     global
       agkyra_dir: /home/user/.agkyra
       default_sync: default
@@ -64,7 +64,7 @@ Commands and examples
 
     Set a new token for cloud "default"
 
-    $ agkyra-cli config set cloud default token n3w-us3r-t0k3n
+    $ agkyra cli config set cloud default token n3w-us3r-t0k3n
 
 :command:`config delete` - delete a setting or group of settings
 
@@ -72,7 +72,7 @@ Commands and examples
 
     Delete the "old_sync" sync
 
-    $ agkyra-cli config delete sync old_sync
+    $ agkyra cli config delete sync old_sync
 
 :command:`status` - print daemon status. Status may be one of the following:
 
@@ -84,7 +84,7 @@ Commands and examples
 
     Check if a daemon is running
 
-    $ agkyra-cli status
+    $ agkyra cli status
     Not running
 
 :command:`start` - launch a daemon if ``not running``, start syncing if ``paused``
@@ -93,7 +93,7 @@ Commands and examples
 
     Launch the syncing daemon
 
-    $ agkyra-cli start
+    $ agkyra cli start
     No Agkyra daemons running, starting one ... OK
     Syncing
 
@@ -103,7 +103,7 @@ Commands and examples
 
     Pause a syncing daemon
 
-    $ agkyra-cli pause
+    $ agkyra cli pause
     Pausing syncer ... OK
     Paused
 
@@ -113,5 +113,5 @@ Commands and examples
 
     Shutdown the daemon
 
-    $ agkyra-cli shutdown
+    $ agkyra cli shutdown
     Shutting down Agkyra ... Stopped
