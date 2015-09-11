@@ -1,8 +1,8 @@
 Troubleshooting
 ===============
 
-Agkyra hanged up expectingly
-----------------------------
+Agkyra hanged up unexpectedly
+-----------------------------
 
 Maybe it's just the GUI.
 

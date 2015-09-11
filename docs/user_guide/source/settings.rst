@@ -26,7 +26,7 @@ Currently, the global settings are the following:
 :dfn:`language` The language of the GUI menu, windows and notifications. There are currently two supported languages, Greek (**el**) and English (**en**). The CLI is always in english.
     default: ``en``
 
-:dfn:`sync_on_start` A flag indicating weather the syncing should start on start-up. If it is ``off``, the client will start in "paused" mode.
+:dfn:`sync_on_start` A flag indicating whether the syncing should start on start-up. If it is ``off``, the client will start in "paused" mode.
     default: ``on``
 
 Cloud
@@ -42,7 +42,7 @@ Agkyra requires just a couple of cloud settings to authenticate the user:
 
 .. note:: To get the ``authentication URL`` (and ``token``), browse to the main page of the cloud, log in, click the username (e-mail) on the upper right corner and click API access.
 
-Each ``cloud`` is given a name, so that multiple clouds can be configured in the same setup. In case of multiple clouds, the user can manage them only through the :ref:cli (or by editing the `$agkyra_dir/config.rc` file). If the settings are provided through the GUI, a cloud name will be generated automatically.
+Each ``cloud`` is given a name, so that multiple clouds can be configured in the same setup. In case of multiple clouds, the user can manage them only through the :ref:`cli` (or by editing the `$agkyra_dir/config.rc` file). If the settings are provided through the GUI, a cloud name will be generated automatically.
 
 Sync
 ----
@@ -57,4 +57,4 @@ The term ``sync`` refers to a pair of a local ``directory`` and a remote ``conta
 
 .. note:: If you don't know what a container is and you just want to synchronize the contents of the remote storage to your local directory, try `pithos` as a container value
 
-Each ``sync`` is given a name, so that multiple syncs can be configured in the same setup. In case of multiple syncs, the user can manage them only through the :ref:cli (or by editing the `$agkyra_dir/config.rc` file). If the settings are provided through the GUI, a sync name will be generated automatically.
+Each ``sync`` is given a name, so that multiple syncs can be configured in the same setup. In case of multiple syncs, the user can manage them only through the :ref:`cli` (or by editing the `$agkyra_dir/config.rc` file). If the settings are provided through the GUI, a sync name will be generated automatically.

@@ -85,7 +85,7 @@ GUI (the daemon does the actual syncing). If a GUI is launched afterwards, it
 will be attached on the running daemon.
 
 If a GUI is already launched and the user attempts to launch a second GUI, the
-later will fail.
+latter will fail.
 
 All changes made from one client (GUI or CLI) are propagated to the others,
 e.g. if agkyra is paused through the CLI, this will be shown on the GUI too
