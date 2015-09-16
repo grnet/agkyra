@@ -71,24 +71,27 @@ class GUI(WebSocketBaseClient):
 
     def _dump_session_file(self, session):
         """Create (overwrite) the session file for GUI use"""
+        LOG.info('Create session file with connection info for GUI')
         flags = os.O_CREAT | os.O_WRONLY
         mode = stat.S_IREAD | stat.S_IWRITE
         f = os.open(self.session_file, flags, mode)
         os.write(f, json.dumps(session))
         os.close(f)
+        LOG.debug('Session file %s created' % self.session_file)
 
     def clean_exit(self):
         """Clean up tracks of GUI"""
+        LOG.info('Remove session file')
         try:
             os.remove(self.session_file)
-            LOG.debug('Removed GUI session file')
+            LOG.debug('Removed session file %s' % self.session_file)
         except Exception as e:
             LOG.warning('While cleaning GUI: %s' % e)
         self.close()
 
     def handshake_ok(self):
         """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""
-        LOG.debug('Protocol server is UP, running GUI')
+        LOG.info('Protocol server is UP, start html/js GUI')
         try:
             subprocess.call([self.nw, self.gui_code, self.session_file])
         finally:

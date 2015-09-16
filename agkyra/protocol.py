@@ -212,6 +212,9 @@ class SessionHelper(object):
                 pass
 
 
+
+
+
 class WebSocketProtocol(WebSocket):
     """Helper-side WebSocket protocol for communication with GUI:
 
@@ -293,16 +296,21 @@ class WebSocketProtocol(WebSocket):
         if self.syncer and self.can_sync():
             self._consume_messages()
             with self.status.lock() as d:
-                if self.syncer.paused:
-                    d['code'] = STATUS['PAUSED']
-                elif d['code'] != STATUS['PAUSING'] or (
-                        d['unsynced'] == d['synced'] + d['failed']):
-                    d['code'] = STATUS['SYNCING']
+                LOG.debug('Status was %s' % d['code'])
+                if d['code'] in (
+                        STATUS['UNINITIALIZED'], STATUS['INITIALIZING']):
+                    if self.syncer.paused:
+                        d['code'] = STATUS['PAUSED']
+                    elif d['code'] != STATUS['PAUSING'] or (
+                            d['unsynced'] == d['synced'] + d['failed']):
+                        d['code'] = STATUS['SYNCING']
         with self.status.lock() as d:
+            LOG.debug('Status is now %s' % d['code'])
             return d.get(key, None) if key else dict(d)
 
     def set_status(self, **kwargs):
         with self.status.lock() as d:
+            LOG.debug('CHANGING STATUS TO %s' % kwargs)
             d.update(kwargs)
 
     @property
@@ -482,12 +490,15 @@ class WebSocketProtocol(WebSocket):
                     LOG.debug('FAILED +1 %s' % getattr(msg, 'objname', ''))
                     self.set_status(failed=self.get_status('failed') + 1)
                 elif isinstance(msg, messaging.LocalfsSyncDisabled):
+                    LOG.debug('STOP BACKEND, %s'% getattr(msg, 'objname', ''))
+                    LOG.debug('CHANGE STATUS TO: %s' % STATUS['DIRECTORY ERROR'])
                     self.set_status(code=STATUS['DIRECTORY ERROR'])
                     self.syncer.stop_all_daemons()
                 elif isinstance(msg, messaging.PithosSyncDisabled):
+                    LOG.debug('STOP BACKEND, %s'% getattr(msg, 'objname', ''))
                     self.set_status(code=STATUS['CONTAINER ERROR'])
                     self.syncer.stop_all_daemons()
-                LOG.debug('Backend message: %s' % msg.name)
+                LOG.debug('Backend message: %s %s' % (msg.name, type(msg)))
                 # Limit the amount of messages consumed each time
                 max_consumption -= 1
                 if max_consumption:

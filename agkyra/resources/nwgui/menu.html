@@ -217,12 +217,14 @@ function check_menu_lang() {
 }
 
 // Update progress
+var old_status = -1;
 window.setInterval(function() {
   check_menu_lang();
   var new_progress = COMMON.NOTIFICATION[globals.status.code];
   var new_pause = '';
   var tray_icon_off = false;
   var dialogue_msg = null;
+  var status_unchanged = (old_status == globals.status.code);
   switch(globals.status.code) {
     case STATUS['UNINITIALIZED']:
     case STATUS['INITIALIZING']:
@@ -255,9 +257,11 @@ window.setInterval(function() {
                     '%s', remaining(globals.status));
     break;
     case STATUS['DIRECTORY ERROR']:
+      if (status_unchanged) break;
       dialogue_msg = COMMON.DIALOGUE[globals.status.code].replace(
         '%s', globals.settings.directory);
     case STATUS['CONTAINER ERROR']:
+      if (status_unchanged) break;
       if (!dialogue_msg)
         dialogue_msg = COMMON.DIALOGUE[globals.status.code].replace(
           '%s', globals.settings.container);
@@ -265,16 +269,17 @@ window.setInterval(function() {
       if (windows.dialogue === null) {
         windows['dialogue'] = gui.Window.open(
           'dialogue.html', {
-            toolbar: false, focus: true,
-            width: 550, height: 220});
+            toolbar: false, focus: true, width: 550, height: 220});
         windows['dialogue'].on('closed', function() {
           var d = get_dialogue();
           if (d.response) post_force(socket);
+          windows['dialogue'] = null;
         });
       }
     case STATUS['AUTH URL ERROR']:
     case STATUS['TOKEN ERROR']:
     case STATUS['SETTINGS MISSING']:
+      if (status_unchanged) break;
       deactivate_menu();
       new_pause = COMMON.MENU.INACTIVE;
       settings_menu.enabled = true;
@@ -301,6 +306,7 @@ window.setInterval(function() {
   else if (!(tray_icon_off || tray.icon === tray_icon.on))
     tray.icon = tray_icon.on;
 
+  old_status = globals.status.code
   get_status(socket);
 }, 1500);
 
