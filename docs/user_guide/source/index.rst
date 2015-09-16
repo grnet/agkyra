@@ -26,6 +26,7 @@ Contents:
    gui
    cli
    settings
+   syncing
    troubleshooting
 
 Indices and tables
