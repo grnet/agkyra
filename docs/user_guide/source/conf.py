@@ -73,6 +73,10 @@ copyright = u'2015, Synnefo development team'
 # built documents.
 #
 # The short X.Y version.
+
+CURPATH = os.path.dirname(__file__)
+toplevel = os.path.join(CURPATH, '..', '..', '..')
+sys.path.insert(0, toplevel)
 import agkyra
 version = agkyra.__version__
 # The full version, including alpha/beta/rc tags.
