@@ -607,12 +607,14 @@ class WebSocketProtocol(WebSocket):
     def pause_sync(self):
         """Pause syncing (assuming it is up and running)"""
         if self.syncer:
-            self.syncer.stop_decide()
             self.set_status(code=STATUS['PAUSING'])
+            self.syncer.stop_decide()
+            self.set_status(code=STATUS['PAUSED'])
 
     def start_sync(self):
         """Start syncing"""
         self.syncer.start_decide()
+        self.set_status(code=STATUS['SYNCING'])
 
     def force_sync(self):
         """Force syncing, assuming there is a directory or container problem"""
