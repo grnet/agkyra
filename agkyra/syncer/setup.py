@@ -32,9 +32,6 @@ from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.utils import https
 
-# this will be deleted when kamaki 0.13.5 is out
-from kamaki.clients.astakos import AstakosClientError
-
 logger = logging.getLogger(__name__)
 
 
@@ -80,17 +77,6 @@ def ssl_fall_back(method):
                 'Kamaki SSL failed, fall back to certifi (mozilla certs)')
             https.patch_with_certs(os.path.join(RESOURCES, 'cacert.pem'))
             return method(self, *args, **kwargs)
-        # this will be deleted when kamaki 0.13.5 is out
-        except AstakosClientError as ace:
-            logger.debug('Kamaki failed with error %s' % ace)
-            if '[Errno 2]' in ace.message:
-                logger.info(
-                    'Kamaki SSL failed with AstakosClientError [Errno 2], '
-                    'fall back to certifi (mozilla certs)')
-                https.patch_with_certs(os.path.join(RESOURCES, 'cacert.pem'))
-                return method(self, *args, **kwargs)
-            else:
-                raise
     return wrap
 
 

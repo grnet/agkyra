@@ -36,7 +36,7 @@ CLASSIFIERS = []
 
 # Package requirements
 INSTALL_REQUIRES = [
-    'kamaki>=0.13.4',
+    'kamaki>=0.13.5',
     'watchdog',
     'psutil',
     'ws4py',
