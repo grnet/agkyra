@@ -488,13 +488,6 @@ class AgkyraTest(unittest.TestCase):
                                   common.DatabaseError()]
             self.s.decide_file_sync(fil)
         self.assert_message(messaging.HeartbeatReplayDecideMessage)
-        self.s.decide_file_sync(fil)
-        self.assert_message(messaging.HeartbeatNoDecideMessage)
-        print "SLEEPING 11"
-        time.sleep(11)
-        self.s.decide_file_sync(fil)
-        self.assert_message(messaging.SyncMessage)
-        self.assert_message(messaging.AckSyncMessage)
 
     def test_007_multiprobe(self):
         fil = "φ007"

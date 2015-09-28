@@ -16,7 +16,6 @@
 from functools import wraps
 import time
 import os
-import threading
 import logging
 import re
 
@@ -26,48 +25,6 @@ from agkyra.syncer.setup import ClientError
 from agkyra.syncer.database import transaction
 
 logger = logging.getLogger(__name__)
-
-
-def heartbeat_event(settings, heartbeat, objname):
-    event = threading.Event()
-    max_interval = settings.action_max_wait / 4.0
-
-    def set_log():
-        with heartbeat.lock() as hb:
-            registered_name = utils.reg_name(settings, objname)
-            beat = hb.get(registered_name)
-            assert beat is not None
-            new_beat = {"ident": beat["ident"],
-                        "tstamp": utils.time_stamp()}
-            hb[registered_name] = new_beat
-            logger.debug("HEARTBEAT '%s' %s" % (registered_name, new_beat))
-
-    def go():
-        interval = 0.2
-        while True:
-            if event.is_set():
-                break
-            set_log()
-            time.sleep(interval)
-            interval = min(1.2 * interval, max_interval)
-    thread = threading.Thread(target=go)
-    thread.start()
-    return event
-
-
-def give_heartbeat(f):
-    @wraps(f)
-    def inner(*args, **kwargs):
-        obj = args[0]
-        objname = obj.objname
-        heartbeat = obj.heartbeat
-        settings = obj.settings
-        event = heartbeat_event(settings, heartbeat, objname)
-        try:
-            return f(*args, **kwargs)
-        finally:
-            event.set()
-    return inner
 
 
 def handle_client_errors(f):
@@ -107,7 +64,6 @@ class PithosSourceHandle(object):
         return utils.join_path(self.cache_path, fetch_name)
 
     @handle_client_errors
-    @give_heartbeat
     def send_file(self, sync_state):
         fetched_fspath = self.register_fetch_name(self.objname)
         headers = dict()
@@ -223,7 +179,6 @@ class PithosTargetHandle(object):
         return r
 
     @handle_client_errors
-    @give_heartbeat
     def pull(self, source_handle, sync_state):
         # assert isinstance(source_handle, LocalfsSourceHandle)
         info = sync_state.info

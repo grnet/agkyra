@@ -128,8 +128,8 @@ class FileSyncer(object):
         with self.heartbeat.lock() as hb:
             beat = hb.get(self.reg_name(objname))
             if beat is not None:
-                if utils.younger_than(
-                        beat["tstamp"], self.settings.action_max_wait):
+                beat_thread = beat["thread"]
+                if beat_thread is None or beat_thread.is_alive():
                     msg = messaging.HeartbeatNoProbeMessage(
                         archive=archive, objname=objname, heartbeat=beat,
                         logger=logger)
@@ -200,6 +200,12 @@ class FileSyncer(object):
         try:
             states = self._decide_file_sync(objname, master, slave, ident)
         except common.DatabaseError:
+            logger.debug("DatabaseError in _decide_file_sync "
+                         "for '%s'; cleaning up heartbeat" % objname)
+            with self.heartbeat.lock() as hb:
+                beat = hb.get(self.reg_name(objname))
+                if beat and beat["ident"] == ident:
+                    hb.pop(self.reg_name(objname))
             return
         if states is None:
             return
@@ -214,7 +220,7 @@ class FileSyncer(object):
         states = self._do_decide_file_sync(objname, master, slave, ident)
         if states is not None:
             with self.heartbeat.lock() as hb:
-                beat = {"ident": ident, "tstamp": utils.time_stamp()}
+                beat = {"ident": ident, "thread": None}
                 hb[self.reg_name(objname)] = beat
         return states
 
@@ -241,8 +247,8 @@ class FileSyncer(object):
                             objname=objname, heartbeat=beat, logger=logger)
                         self.messager.put(msg)
                 else:
-                    if utils.younger_than(
-                            beat["tstamp"], self.settings.action_max_wait):
+                    beat_thread = beat["thread"]
+                    if beat_thread is None or beat_thread.is_alive():
                         if not dry_run:
                             msg = messaging.HeartbeatNoDecideMessage(
                                 objname=objname, heartbeat=beat, logger=logger)
@@ -313,6 +319,13 @@ class FileSyncer(object):
         thread = threading.Thread(
             target=self._sync_file,
             args=(source_state, target_state, sync_state))
+        with self.heartbeat.lock() as hb:
+            beat = hb.get(self.reg_name(source_state.objname))
+            if beat is None:
+                raise AssertionError("heartbeat for %s is None" %
+                                     source_state.objname)
+            assert beat["thread"] is None
+            beat["thread"] = thread
         thread.start()
         self.sync_threads.append(thread)
 
@@ -333,14 +346,14 @@ class FileSyncer(object):
     def mark_as_failed(self, state, hard=False):
         serial = state.serial
         objname = state.objname
-        with self.heartbeat.lock() as hb:
-            hb.pop(self.reg_name(objname))
         if hard:
             logger.warning(
                 "Marking failed serial %s for archive: %s, object: '%s'" %
                 (serial, state.archive, objname))
             with self.failed_serials.lock() as d:
                 d[(serial, objname)] = state
+        with self.heartbeat.lock() as hb:
+            hb.pop(self.reg_name(objname))
 
     def update_state(self, old_state, new_state):
         db = self.get_db()
@@ -352,6 +365,7 @@ class FileSyncer(object):
         try:
             self._ack_file_sync(synced_source_state, synced_target_state)
         except common.DatabaseError:
+            # maybe clear heartbeat here too
             return
         serial = synced_source_state.serial
         objname = synced_source_state.objname
