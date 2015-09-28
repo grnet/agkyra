@@ -72,7 +72,8 @@ def run_cli(debug, extras=None):
 def run_test(debug, extras=None):
     LOGGER.removeHandler(HANDLER)
     from agkyra.scripts import test
-    test.main(debug)
+    selected_test = extras[0] if extras else None
+    test.main(debug, selected_test)
 
 
 DISPATCH = {

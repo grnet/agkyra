@@ -819,18 +819,25 @@ def set_debug(debug):
     logger.setLevel(level)
 
 
-def main(debug):
+def main(debug, test=None):
+    if test is None:
+        test = "AgkyraTest"
     set_debug(debug)
     runner = unittest.TextTestRunner()
-    runner.run(unittest.makeSuite(AgkyraTest))
+    tl = unittest.TestLoader()
+    suite = tl.loadTestsFromName(__name__ + '.' + test)
+    runner.run(suite)
 
 
 parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
 parser.add_argument('--debug', '-d', action='store_true',
                     help="set logging level to 'debug'")
+parser.add_argument('test', nargs="?", default="AgkyraTest",
+                    help="specify test to run")
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
     debug = args.debug
-    main(debug)
+    test = args.test
+    main(debug, test)
