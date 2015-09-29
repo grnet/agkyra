@@ -62,3 +62,6 @@ if isosx():
     app = BUNDLE(coll,
                  name='agkyra.app',
                  icon=None)
+    import shutil
+    shutil.copy2('agkyra/resources/nwgui/static/images/logo.icns',
+                 'dist/agkyra.app/Contents/Resources/icon-windowed.icns')
