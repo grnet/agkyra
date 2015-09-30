@@ -28,8 +28,8 @@ from watchdog.events import FileSystemEventHandler
 import logging
 
 from agkyra.syncer.file_client import FileClient
-from agkyra.syncer import utils, common, messaging
-from agkyra.syncer.database import transaction
+from agkyra.syncer import utils, common, messaging, database
+from agkyra.syncer.database import TransactedConnection
 
 logger = logging.getLogger(__name__)
 
@@ -258,14 +258,17 @@ def is_info_eq(info1, info2, unhandled_equal=True):
 
 
 class LocalfsTargetHandle(object):
-    def __init__(self, settings, target_state):
+    def __init__(self, client, target_state):
+        self.client = client
+        settings = client.settings
         self.settings = settings
         self.SIGNATURE = "LocalfsTargetHandle"
         self.rootpath = settings.local_root_path
         self.cache_hide_name = settings.cache_hide_name
         self.cache_hide_path = settings.cache_hide_path
         self.cache_path = settings.cache_path
-        self.get_db = settings.get_db
+        self.syncer_dbtuple = settings.syncer_dbtuple
+        self.client_dbtuple = client.client_dbtuple
         self.mtime_lag = settings.mtime_lag
         self.target_state = target_state
         self.objname = target_state.objname
@@ -276,9 +279,11 @@ class LocalfsTargetHandle(object):
     def get_path_in_cache(self, name):
         return utils.join_path(self.cache_path, name)
 
-    @transaction()
     def register_hidden_name(self, filename):
-        db = self.get_db()
+        with TransactedConnection(self.client_dbtuple) as db:
+            return self._register_hidden_name(db, filename)
+
+    def _register_hidden_name(self, db, filename):
         f = utils.hash_string(filename)
         hide_filename = utils.join_path(self.cache_hide_name, f)
         self.hidden_filename = hide_filename
@@ -288,10 +293,9 @@ class LocalfsTargetHandle(object):
         db.insert_cachename(hide_filename, self.SIGNATURE, filename)
         return True
 
-    @transaction()
     def unregister_hidden_name(self, hidden_filename):
-        db = self.get_db()
-        db.delete_cachename(hidden_filename)
+        with TransactedConnection(self.client_dbtuple) as db:
+            db.delete_cachename(hidden_filename)
         self.hidden_filename = None
         self.hidden_path = None
 
@@ -412,9 +416,11 @@ class LocalfsTargetHandle(object):
 
 
 class LocalfsSourceHandle(object):
-    @transaction()
     def register_stage_name(self, filename):
-        db = self.get_db()
+        with TransactedConnection(self.client_dbtuple) as db:
+            return self._register_stage_name(db, filename)
+
+    def _register_stage_name(self, db, filename):
         f = utils.hash_string(filename)
         stage_filename = utils.join_path(self.cache_stage_name, f)
         self.stage_filename = stage_filename
@@ -425,10 +431,9 @@ class LocalfsSourceHandle(object):
         db.insert_cachename(stage_filename, self.SIGNATURE, filename)
         return True
 
-    @transaction()
     def unregister_stage_name(self, stage_filename):
-        db = self.get_db()
-        db.delete_cachename(stage_filename)
+        with TransactedConnection(self.client_dbtuple) as db:
+            db.delete_cachename(stage_filename)
         self.stage_filename = None
         self.staged_path = None
 
@@ -500,14 +505,17 @@ class LocalfsSourceHandle(object):
             logger.warning(m)
             raise common.ChangedBusyError(m)
 
-    def __init__(self, settings, source_state):
+    def __init__(self, client, source_state):
+        self.client = client
+        settings = client.settings
         self.settings = settings
         self.SIGNATURE = "LocalfsSourceHandle"
         self.rootpath = settings.local_root_path
         self.cache_stage_name = settings.cache_stage_name
         self.cache_stage_path = settings.cache_stage_path
         self.cache_path = settings.cache_path
-        self.get_db = settings.get_db
+        self.syncer_dbtuple = settings.syncer_dbtuple
+        self.client_dbtuple = client.client_dbtuple
         self.source_state = source_state
         self.objname = source_state.objname
         self.fspath = utils.join_path(self.rootpath, self.objname)
@@ -517,10 +525,9 @@ class LocalfsSourceHandle(object):
         if info_of_regular_file(self.source_state.info):
             self.stage_file()
 
-    @transaction()
     def update_state(self, state):
-        db = self.get_db()
-        db.put_state(state)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            db.put_state(state)
 
     def check_update_source_state(self, live_info):
         if not is_info_eq(live_info, self.source_state.info):
@@ -568,7 +575,12 @@ class LocalfsFileClient(FileClient):
         self.SIGNATURE = "LocalfsFileClient"
         self.ROOTPATH = settings.local_root_path
         self.CACHEPATH = settings.cache_path
-        self.get_db = settings.get_db
+        self.syncer_dbtuple = settings.syncer_dbtuple
+        client_dbname = self.SIGNATURE+'.db'
+        self.client_dbtuple = common.DBTuple(
+            dbtype=database.ClientDB,
+            dbname=utils.join_path(settings.instance_path, client_dbname))
+        database.initialize(self.client_dbtuple)
         self.probe_candidates = utils.ThreadSafeDict()
         self.check_enabled()
 
@@ -638,10 +650,9 @@ class LocalfsFileClient(FileClient):
         logger.debug("Candidates: %s" % candidates)
         return candidates
 
-    @transaction()
     def list_files(self):
-        db = self.get_db()
-        return db.list_files(self.SIGNATURE)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            return db.list_files(self.SIGNATURE)
 
     def _local_path_changes(self, name, state):
         local_path = utils.join_path(self.ROOTPATH, name)
@@ -678,15 +689,14 @@ class LocalfsFileClient(FileClient):
         return live_state
 
     def stage_file(self, source_state):
-        return LocalfsSourceHandle(self.settings, source_state)
+        return LocalfsSourceHandle(self, source_state)
 
     def prepare_target(self, target_state):
-        return LocalfsTargetHandle(self.settings, target_state)
+        return LocalfsTargetHandle(self, target_state)
 
-    @transaction()
     def get_dir_contents(self, objname):
-        db = self.get_db()
-        return db.get_dir_contents(self.SIGNATURE, objname)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            return db.get_dir_contents(self.SIGNATURE, objname)
 
     def notifier(self):
         def handle_path(path, rec=False):

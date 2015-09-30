@@ -18,6 +18,9 @@ from collections import namedtuple
 OBJECT_DIRSEP = '/'
 
 
+DBTuple = namedtuple('DBTuple',
+                     ['dbtype', 'dbname'])
+
 FileStateTuple = namedtuple('FileStateTuple',
                             ['archive', 'objname', 'serial', 'info'])
 

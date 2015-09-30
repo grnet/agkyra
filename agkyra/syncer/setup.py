@@ -22,9 +22,9 @@ import ctypes
 from functools import wraps
 
 from agkyra.syncer.utils import join_path, ThreadSafeDict
-from agkyra.syncer.database import SqliteFileStateDB, transaction
+from agkyra.syncer.database import TransactedConnection
 from agkyra.syncer.messaging import Messager
-from agkyra.syncer import utils
+from agkyra.syncer import utils, common, database
 
 from kamaki.clients import ClientError, KamakiSSLError
 
@@ -156,10 +156,13 @@ class SyncerSettings():
 
         self.dbname = utils.to_unicode(kwargs.get("dbname", DEFAULT_DBNAME))
         self.full_dbname = join_path(self.instance_path, self.dbname)
+        self.syncer_dbtuple = common.DBTuple(
+            dbtype=database.SyncerDB,
+            dbname=self.full_dbname)
 
         db_existed = os.path.isfile(self.full_dbname)
         if not db_existed:
-            self.get_db(initialize=True)
+            database.initialize(self.syncer_dbtuple)
 
         self.mtime_lag = 0
         self.case_insensitive = False
@@ -228,22 +231,6 @@ class SyncerSettings():
         logger.info("Filesystem is case-%ssensitive" % case)
         self.case_insensitive = case_insensitive
 
-    def get_db(self, initialize=False):
-        dbs = getattr(thread_local_data, "dbs", None)
-        if dbs is not None:
-            db = dbs.get(self.full_dbname)
-        else:
-            db = None
-
-        if db is None:
-            logger.debug("Connecting db: '%s', thread: %s" %
-                         (self.full_dbname, threading.current_thread().ident))
-            db = SqliteFileStateDB(self.full_dbname, initialize=initialize)
-            if dbs is None:
-                thread_local_data.dbs = {}
-            thread_local_data.dbs[self.full_dbname] = db
-        return db
-
     def create_dir(self, path):
         if os.path.exists(path):
             if os.path.isdir(path):
@@ -290,34 +277,30 @@ class SyncerSettings():
             logger.error("Failed to create container '%s'" % container)
             raise
 
-    @transaction()
     def set_localfs_enabled(self, enabled):
-        db = self.get_db()
-        self._set_localfs_enabled(db, enabled)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            self._set_localfs_enabled(db, enabled)
 
     def _set_localfs_enabled(self, db, enabled):
         db.set_config("localfs_enabled", enabled)
 
-    @transaction()
     def set_pithos_enabled(self, enabled):
-        db = self.get_db()
-        self._set_pithos_enabled(db, enabled)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            self._set_pithos_enabled(db, enabled)
 
     def _set_pithos_enabled(self, db, enabled):
         db.set_config("pithos_enabled", enabled)
 
-    @transaction()
     def localfs_is_enabled(self):
-        db = self.get_db()
-        return self._localfs_is_enabled(db)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            return self._localfs_is_enabled(db)
 
     def _localfs_is_enabled(self, db):
         return db.get_config("localfs_enabled")
 
-    @transaction()
     def pithos_is_enabled(self):
-        db = self.get_db()
-        return self._pithos_is_enabled(db)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            return self._pithos_is_enabled(db)
 
     def _pithos_is_enabled(self, db):
         return db.get_config("pithos_enabled")
@@ -325,9 +308,11 @@ class SyncerSettings():
     def _sync_is_enabled(self, db):
         return self._localfs_is_enabled(db) and self._pithos_is_enabled(db)
 
-    @transaction()
     def purge_db_archives_and_enable(self):
-        db = self.get_db()
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            self._purge_db_archives_and_enable(db)
+
+    def _purge_db_archives_and_enable(self, db):
         db.purge_archives()
         if not self._localfs_is_enabled(db):
             self.create_local_dirs()

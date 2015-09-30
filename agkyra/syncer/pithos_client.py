@@ -19,10 +19,10 @@ import os
 import logging
 import re
 
-from agkyra.syncer import utils, common, messaging
+from agkyra.syncer import utils, common, messaging, database
 from agkyra.syncer.file_client import FileClient
 from agkyra.syncer.setup import ClientError
-from agkyra.syncer.database import transaction
+from agkyra.syncer.database import TransactedConnection
 
 logger = logging.getLogger(__name__)
 
@@ -41,21 +41,26 @@ def handle_client_errors(f):
 
 
 class PithosSourceHandle(object):
-    def __init__(self, settings, source_state):
+    def __init__(self, client, source_state):
         self.SIGNATURE = "PithosSourceHandle"
+        self.client = client
+        settings = client.settings
         self.settings = settings
         self.endpoint = settings.endpoint
         self.cache_fetch_name = settings.cache_fetch_name
         self.cache_fetch_path = settings.cache_fetch_path
         self.cache_path = settings.cache_path
-        self.get_db = settings.get_db
+        self.syncer_dbtuple = settings.syncer_dbtuple
+        self.client_dbtuple = client.client_dbtuple
         self.source_state = source_state
         self.objname = source_state.objname
         self.heartbeat = settings.heartbeat
 
-    @transaction()
     def register_fetch_name(self, filename):
-        db = self.get_db()
+        with TransactedConnection(self.client_dbtuple) as db:
+            return self._register_fetch_name(db, filename)
+
+    def _register_fetch_name(self, db, filename):
         f = utils.hash_string(filename) + "_" + \
             utils.str_time_stamp()
         fetch_name = utils.join_path(self.cache_fetch_name, f)
@@ -98,10 +103,9 @@ class PithosSourceHandle(object):
             os.mkdir(fetched_fspath)
         return fetched_fspath
 
-    @transaction()
     def update_state(self, state):
-        db = self.get_db()
-        db.put_state(state)
+        with TransactedConnection(self.syncer_dbtuple) as db:
+            db.put_state(state)
 
     def check_update_source_state(self, actual_info):
         if actual_info != self.source_state.info:
@@ -125,7 +129,9 @@ exclude_pattern = re.compile(exclude_staged_regex)
 
 
 class PithosTargetHandle(object):
-    def __init__(self, settings, target_state):
+    def __init__(self, client, target_state):
+        self.client = client
+        settings = client.settings
         self.settings = settings
         self.endpoint = settings.endpoint
         self.target_state = target_state
@@ -236,7 +242,12 @@ class PithosFileClient(FileClient):
         self.auth_url = settings.auth_url
         self.auth_token = settings.auth_token
         self.container = settings.container
-        self.get_db = settings.get_db
+        self.syncer_dbtuple = settings.syncer_dbtuple
+        client_dbname = self.SIGNATURE+'.db'
+        self.client_dbtuple = common.DBTuple(
+            dbtype=database.ClientDB,
+            dbname=utils.join_path(settings.instance_path, client_dbname))
+        database.initialize(self.client_dbtuple)
         self.endpoint = settings.endpoint
         self.last_modification = "0000-00-00"
         self.probe_candidates = utils.ThreadSafeDict()
@@ -301,21 +312,23 @@ class PithosFileClient(FileClient):
         else:
             candidates = upstream_all
 
-        non_deleted_in_db = set(self.list_non_deleted_files())
-        newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
-        logger.debug("newly_deleted %s" % newly_deleted_names)
-        newly_deleted = dict((name, {"ident": None, "info": {}})
-                             for name in newly_deleted_names)
-
+        newly_deleted = self.get_newly_deleted(upstream_all_names)
         candidates.update(newly_deleted)
         logger.debug("Candidates since %s: %s" %
                      (last_modified, candidates))
         return candidates
 
-    @transaction()
-    def list_non_deleted_files(self):
-        db = self.get_db()
-        return db.list_non_deleted_files(self.SIGNATURE)
+    def get_newly_deleted(self, upstream_all_names):
+        try:
+            with TransactedConnection(self.syncer_dbtuple) as db:
+                non_deleted_in_db = set(
+                    db.list_non_deleted_files(self.SIGNATURE))
+        except common.DatabaseError:
+            return {}
+        newly_deleted_names = non_deleted_in_db.difference(upstream_all_names)
+        logger.debug("newly_deleted %s" % newly_deleted_names)
+        return dict((name, {"ident": None, "info": {}})
+                    for name in newly_deleted_names)
 
     def notifier(self):
         interval = self.settings.pithos_list_interval
@@ -370,7 +383,7 @@ class PithosFileClient(FileClient):
             return live_state
 
     def stage_file(self, source_state):
-        return PithosSourceHandle(self.settings, source_state)
+        return PithosSourceHandle(self, source_state)
 
     def prepare_target(self, target_state):
-        return PithosTargetHandle(self.settings, target_state)
+        return PithosTargetHandle(self, target_state)

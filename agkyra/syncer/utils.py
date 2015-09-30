@@ -144,5 +144,5 @@ class ThreadSafeDict(object):
             def __exit__(this, exctype, value, traceback):
                 self._LOCK.release()
                 if value is not None:
-                    raise value
+                    return False  # re-raise
         return Lock()

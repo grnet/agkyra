@@ -22,7 +22,7 @@ from agkyra.syncer import localfs_client
 from agkyra.syncer.pithos_client import PithosFileClient
 from agkyra.syncer.syncer import FileSyncer
 import agkyra.syncer.syncer
-from agkyra.syncer import messaging, utils, common
+from agkyra.syncer import messaging, utils, common, database
 import random
 import os
 import time
@@ -105,7 +105,7 @@ class AgkyraTest(unittest.TestCase):
         cls.s = FileSyncer(cls.settings, cls.master, cls.slave)
         cls.pithos = cls.master.endpoint
         cls.pithos.create_container(cls.ID)
-        cls.db = cls.s.get_db()
+        cls.db = database.get_db(cls.s.syncer_dbtuple)
         m = cls.s.get_next_message(block=True)
         assert isinstance(m, messaging.PithosSyncEnabled)
         m = cls.s.get_next_message(block=True)
@@ -483,11 +483,9 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
 
         with mock.patch(
-                "agkyra.syncer.database.SqliteFileStateDB.commit") as dbmock:
-            dbmock.side_effect = [sqlite3.OperationalError("locked"),
-                                  common.DatabaseError()]
+                "agkyra.syncer.database.DB.begin") as dbmock:
+            dbmock.side_effect = sqlite3.OperationalError("locked")
             self.s.decide_file_sync(fil)
-        self.assert_message(messaging.HeartbeatReplayDecideMessage)
 
     def test_007_multiprobe(self):
         fil = "φ007"
@@ -642,22 +640,24 @@ class AgkyraTest(unittest.TestCase):
             f.write("content")
 
         state = self.db.get_state(self.s.SLAVE, fil)
-        handle = localfs_client.LocalfsTargetHandle(self.s.settings, state)
+        handle = self.slave.prepare_target(state)
         hidden_filename = utils.join_path(
             handle.cache_hide_name, utils.hash_string(handle.objname))
         hidden_path = handle.get_path_in_cache(hidden_filename)
         self.assertFalse(os.path.isfile(hidden_path))
 
-        self.assertIsNone(self.db.get_cachename(hidden_filename))
+        client_db = database.get_db(self.slave.client_dbtuple)
+
+        self.assertIsNone(client_db.get_cachename(hidden_filename))
         handle.move_file()
 
         self.assertTrue(os.path.isfile(hidden_path))
-        self.assertIsNotNone(self.db.get_cachename(hidden_filename))
+        self.assertIsNotNone(client_db.get_cachename(hidden_filename))
         handle.move_file()
         self.assertTrue(os.path.isfile(hidden_path))
 
         shutil.move(hidden_path, f_path)
-        self.assertIsNotNone(self.db.get_cachename(hidden_filename))
+        self.assertIsNotNone(client_db.get_cachename(hidden_filename))
         handle.move_file()
         self.assertTrue(os.path.isfile(hidden_path))
 
@@ -726,7 +726,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.probe_file(self.s.SLAVE, fil)
         self.assert_message(messaging.UpdateMessage)
         state = self.db.get_state(self.s.SLAVE, fil)
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         staged_path = handle.staged_path
         self.assertTrue(localfs_client.files_equal(f_path, staged_path))
         handle.unstage_file()
@@ -734,14 +734,14 @@ class AgkyraTest(unittest.TestCase):
 
         with open(f_path, "w") as f:
             f.write("content new")
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         self.assert_message(messaging.LiveInfoUpdateMessage)
         self.assertTrue(localfs_client.files_equal(f_path, staged_path))
         handle.unstage_file()
 
         f = open(f_path, "r")
         with self.assertRaises(common.OpenBusyError):
-            handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+            handle = self.slave.stage_file(state)
 
         ftmp_path = self.get_path("φ014tmp")
         with open(ftmp_path, "w") as f:
@@ -749,21 +749,21 @@ class AgkyraTest(unittest.TestCase):
         os.unlink(f_path)
         os.symlink(ftmp_path, f_path)
         state = self.db.get_state(self.s.SLAVE, fil)
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         self.assert_message(messaging.LiveInfoUpdateMessage)
         self.assertIsNone(handle.staged_path)
 
         self.s.probe_file(self.s.SLAVE, fln)
         self.assert_message(messaging.UpdateMessage)
         state = self.db.get_state(self.s.SLAVE, fln)
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         self.assertIsNone(handle.staged_path)
 
         os.unlink(fln_path)
         with open(fln_path, "w") as f:
             f.write("reg file")
 
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         self.assertIsNone(handle.staged_path)
 
         # try to stage now
@@ -777,7 +777,7 @@ class AgkyraTest(unittest.TestCase):
         fmissing_path = self.get_path(fmissing)
         self.s.probe_file(self.s.SLAVE, fmissing)
         state = self.db.get_state(self.s.SLAVE, fmissing)
-        handle = localfs_client.LocalfsSourceHandle(self.s.settings, state)
+        handle = self.slave.stage_file(state)
         self.assertIsNone(handle.staged_path)
 
         with open(fmissing_path, "w") as f:
