@@ -695,6 +695,7 @@ class LocalfsFileClient(FileClient):
         return LocalfsTargetHandle(self, target_state)
 
     def get_dir_contents(self, objname):
+        logger.debug("Getting contents for object '%s'" % objname)
         with TransactedConnection(self.syncer_dbtuple) as db:
             return db.get_dir_contents(self.SIGNATURE, objname)
 
@@ -708,10 +709,10 @@ class LocalfsFileClient(FileClient):
                 return
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
             objname = utils.to_standard_sep(rel_path)
+            leaves = self.get_dir_contents(objname) if rec else None
             with self.probe_candidates.lock() as d:
                 d[objname] = self.none_info()
                 if rec:
-                    leaves = self.get_dir_contents(objname)
                     for leaf in leaves:
                         d[leaf] = self.none_info()
 
