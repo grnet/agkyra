@@ -17,6 +17,7 @@ import time
 import threading
 import logging
 from collections import defaultdict
+import Queue
 
 from agkyra.syncer import common
 from agkyra.syncer.setup import SyncerSettings
@@ -47,6 +48,7 @@ class FileSyncer(object):
         self.decide_thread = None
         self.sync_threads = []
         self.failed_serials = utils.ThreadSafeDict()
+        self.sync_queue = Queue.Queue()
         self.messager = settings.messager
         self.heartbeat = self.settings.heartbeat
 
@@ -189,32 +191,43 @@ class FileSyncer(object):
         ident = utils.time_stamp()
         return self._do_decide_file_sync(db, objname, master, slave, ident, True)
 
-    def decide_file_sync(self, objname, master=None, slave=None):
+    def decide_file_syncs(self, objnames, master=None, slave=None):
         if master is None:
             master = self.MASTER
         if slave is None:
             slave = self.SLAVE
         ident = utils.time_stamp()
+        syncs = []
         try:
             with TransactedConnection(self.syncer_dbtuple) as db:
-                states = self._decide_file_sync(db, objname, master, slave, ident)
+                for objname in objnames:
+                    states = self._decide_file_sync(
+                        db, objname, master, slave, ident)
+                    if states is not None:
+                        syncs.append(states)
         except common.DatabaseError:
-            self.clean_heartbeat(objname, ident)
+            self.clean_heartbeat(objnames, ident)
             return
-        if states is None:
-            return
-        self.sync_file(*states)
+        self.enqueue_syncs(syncs)
 
-    def clean_heartbeat(self, objname, ident=None):
+    def decide_file_sync(self, objname, master=None, slave=None):
+        if master is None:
+            master = self.MASTER
+        if slave is None:
+            slave = self.SLAVE
+        self.decide_file_syncs([objname], master, slave)
+
+    def clean_heartbeat(self, objnames, ident=None):
         with self.heartbeat.lock() as hb:
-            beat = hb.pop(self.reg_name(objname), None)
-            if beat is None:
-                return
-            if ident and ident != beat["ident"]:
-                hb[self.reg_name(objname)] = beat
-            else:
-                logger.debug("cleaning heartbeat %s, object '%s'"
-                             % (beat, objname))
+            for objname in objnames:
+                beat = hb.pop(self.reg_name(objname), None)
+                if beat is None:
+                    return
+                if ident and ident != beat["ident"]:
+                    hb[self.reg_name(objname)] = beat
+                else:
+                    logger.debug("cleaning heartbeat %s, object '%s'"
+                                 % (beat, objname))
 
     def _decide_file_sync(self, db, objname, master, slave, ident):
         if not self.settings._sync_is_enabled(db):
@@ -308,6 +321,26 @@ class FileSyncer(object):
             serial=source_state.serial, info=source_state.info)
         db.put_state(new_decision_state)
 
+    def enqueue_syncs(self, syncs):
+        for sync in syncs:
+            self.sync_queue.put(sync)
+
+    def launch_syncs(self):
+        with self.heartbeat.lock() as hb:
+            alive_threads = len([v for v in hb.values()
+                                 if v["thread"] is not None
+                                 and v["thread"].is_alive()])
+        max_alive_threads = self.settings.max_alive_sync_threads
+        new_threads = max_alive_threads - alive_threads
+        if new_threads > 0:
+            logger.info("Can start max %s syncs" % new_threads)
+            for i in range(new_threads):
+                try:
+                    tpl = self.sync_queue.get(block=False)
+                    self.sync_file(*tpl)
+                except Queue.Empty:
+                    break
+
     def sync_file(self, source_state, target_state, sync_state):
         msg = messaging.SyncMessage(
             objname=source_state.objname,
@@ -352,7 +385,7 @@ class FileSyncer(object):
                 (serial, state.archive, objname))
             with self.failed_serials.lock() as d:
                 d[(serial, objname)] = state
-        self.clean_heartbeat(objname)
+        self.clean_heartbeat([objname])
 
     def update_state(self, db, old_state, new_state):
         db.put_state(new_state)
@@ -365,7 +398,7 @@ class FileSyncer(object):
         serial = synced_source_state.serial
         objname = synced_source_state.objname
         target = synced_target_state.archive
-        self.clean_heartbeat(objname)
+        self.clean_heartbeat([objname])
         msg = messaging.AckSyncMessage(
             archive=target, objname=objname, serial=serial,
             logger=logger)
@@ -439,8 +472,9 @@ class FileSyncer(object):
     def decide_archive(self, archive=None):
         try:
             archives = [archive] if archive is not None else None
-            for objname in self.list_deciding(archives):
-                self.decide_file_sync(objname)
+            objnames = self.list_deciding(archives)
+            self.decide_file_syncs(objnames)
+            self.launch_syncs()
         except common.DatabaseError:
             pass
 

@@ -287,6 +287,7 @@ class AgkyraTest(unittest.TestCase):
 
         # sync
         self.s.decide_file_sync(f1)
+        self.s.launch_syncs()
         dstate = self.db.get_state(self.s.DECISION, f1)
         self.assertEqual(dstate.serial, 0)
         self.assert_message(messaging.SyncMessage)
@@ -323,6 +324,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.probe_file(self.s.SLAVE, fil)
         self.assert_message(messaging.UpdateMessage)
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
@@ -336,6 +338,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
         self.s.start_notifiers()
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.FailedSyncIgnoreDecisionMessage)
         self.assert_message(messaging.SyncMessage)
         m = self.assert_message(messaging.ConflictStashMessage)
@@ -373,6 +376,7 @@ class AgkyraTest(unittest.TestCase):
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.UpdateMessage)
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -386,6 +390,7 @@ class AgkyraTest(unittest.TestCase):
         self.assertEqual(state.serial, 0)
         self.assertEqual(state.info, {"localfs_type": "unhandled"})
         self.s.decide_file_sync(ln)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         state = self.db.get_state(self.s.MASTER, ln)
@@ -402,6 +407,7 @@ class AgkyraTest(unittest.TestCase):
         state = self.db.get_state(self.s.MASTER, ln)
         self.assertEqual(state.info["pithos_etag"], etag)
         self.s.decide_file_sync(ln)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         m = self.assert_message(messaging.ConflictStashMessage)
         stashed_ln = m.stash_name
@@ -426,6 +432,7 @@ class AgkyraTest(unittest.TestCase):
         open(f_path, 'a').close()
         self.s.probe_file(self.s.SLAVE, fil)
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.UpdateMessage)
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -442,6 +449,7 @@ class AgkyraTest(unittest.TestCase):
 
         # fails because file in place of dir
         self.s.decide_file_sync(inner_fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
@@ -452,15 +460,18 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
         # also fails because file in place of dir
         self.s.decide_file_sync(inner_dir)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
         # but if we fist sync the dir, it's ok
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.assertTrue(os.path.isdir(f_path))
         self.s.decide_file_sync(inner_fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
 
@@ -471,6 +482,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.probe_file(self.s.SLAVE, fil)
         self.assert_message(messaging.UpdateMessage)
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.s.probe_file(self.s.SLAVE, fil)
         self.assert_message(messaging.HeartbeatNoProbeMessage)
@@ -486,6 +498,7 @@ class AgkyraTest(unittest.TestCase):
                 "agkyra.syncer.database.DB.begin") as dbmock:
             dbmock.side_effect = sqlite3.OperationalError("locked")
             self.s.decide_file_sync(fil)
+            self.s.launch_syncs()
 
     def test_007_multiprobe(self):
         fil = "φ007"
@@ -514,6 +527,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
         # this will also make the dir
         self.s.decide_file_sync(inner_fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.assertTrue(os.path.isdir(d_path))
@@ -523,6 +537,7 @@ class AgkyraTest(unittest.TestCase):
         slave_serial = m.serial
         self.assertEqual(slave_serial, 1)
         self.s.decide_file_sync(d)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         state = self.db.get_state(self.s.SLAVE, d)
@@ -536,6 +551,7 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
         self.s.decide_file_sync(d)
         self.s.decide_file_sync(inner_fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -557,9 +573,11 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.UpdateMessage)
         self.assert_message(messaging.UpdateMessage)
         self.s.decide_file_sync(d)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.s.decide_file_sync(innerd)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.assertTrue(os.path.isdir(d_path))
@@ -574,14 +592,17 @@ class AgkyraTest(unittest.TestCase):
 
         # will fail because local dir is non-empty
         self.s.decide_file_sync(d)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
         # but this is ok
         self.s.decide_file_sync(innerd)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
         self.s.decide_file_sync(d)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
 
@@ -601,6 +622,7 @@ class AgkyraTest(unittest.TestCase):
             f.write(f_content)
 
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.LiveInfoUpdateMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -626,6 +648,7 @@ class AgkyraTest(unittest.TestCase):
         new_etag = r1['etag']
 
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.LiveInfoUpdateMessage)
         self.assert_message(messaging.AckSyncMessage)
@@ -676,6 +699,7 @@ class AgkyraTest(unittest.TestCase):
 
         r = self.pithos.upload_from_string(fil, "new")
         self.s.decide_file_sync(fil)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
@@ -688,6 +712,7 @@ class AgkyraTest(unittest.TestCase):
 
         r = self.pithos.upload_from_string(d, "new")
         self.s.decide_file_sync(d)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
@@ -698,6 +723,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.probe_file(self.s.SLAVE, d_synced)
         self.assert_message(messaging.UpdateMessage)
         self.s.decide_file_sync(d_synced)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.AckSyncMessage)
 
@@ -707,6 +733,7 @@ class AgkyraTest(unittest.TestCase):
 
         r = self.pithos.upload_from_string(d_synced, "new")
         self.s.decide_file_sync(d_synced)
+        self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)

@@ -45,6 +45,7 @@ DEFAULT_ACTION_MAX_WAIT = 10
 DEFAULT_PITHOS_LIST_INTERVAL = 5
 DEFAULT_CONNECTION_RETRY_LIMIT = 3
 INSTANCES_NAME = 'instances'
+DEFAULT_MAX_ALIVE_SYNC_THREADS = 25
 
 thread_local_data = threading.local()
 
@@ -190,7 +191,8 @@ class SyncerSettings():
         self.connection_retry_limit = kwargs.get(
             "connection_retry_limit", DEFAULT_CONNECTION_RETRY_LIMIT)
         self.endpoint.CONNECTION_RETRY_LIMIT = self.connection_retry_limit
-
+        self.max_alive_sync_threads = kwargs.get(
+            "max_alive_sync_threads", DEFAULT_MAX_ALIVE_SYNC_THREADS)
         self.messager = Messager()
 
     def create_local_dirs(self):
