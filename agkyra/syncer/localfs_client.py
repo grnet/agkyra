@@ -359,7 +359,8 @@ class LocalfsTargetHandle(object):
         self.prepare(fetched_path, sync_state)
         self.finalize(fetched_path, fetched_live_info)
         self.cleanup(self.hidden_path)
-        self.unregister_hidden_name(self.hidden_filename)
+        if self.hidden_filename is not None:
+            self.unregister_hidden_name(self.hidden_filename)
 
     def prepare(self, fetched_path, sync_state):
         self.hide_file()
