@@ -85,8 +85,8 @@ class HeartbeatNoDecideMessage(Message):
         Message.__init__(self, *args, **kwargs)
         self.objname = kwargs["objname"]
         self.heartbeat = kwargs["heartbeat"]
-        self.logger.warning("Object '%s' already handled; aborting."
-                            % self.objname)
+        self.logger.debug("Object '%s' already handled; aborting deciding."
+                          % self.objname)
 
 
 class HeartbeatReplayDecideMessage(Message):

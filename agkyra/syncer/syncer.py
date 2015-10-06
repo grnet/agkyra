@@ -122,7 +122,7 @@ class FileSyncer(object):
                 self._do_probe_file(db, archive, objname, ident)
 
     def _do_probe_file(self, db, archive, objname, ident):
-        logger.info("Probing archive: %s, object: '%s'" % (archive, objname))
+        logger.debug("Probing archive: %s, object: '%s'" % (archive, objname))
         client = self.clients[archive]
         db_state = db.get_state(archive, objname)
         ref_state = db.get_state(self.SYNC, objname)
@@ -242,7 +242,7 @@ class FileSyncer(object):
 
     def _do_decide_file_sync(self, db, objname, master, slave, ident,
                              dry_run=False):
-        logger.info("Deciding object: '%s'" % objname)
+        logger.debug("Deciding object: '%s'" % objname)
         master_state = db.get_state(master, objname)
         slave_state = db.get_state(slave, objname)
         sync_state = db.get_state(self.SYNC, objname)
@@ -333,7 +333,7 @@ class FileSyncer(object):
         max_alive_threads = self.settings.max_alive_sync_threads
         new_threads = max_alive_threads - alive_threads
         if new_threads > 0:
-            logger.info("Can start max %s syncs" % new_threads)
+            logger.debug("Can start max %s syncs" % new_threads)
             for i in range(new_threads):
                 try:
                     tpl = self.sync_queue.get(block=False)

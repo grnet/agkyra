@@ -74,8 +74,8 @@ class PithosSourceHandle(object):
         headers = dict()
         with open(fetched_fspath, mode='wb+') as fil:
             try:
-                logger.info("Downloading object: '%s', to: '%s'" %
-                            (self.objname, fetched_fspath))
+                logger.debug("Downloading object: '%s', to: '%s'" %
+                             (self.objname, fetched_fspath))
                 self.endpoint.download_object(
                     self.objname,
                     fil,
@@ -93,12 +93,12 @@ class PithosSourceHandle(object):
                                "pithos_type": actual_type}
             self.check_update_source_state(actual_info)
         if actual_info == {}:
-            logger.info("Downloading object: '%s', object is gone."
-                        % self.objname)
+            logger.debug("Downloading object: '%s', object is gone."
+                         % self.objname)
             os.unlink(fetched_fspath)
         elif actual_info["pithos_type"] == common.T_DIR:
-            logger.info("Downloading object: '%s', object is dir."
-                        % self.objname)
+            logger.debug("Downloading object: '%s', object is dir."
+                         % self.objname)
             os.unlink(fetched_fspath)
             os.mkdir(fetched_fspath)
         return fetched_fspath
