@@ -14,7 +14,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import time
-import sqlite3
+try:
+    import pysqlite2.dbapi2 as sqlite3
+except ImportError:
+    import sqlite3
 import json
 import logging
 import random
@@ -26,6 +29,8 @@ from agkyra.syncer import common, utils
 
 logger = logging.getLogger(__name__)
 
+logger.debug("sqlite3.version = %s" % sqlite3.version)
+logger.debug("sqlite3.sqlite_version = %s" % sqlite3.sqlite_version)
 
 thread_local_data = threading.local()
 
