@@ -55,6 +55,8 @@ the Python framework can be created with PyInstaller.
   '/usr/lib/libsqlite3.dylib' '@loader_path/libsqlite3.dylib'
   _sqlite3.so`
 
+4. Make an archive (zip, or gzipped tar) with `python bundle.py <platform>`.
+
 ## Copyright and license
 
 Copyright (C) 2015 GRNET S.A.
