@@ -14,12 +14,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import cmd
+import os
 import sys
 import logging
-from agkyra import config, protocol, protocol_client
+import argparse
+
+try:
+    from agkyra import config
+except ImportError:
+    sys.path.insert(0, "lib")
+    from agkyra import config
+
+from agkyra import protocol, protocol_client, gui
 
 
-LOG = logging.getLogger(__name__)
+AGKYRA_DIR = config.AGKYRA_DIR
+LOGGERFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
+AGKYRA_LOGGER = logging.getLogger('agkyra')
+HANDLER = logging.FileHandler(LOGGERFILE)
+FORMATTER = logging.Formatter(
+    "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
+HANDLER.setFormatter(FORMATTER)
+AGKYRA_LOGGER.addHandler(HANDLER)
+
+LOGGER = logging.getLogger(__name__)
 STATUS = protocol.STATUS
 NOTIFICATION = protocol.COMMON['NOTIFICATION']
 
@@ -110,9 +128,51 @@ class AgkyraCLI(cmd.Cmd):
     helper = protocol.SessionHelper()
 
     def __init__(self, *args, **kwargs):
-        self.callback = kwargs.pop('callback', None)
-        self.debug = kwargs.pop('debug', None)
+        self.callback = kwargs.pop('callback', sys.argv[0])
+        self.args = kwargs.pop('parsed_args', None)
+        LOGGER.setLevel(logging.DEBUG if self.args.debug else logging.INFO)
         cmd.Cmd.__init__(self, *args, **kwargs)
+
+    @staticmethod
+    def parse_args():
+        parser = argparse.ArgumentParser(
+            description='Agkyra syncer launcher', add_help=False)
+        parser.add_argument(
+            '--help', '-h',
+            action='store_true', help='Help on agkyra syntax and usage')
+        parser.add_argument(
+            '--debug', '-d',
+            action='store_true', help='set logging level to "debug"')
+        parser.add_argument('cmd', nargs="*")
+
+        for terms in (['help', ], ['config', 'delete']):
+            if not set(terms).difference(sys.argv):
+                {
+                    'help': lambda: parser.add_argument(
+                        '--list', '-l',
+                        action='store_true', help='List all commands'),
+                    'config_delete': lambda: parser.add_argument(
+                        '--yes', '-y',
+                        action='store_true', help='Yes to all questions')
+                }['_'.join(terms)]()
+
+        return parser.parse_args()
+
+    def must_help(self, command):
+        if self.args.help:
+            self.do_help(command)
+            return True
+        return False
+
+    def launch_daemon(self):
+        """Launch the agkyra protocol server"""
+        LOGGER.debug('Start the session helper')
+        if not self.helper.load_active_session():
+            self.helper.create_session()
+            self.helper.start()
+        else:
+            LOGGER.info('Another session is running, aborting')
+        LOGGER.debug('Session Helper is now down')
 
     @property
     def client(self):
@@ -126,17 +186,17 @@ class AgkyraCLI(cmd.Cmd):
                 self._client.connect()
         return self._client
 
-    def preloop(self):
-        """Prepare agkyra shell"""
-        self.prompt = '\xe2\x9a\x93 '
-        self.default('')
-
     def do_help(self, line):
-        """Get help
+        """Help on agkyra GUI and CLI
+        agkyra         Run agkyra with GUI (equivalent to "agkyra gui")
+        agkyra <cmd>   Run a command through agkyra CLI
+
+        To get help on agkyra commands:
             help <cmd>            for an individual command
             help <--list | -l>    for all commands
         """
-        if line and line in ('-l', '--list'):
+        if getattr(self.args, 'list', None):
+            self.args.list = None
             prefix = 'do_'
             for c in self.get_names():
                 if c.startswith(prefix):
@@ -148,6 +208,14 @@ class AgkyraCLI(cmd.Cmd):
             if not line:
                 cmd.Cmd.do_help(self, 'help')
             cmd.Cmd.do_help(self, line)
+
+    def emptyline(self):
+        if self.must_help(''):
+            return
+        return self.do_gui('')
+
+    def default(self, line):
+        self.do_help(line)
 
     def config_list(self, args):
         """List (all or some) options
@@ -165,7 +233,7 @@ class AgkyraCLI(cmd.Cmd):
                 3: self.cnf_cmds.print_option
             }[len(args)](*args)
         except Exception as e:
-            LOG.debug('%s\n' % e)
+            LOGGER.debug('%s\n' % e)
             sys.stderr.write(self.config_list.__doc__ + '\n')
 
     def config_set(self, args):
@@ -181,7 +249,7 @@ class AgkyraCLI(cmd.Cmd):
                 4: self.cnf_cmds.set_setting
             }[len(args)](*args)
         except Exception as e:
-            LOG.debug('%s\n' % e)
+            LOGGER.debug('%s\n' % e)
             sys.stderr.write(self.config_set.__doc__ + '\n')
 
     def config_delete(self, args):
@@ -190,11 +258,7 @@ class AgkyraCLI(cmd.Cmd):
         delete <cloud | sync> NAME [-y]         Delete a sync or cloud
         delete <cloud |sync> NAME OPTION [-y]   Delete a sync or cloud option
         """
-        try:
-            args.remove('-y')
-            args.append(True)
-        except ValueError:
-            args.append(False)
+        args.append(self.args.yes)
         try:
             {
                 3: self.cnf_cmds.delete_global_option if (
@@ -202,7 +266,7 @@ class AgkyraCLI(cmd.Cmd):
                 4: self.cnf_cmds.delete_section_option
             }[len(args)](*args)
         except Exception as e:
-            LOG.debug('%s\n' % e)
+            LOGGER.debug('%s\n' % e)
             sys.stderr.write(self.config_delete.__doc__ + '\n')
 
     def do_config(self, line):
@@ -211,6 +275,8 @@ class AgkyraCLI(cmd.Cmd):
         set    <global|cloud|sync> <setting> <value>  Set a setting
         delete <global|cloud|sync> [setting]          Delete a setting or group
         """
+        if self.must_help('config'):
+            return
         args = line.split(' ')
         try:
             method = getattr(self, 'config_' + args[0])
@@ -220,10 +286,12 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_status(self, line):
         """Get Agkyra client status. Status may be one of the following:
-            Syncing     There is a process syncing right now
-            Paused      Notifiers are active but syncing is paused
-            Not running No active processes
+        Syncing     There is a process syncing right now
+        Paused      Notifiers are active but syncing is paused
+        Not running No active processes
         """
+        if self.must_help('status'):
+            return
         client = self.client
         status, msg = client.get_status() if client else None, 'Not running'
         if status:
@@ -234,24 +302,19 @@ class AgkyraCLI(cmd.Cmd):
         sys.stdout.write('%s\n' % msg)
         sys.stdout.flush()
 
-    # def do_start_daemon(self, line):
-    #     """Start the Agkyra daemon if it is not running"""
-    #     if self.client:
-    #         sys.stderr.write('An Agkyra daemon is already running\n')
-    #     else:
-    #         sys.stderr.write('Launcing a new Agkyra daemon\n')
-    #         protocol.launch_server()
-    #         sys.stderr.write('Waiting for the deamon to load\n')
-    #         self.helper.wait_session_to_load()
-    #         self.do_status('')
-    #     sys.stderr.flush()
-
     def do_start(self, line):
-        """Start the session. If no daemons are running, start one first"""
+        """Start the session, set it in syncing mode
+        start         Start syncing. If daemon is down, start it up
+        start daemon  Start the agkyra daemon and wait
+        """
+        if self.must_help('start'):
+            return
+        if line in ['daemon']:
+            return self.launch_daemon()
         client = self.client
         if not client:
             sys.stderr.write('No Agkyra daemons running, starting one')
-            protocol.launch_server(self.callback, self.debug)
+            protocol.launch_server(self.callback, self.args.debug)
             sys.stderr.write(' ... ')
             self.helper.wait_session_to_load()
             sys.stderr.write('OK\n')
@@ -272,6 +335,8 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_pause(self, line):
         """Pause a session (stop it from syncing, but keep it running)"""
+        if self.must_help('pause'):
+            return
         client = self.client
         if client:
             status = client.get_status()
@@ -290,6 +355,8 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_shutdown(self, line):
         """Shutdown Agkyra, if it is running"""
+        if self.must_help('shutdown'):
+            return
         client = self.client
         if client:
             client.shutdown()
@@ -300,3 +367,14 @@ class AgkyraCLI(cmd.Cmd):
         else:
             sys.stderr.write('Not running\n')
         sys.stderr.flush()
+
+
+    # Systemic commands
+    def do_gui(self, line):
+        """Launch the agkyra GUI
+        Only one GUI instance can run at a time.
+        If an agkyra daemon is already running, the GUI will use it.
+        """
+        if self.must_help('gui'):
+            return
+        gui.run(callback=self.callback, debug=self.args.debug)

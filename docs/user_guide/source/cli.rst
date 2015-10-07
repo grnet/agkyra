@@ -11,19 +11,23 @@ In this section it is assumed agkyra is installed and properly setup.
 Agkyra CLI manages the agkyra back-end daemon (the module that
 performs the actual syncing).
 
-To run it, execute ``agkyra cli`` from the command line. To get a list of
+To get help, execute ``agkyra help`` from the command line. To get a list of
 arguments, run it without any
 
 .. code-block:: console
 
-    $ agkyra cli
-    Get help
-                help <cmd>            for an individual command
-                help <--list | -l>    for all commands
+    $ agkyra help
+    Help on agkyra GUI and CLI
+        agkyra         Run agkyra with GUI (equivalent to "agkyra gui")
+        agkyra <cmd>   Run a command through agkyra CLI
+
+        To get help for agkyra commands:
+            help <cmd>            for an individual command
+            help <--list | -l>    for all commands
 
     Documented commands (type help <topic>):
     ========================================
-    config  help  pause  shutdown  start  status
+    config  help  pause  shutdown  start  status gui
 
 
 The CLI can be used independently or in parallel with the GUI. See
@@ -38,7 +42,7 @@ Commands and examples
 
     List all settings
 
-    $ agkyra cli config list
+    $ agkyra config list
     global
       agkyra_dir: /home/user/.agkyra
       default_sync: default
@@ -64,7 +68,7 @@ Commands and examples
 
     Set a new token for cloud "default"
 
-    $ agkyra cli config set cloud default token n3w-us3r-t0k3n
+    $ agkyra config set cloud default token n3w-us3r-t0k3n
 
 :command:`config delete` - delete a setting or group of settings
 
@@ -72,7 +76,7 @@ Commands and examples
 
     Delete the "old_sync" sync
 
-    $ agkyra cli config delete sync old_sync
+    $ agkyra config delete sync old_sync
 
 :command:`status` - print daemon status. Status may be one of the following:
 
@@ -84,7 +88,7 @@ Commands and examples
 
     Check if a daemon is running
 
-    $ agkyra cli status
+    $ agkyra status
     Not running
 
 :command:`start` - launch a daemon if ``not running``, start syncing if ``paused``
@@ -93,9 +97,13 @@ Commands and examples
 
     Launch the syncing daemon
 
-    $ agkyra cli start
+    $ agkyra start
     No Agkyra daemons running, starting one ... OK
     Syncing
+
+..note:: Run "agkyra start daemon" to start a session as a daemon. After that,
+    use the CLI from a separate console to manage the session, or launch a GUI.
+    The GUI will automatically connect to the running session.
 
 :command:`pause` - stop a daemon from ``syncing``, but keep it running
 
@@ -103,7 +111,7 @@ Commands and examples
 
     Pause a syncing daemon
 
-    $ agkyra cli pause
+    $ agkyra pause
     Pausing syncer ... OK
     Paused
 
@@ -113,5 +121,5 @@ Commands and examples
 
     Shutdown the daemon
 
-    $ agkyra cli shutdown
+    $ agkyra shutdown
     Shutting down Agkyra ... Stopped

@@ -16,93 +16,21 @@
 
 import os
 import sys
-import argparse
 
 CURPATH = os.path.dirname(os.path.realpath(__file__))
 
 try:
-    from agkyra import config
+    from agkyra.cli import AgkyraCLI
 except ImportError:
     LIBPATH = os.path.join(CURPATH, "lib")
     sys.path.insert(0, LIBPATH)
-    from agkyra import config
+    from agkyra.cli import AgkyraCLI
 
-AGKYRA_DIR = config.AGKYRA_DIR
-
-import logging
-LOGFILE = os.path.join(AGKYRA_DIR, 'agkyra.log')
-LOGGER = logging.getLogger('agkyra')
-HANDLER = logging.FileHandler(LOGFILE)
-FORMATTER = logging.Formatter(
-    "%(name)s:%(lineno)s %(levelname)s:%(asctime)s:%(message)s")
-HANDLER.setFormatter(FORMATTER)
-LOGGER.addHandler(HANDLER)
 
 CALLBACK = os.path.realpath(sys.argv[0])
 
-def set_debug(debug):
-    level = logging.DEBUG if debug else logging.INFO
-    LOGGER.setLevel(level)
-
-
-def run_server(debug, extras=None):
-    set_debug(debug)
-    from agkyra.protocol import SessionHelper
-    LOGGER.debug('Start the session helper')
-    helper = SessionHelper()
-    if not helper.load_active_session():
-        helper.create_session()
-        helper.start()
-    else:
-        LOGGER.info('Another session is running, aborting')
-        return
-    LOGGER.debug('Session Helper is now down')
-
-
-def run_gui(debug, extras=None):
-    set_debug(debug)
-    from agkyra import gui
-    gui.run(callback=CALLBACK, debug=debug)
-
-
-def run_cli(debug, extras=None):
-    set_debug(debug)
-    from agkyra.cli import AgkyraCLI
-    agkcli = AgkyraCLI(callback=CALLBACK, debug=debug)
-    agkcli.onecmd(' '.join(extras or ['help', ]))
-
-
-def run_test(debug, extras=None):
-    LOGGER.removeHandler(HANDLER)
-    from agkyra.scripts import test
-    selected_test = extras[0] if extras else None
-    test.main(debug, selected_test)
-
-
-DISPATCH = {
-    'server': run_server,
-    'gui': run_gui,
-    'cli': run_cli,
-    'test': run_test,
-}
-
-parser = argparse.ArgumentParser(description='Agkyra syncer launcher')
-parser.add_argument('--debug', '-d', action='store_true',
-                    help="set logging level to 'debug'")
-parser.add_argument('component', nargs="?", default="gui",
-                    help="run 'test', 'server', 'cli', or 'gui' (default)")
-parser.add_argument('command', nargs="*", help="command in case of cli")
-
-def main():
-    args = parser.parse_args()
-    debug = args.debug
-    set_debug(debug)
-    component = args.component
-    action = DISPATCH.get(component)
-    if action is None:
-        print "No such component '%s'." % component
-        return
-    action(debug, extras=args.command)
 
 if __name__ == "__main__":
-    main()
+    args = AgkyraCLI.parse_args()
+    agkcli = AgkyraCLI(parsed_args=args)
+    agkcli.onecmd(' '.join(args.cmd))

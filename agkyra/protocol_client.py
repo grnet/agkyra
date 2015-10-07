@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class UIClient(WebSocketClient):
-    """W Web Socket Client for Agkyra"""
+    """Web Socket Client for Agkyra"""
     buf, authenticated, ready = {}, False, False
 
     def __init__(self, session):

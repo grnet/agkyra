@@ -731,14 +731,13 @@ def launch_server(callback, debug):
         command = [callback]
         if debug:
             command.append('-d')
-        command.append("server")
-        subprocess.Popen(command,
-                         close_fds=True)
+        command.append("start daemon")
+        subprocess.Popen(command, close_fds=True)
     else:
         pid = os.fork()
         if not pid:
             command = [callback, callback]
             if debug:
                 command.append('-d')
-            command.append("server")
+            command.append("start daemon")
             os.execlp(*command)
