@@ -18,10 +18,13 @@ import os
 import sys
 import argparse
 
+CURPATH = os.path.dirname(os.path.realpath(__file__))
+
 try:
     from agkyra import config
 except ImportError:
-    sys.path.insert(0, "lib")
+    LIBPATH = os.path.join(CURPATH, "lib")
+    sys.path.insert(0, LIBPATH)
     from agkyra import config
 
 AGKYRA_DIR = config.AGKYRA_DIR
