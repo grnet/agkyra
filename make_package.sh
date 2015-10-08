@@ -18,15 +18,11 @@ CURPWD=$(pwd)
 cd "$(dirname "$0")"
 ROOTPATH=$(pwd)
 
-os=$1
-./get_nwjs.sh $os
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-
 ID=agkyra-$(date +%s)
-TMPDIR=/tmp/$ID
-TMPAGKYRA=$TMPDIR/agkyra
+BUILDDIR=$CURPWD/build/$ID
+echo building under $BUILDDIR
+DISTDIR=$CURPWD/dist
+TMPAGKYRA=$BUILDDIR/agkyra
 mkdir -p $TMPAGKYRA
 WHEELHOUSE=$TMPAGKYRA/wheelhouse
 
@@ -40,15 +36,8 @@ for i in *; do unzip $i -d $TMPAGKYRA/lib; done
 cd $TMPAGKYRA
 rm -r $WHEELHOUSE
 
-cp $ROOTPATH/COPYING $TMPAGKYRA
-cp $ROOTPATH/README.md $TMPAGKYRA
 cp $ROOTPATH/agkyra/scripts/agkyra $TMPAGKYRA/agkyra
-cp $ROOTPATH/agkyra/scripts/cli.py $TMPAGKYRA/agkyra-cli
+rm -r $DISTDIR/agkyra
 
-cd $TMPDIR
-ARCHIVENAME=$CURPWD/agkyra-snapshot-${os}
-if [[ "$os" =~ ^(linux64|linux32)$ ]]; then
-    tar czf ${ARCHIVENAME}.tar.gz agkyra
-else
-    zip -r ${ARCHIVENAME}.zip agkyra
-fi
+mv $TMPAGKYRA $DISTDIR
+echo built in $DISTDIR/agkyra
