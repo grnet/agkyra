@@ -19,13 +19,7 @@ import sys
 import logging
 import argparse
 
-try:
-    from agkyra import config
-except ImportError:
-    sys.path.insert(0, "lib")
-    from agkyra import config
-
-from agkyra import protocol, protocol_client, gui
+from agkyra import protocol, protocol_client, gui, config
 
 
 AGKYRA_DIR = config.AGKYRA_DIR
@@ -44,7 +38,7 @@ NOTIFICATION = protocol.COMMON['NOTIFICATION']
 remaining = lambda st: st['unsynced'] - (st['synced'] + st['failed'])
 
 
-class ConfigCommands:
+class ConfigCommands(object):
     """Commands for handling Agkyra config options"""
     cnf = config.AgkyraConfig()
 
@@ -130,7 +124,8 @@ class AgkyraCLI(cmd.Cmd):
     def __init__(self, *args, **kwargs):
         self.callback = kwargs.pop('callback', sys.argv[0])
         self.args = kwargs.pop('parsed_args', None)
-        LOGGER.setLevel(logging.DEBUG if self.args.debug else logging.INFO)
+        AGKYRA_LOGGER.setLevel(logging.DEBUG
+                               if self.args.debug else logging.INFO)
         cmd.Cmd.__init__(self, *args, **kwargs)
 
     @staticmethod
@@ -166,13 +161,13 @@ class AgkyraCLI(cmd.Cmd):
 
     def launch_daemon(self):
         """Launch the agkyra protocol server"""
-        LOGGER.debug('Start the session helper')
+        LOGGER.info('Starting the agkyra daemon')
         if not self.helper.load_active_session():
             self.helper.create_session()
             self.helper.start()
+            LOGGER.info('Daemon is shut down')
         else:
-            LOGGER.info('Another session is running, aborting')
-        LOGGER.debug('Session Helper is now down')
+            LOGGER.info('Another daemon is running, aborting')
 
     @property
     def client(self):
@@ -311,6 +306,10 @@ class AgkyraCLI(cmd.Cmd):
             return
         if line in ['daemon']:
             return self.launch_daemon()
+        if line:
+            sys.stderr.write("Unrecognized subcommand '%s'.\n" % line)
+            sys.stderr.flush()
+            return
         client = self.client
         if not client:
             sys.stderr.write('No Agkyra daemons running, starting one')

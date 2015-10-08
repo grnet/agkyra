@@ -27,9 +27,6 @@ except ImportError:
     from agkyra.cli import AgkyraCLI
 
 
-CALLBACK = os.path.realpath(sys.argv[0])
-
-
 if __name__ == "__main__":
     args = AgkyraCLI.parse_args()
     agkcli = AgkyraCLI(parsed_args=args)
