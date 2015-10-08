@@ -26,7 +26,7 @@ from agkyra import __version__
 # Package info
 PACKAGE_NAME = "agkyra"
 VERSION = __version__
-SHORT_DESCRIPTION = 'Agkyra File Syncer'
+SHORT_DESCRIPTION = 'Agkyra Syncing Client for Pithos Storage'
 
 PACKAGES_ROOT = '.'
 PACKAGES = find_packages(PACKAGES_ROOT)
@@ -144,7 +144,7 @@ setup(
     name=PACKAGE_NAME,
     version=VERSION,
     license='GNU GPLv3',
-    url='http://www.synnefo.org/',
+    url='http://www.synnefo.org/agkyra',
     description=SHORT_DESCRIPTION,
     classifiers=CLASSIFIERS,
 
@@ -162,8 +162,6 @@ setup(
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRES,
     tests_require=TESTS_REQUIRES,
-
-    dependency_links=['http://www.synnefo.org/packages/pypi'],
 
     scripts=['agkyra/scripts/agkyra'],
 )
