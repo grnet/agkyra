@@ -34,7 +34,8 @@ the Python framework can be created with PyInstaller.
 
 1. Run `pip install pyinstaller`.
 
-* Note: On Linux, we currently need the development version of PyInstaller.
+* Note: On Linux, we currently need the development version 3.0.dev2 of
+  PyInstaller.
   Get the code from `https://github.com/pyinstaller/pyinstaller`. No
   installation is needed: `pyinstaller.py` can directly run from the repo's
   root directory.
@@ -43,7 +44,7 @@ the Python framework can be created with PyInstaller.
   `http://sourceforge.net/projects/pywin32/files/` and pick the appropriate
   version for your Python installation.
 
-3. Run `pyinstaller agkyra.spec`. This will make the application under
+2. Run `pyinstaller agkyra.spec`. This will make the application under
    `dist/agkyra` (and `dist/agkyra.app` under OSX).
 
 * The sqlite3 version 3.8.5 that comes with Mac OS X 10.10 does not
@@ -55,7 +56,7 @@ the Python framework can be created with PyInstaller.
   '/usr/lib/libsqlite3.dylib' '@loader_path/libsqlite3.dylib'
   _sqlite3.so`
 
-4. Make an archive (zip, or gzipped tar) with `python bundle.py <platform>`.
+3. Make an archive (zip, or gzipped tar) with `python bundle.py <platform>`.
 
 ## Copyright and license
 
