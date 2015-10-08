@@ -47,10 +47,11 @@ DEFAULT_NW_PATH = OSX_DEFAULT_NW_PATH if utils.isosx() \
 class GUI(WebSocketBaseClient):
     """Launch the GUI when the SessionHelper server is ready"""
 
-    def __init__(self, session, **kwargs):
+    def __init__(self, session, debug=False, **kwargs):
         """Initialize the GUI Launcher
         :param session: session dict(ui_id=..., address=...) instance
         """
+        self.debug = debug
         super(GUI, self).__init__(session['address'])
         self.session_file = kwargs.get(
             'session_file', os.path.join(AGKYRA_DIR, 'session.info'))
@@ -93,7 +94,10 @@ class GUI(WebSocketBaseClient):
         """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""
         LOG.info('Protocol server is UP, start html/js GUI')
         try:
-            subprocess.call([self.nw, self.gui_code, self.session_file])
+            with open(os.devnull) as fnull:
+                fout = None if self.debug else fnull
+                subprocess.call([self.nw, self.gui_code, self.session_file],
+                                stderr=fout, stdout=fout)
         finally:
             self.clean_exit()
         LOG.debug('GUI finished, close GUI wrapper connection')
@@ -106,7 +110,7 @@ def run(callback, debug):
     session = SessionHelper().wait_session_to_load()
     assert session, 'UI server failed to load...'
     LOG.info('Server session is ready, setup the GUI session')
-    gui = GUI(session)
+    gui = GUI(session, debug=debug)
 
     try:
         LOG.info('Start GUI')
