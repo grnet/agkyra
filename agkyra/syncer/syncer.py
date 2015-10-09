@@ -84,6 +84,8 @@ class FileSyncer(object):
                 # when attempting to stop a notifier after the watched
                 # directory has been deleted
                 logger.warning("Ignored KeyError: %s" % e)
+        for notifier in self.notifiers.values():
+            notifier.join()
 
     def start_decide(self):
         if not self.decide_active:
@@ -92,6 +94,7 @@ class FileSyncer(object):
     def stop_decide(self):
         if self.decide_active:
             self.decide_thread.stop()
+            self.decide_thread.join()
 
     def stop_all_daemons(self):
         self.stop_decide()
