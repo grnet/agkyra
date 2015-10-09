@@ -182,37 +182,23 @@ class SessionHelper(object):
                 if 'locked' not in '%s' % oe:
                     raise
         db.close()
+        self.close_manager()
+        self.server.shutdown()
+
+    def close_manager(self):
+        manager = self.server.manager
+        manager.close_all()
+        manager.stop()
+        manager.join()
 
     def start(self):
         """Start the helper server in a thread"""
         if getattr(self, 'server', None):
-            t = Thread(target=self._shutdown_daemon)
+            t = Thread(target=self.heartbeat)
             t.start()
-            Thread(target=self.heartbeat).start()
             self.server.serve_forever()
             t.join()
             LOG.debug('WSGI server is down')
-
-    def _shutdown_daemon(self):
-        """Shutdown WSGI server when the heart stops"""
-        db = sqlite3.connect(self.session_db)
-        while True:
-            time.sleep(4)
-            try:
-                r = db.execute('SELECT ui_id FROM %s WHERE ui_id="%s"' % (
-                    self.session_relation, self.ui_id))
-                if not r.fetchall():
-                    db.close()
-                    time.sleep(5)
-                    t = Thread(target=self.server.shutdown)
-                    t.start()
-                    t.join()
-                    break
-            except sqlite3.OperationalError:
-                pass
-
-
-
 
 
 class WebSocketProtocol(WebSocket):
@@ -340,28 +326,6 @@ class WebSocketProtocol(WebSocket):
                 syncer.stop_all_daemons()
                 LOG.debug('Wait open syncs to complete')
                 syncer.wait_sync_threads()
-
-    def heartbeat(self):
-        """Update session DB timestamp as long as session is alive"""
-        db, alive = sqlite3.connect(self.session_db), True
-        while alive:
-            time.sleep(1)
-            try:
-                db.execute('BEGIN')
-                r = db.execute('SELECT ui_id FROM %s WHERE ui_id="%s"' % (
-                    self.session_relation, self.ui_id))
-                if r.fetchall():
-                    db.execute('UPDATE %s SET beat="%s" WHERE ui_id="%s"' % (
-                        self.session_relation, time.time(), self.ui_id))
-                else:
-                    alive = False
-                db.commit()
-            except sqlite3.OperationalError:
-                alive = True
-        db.close()
-        self.shutdown_syncer()
-        self.set_status(code=STATUS['UNINITIALIZED'])
-        self.close()
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
@@ -639,6 +603,7 @@ class WebSocketProtocol(WebSocket):
             if action == 'shutdown':
                 # Clean db to cause syncer backend to shut down
                 self.set_status(code=STATUS['SHUTTING DOWN'])
+                self.shutdown_syncer()
                 retry_on_locked_db(self.clean_db)
                 # self._shutdown()
                 # self.terminate()
@@ -651,7 +616,6 @@ class WebSocketProtocol(WebSocket):
             self.send_json({'OK': 200, 'action': 'post %s' % action})
         elif r['ui_id'] == self.ui_id:
             self.accepted = True
-            Thread(target=self.heartbeat).start()
             self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
             self._load_settings()
             if (not self.syncer) and self.can_sync():
