@@ -140,7 +140,7 @@ class SessionHelper(object):
         self.ui_id = ui_id
         return dict(ui_id=ui_id, address=address)
 
-    def wait_session_to_load(self, timeout=20, step=2):
+    def wait_session_to_load(self, timeout=20, step=0.2):
         """Wait while the session is loading e.g. in another process
             :returns: the session or None if timeout
         """
