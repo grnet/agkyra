@@ -174,8 +174,7 @@ class AgkyraCLI(cmd.Cmd):
         """Return the helper client instace or None"""
         self._client = getattr(self, '_client', None)
         if not self._client:
-            session = protocol.retry_on_locked_db(
-                self.helper.load_active_session)
+            session = self.helper.load_active_session()
             if session:
                 self._client = protocol_client.UIClient(session)
                 self._client.connect()
