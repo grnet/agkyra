@@ -162,9 +162,9 @@ class AgkyraCLI(cmd.Cmd):
     def launch_daemon(self):
         """Launch the agkyra protocol server"""
         LOGGER.info('Starting the agkyra daemon')
-        if not self.helper.load_active_session():
-            self.helper.create_session()
-            self.helper.start()
+        session_daemon = self.helper.create_session_daemon()
+        if session_daemon:
+            session_daemon.start()
             LOGGER.info('Daemon is shut down')
         else:
             LOGGER.info('Another daemon is running, aborting')

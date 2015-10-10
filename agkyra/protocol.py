@@ -65,8 +65,8 @@ def retry_on_locked_db(method, *args, **kwargs):
 
 
 class SessionHelper(object):
-    """Agkyra Helper Server sets a WebSocket server with the Helper protocol
-    It also provided methods for running and killing the Helper server
+    """Enables creation of a session daemon and retrieves credentials of an
+    existing one
     """
     session_timeout = 20
 
@@ -78,7 +78,6 @@ class SessionHelper(object):
 
         LOG.debug('Connect to db')
         self.db = sqlite3.connect(self.session_db)
-
         retry_on_locked_db(self._init_db_relation)
 
     def _init_db_relation(self):
@@ -106,8 +105,8 @@ class SessionHelper(object):
         LOG.debug('No active sessions found')
         return None
 
-    def create_session(self):
-        """Return the active session or create a new one"""
+    def create_session_daemon(self):
+        """Create and return a new daemon, or None if one exists"""
 
         def get_session():
                 self.db.execute('BEGIN')
@@ -116,29 +115,14 @@ class SessionHelper(object):
         session = retry_on_locked_db(get_session)
         if session:
             self.db.rollback()
-            return session
+            return None
 
-        ui_id = sha1(os.urandom(128)).hexdigest()
-
-        LOCAL_ADDR = '127.0.0.1'
-        WebSocketProtocol.ui_id = ui_id
-        WebSocketProtocol.session_db = self.session_db
-        WebSocketProtocol.session_relation = self.session_relation
-        server = make_server(
-            LOCAL_ADDR, 0,
-            server_class=WSGIServer,
-            handler_class=WebSocketWSGIRequestHandler,
-            app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
-        server.initialize_websockets_manager()
-        address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
-
+        session_daemon = SessionDaemon(self.session_db, self.session_relation)
         self.db.execute('INSERT INTO %s VALUES ("%s", "%s", "%s")' % (
-            self.session_relation, ui_id, address, time.time()))
+            self.session_relation, session_daemon.ui_id,
+            session_daemon.address, time.time()))
         self.db.commit()
-
-        self.server = server
-        self.ui_id = ui_id
-        return dict(ui_id=ui_id, address=address)
+        return session_daemon
 
     def wait_session_to_load(self, timeout=20, step=0.2):
         """Wait while the session is loading e.g. in another process
@@ -162,6 +146,31 @@ class SessionHelper(object):
             time.sleep(step)
             time_passed += step
         return not bool(self.load_active_session())
+
+
+class SessionDaemon(object):
+    """A WebSocket server which inspects a heartbeat and decides whether to
+    shut down
+    """
+    def __init__(self, session_db, session_relation, *args, **kwargs):
+        self.session_db = session_db
+        self.session_relation = session_relation
+        ui_id = sha1(os.urandom(128)).hexdigest()
+
+        LOCAL_ADDR = '127.0.0.1'
+        WebSocketProtocol.ui_id = ui_id
+        WebSocketProtocol.session_db = session_db
+        WebSocketProtocol.session_relation = session_relation
+        server = make_server(
+            LOCAL_ADDR, 0,
+            server_class=WSGIServer,
+            handler_class=WebSocketWSGIRequestHandler,
+            app=WebSocketWSGIApplication(handler_cls=WebSocketProtocol))
+        server.initialize_websockets_manager()
+        address = 'ws://%s:%s' % (LOCAL_ADDR, server.server_port)
+        self.server = server
+        self.ui_id = ui_id
+        self.address = address
 
     def heartbeat(self):
         """Periodically update the session database timestamp"""
@@ -192,13 +201,12 @@ class SessionHelper(object):
         manager.join()
 
     def start(self):
-        """Start the helper server in a thread"""
-        if getattr(self, 'server', None):
-            t = Thread(target=self.heartbeat)
-            t.start()
-            self.server.serve_forever()
-            t.join()
-            LOG.debug('WSGI server is down')
+        """Start the server in a thread"""
+        t = Thread(target=self.heartbeat)
+        t.start()
+        self.server.serve_forever()
+        t.join()
+        LOG.debug('WSGI server is down')
 
 
 class WebSocketProtocol(WebSocket):
