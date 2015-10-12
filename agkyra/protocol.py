@@ -683,7 +683,8 @@ def launch_server(callback, debug):
     """Launch the server in a separate process"""
     LOG.info('Start SessionHelper session')
     if utils.iswin():
-        command = [callback]
+        command = [] if ISFROZEN else ["pythonw.exe"]
+        command.append(callback)
         if debug:
             command.append('-d')
         command.append("start daemon")
