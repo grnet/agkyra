@@ -17,10 +17,27 @@ from ws4py.client.threadedclient import WebSocketClient
 import json
 import time
 import logging
+import random
 from protocol import STATUS
 
 
 LOG = logging.getLogger(__name__)
+
+
+class UIClientError(Exception):
+    """UIClient Exception class"""
+
+
+class TimeOutError(UIClientError):
+    """A client request timed out"""
+
+class UnexpectedResponseError(UIClientError):
+    """The protocol server response was not as expected"""
+
+    def __init__(self, *args, **kw):
+        """:param response: a keyword argument containing the repsonse"""
+        self.response = kw.pop('response', None)
+        super(UnexpectedResponseError, self).__init__(*args, **kw)
 
 
 class UIClient(WebSocketClient):
@@ -47,7 +64,8 @@ class UIClient(WebSocketClient):
         while timeout and not self.ready:
             time.sleep(1)
             timeout -= 1
-        assert self.ready, 'UI client timed out while waiting to be ready'
+        if not self.ready:
+            raise TimeOutError('UI client timed out while waiting to be ready')
         return self.ready
 
     def wait_until_syncing(self, timeout=20):
@@ -57,8 +75,8 @@ class UIClient(WebSocketClient):
             time.sleep(1)
             status = self.get_status()
             timeout -= 1
-        msg = 'Timed out, still not syncing'
-        assert status['code'] == STATUS['SYNCING'], msg
+        if status['code'] != STATUS['SYNCING']:
+            raise TimeOutError('Still not syncing')
 
     def wait_until_paused(self, timeout=20):
         """Wait until session reaches paused status"""
@@ -67,8 +85,8 @@ class UIClient(WebSocketClient):
             time.sleep(1)
             status = self.get_status()
             timeout -= 1
-        msg = 'Timed out, still not paused'
-        assert status['code'] == STATUS['PAUSED'], msg
+        if status['code'] != STATUS['PAUSED']:
+            raise TimeOutError('Still not paused')
 
     def received_message(self, m):
         """handle server responces according to the protocol"""
@@ -88,20 +106,25 @@ class UIClient(WebSocketClient):
     # Receive handlers
     def recv_authenticate(self, msg):
         """Receive: client authentication response"""
-        assert 'ACCEPTED' in msg, json.dumps(msg)
+        if 'ACCEPTED' not in msg:
+            raise UnexpectedResponseError(
+                'Client authentication failed', response=msg)
         self.ready = True
 
     def recv_start(self, msg):
         """Receive: start response"""
-        assert 'OK' in msg, json.dumps(msg)
+        if 'OK' not in msg:
+            raise UnexpectedResponseError('Start failed', response=msg)
 
     def recv_pause(self, msg):
         """Receive: start response"""
-        assert 'OK' in msg, json.dumps(msg)
+        if 'OK' not in msg:
+            raise UnexpectedResponseError('Pause failed', response=msg)
 
     def recv_get_status(self, msg):
         """Receive: GET STATUS"""
-        assert 'code' in msg, json.dumps(msg)
+        if 'code' not in msg:
+            raise UnexpectedResponseError('Get status failed', response=msg)
         self.buf[msg['action']] = msg
 
     # API methods
@@ -110,7 +133,7 @@ class UIClient(WebSocketClient):
         self.wait_until_ready()
         self.send_get_status()
         while 'get status' not in self.buf:
-            time.sleep(1)
+            time.sleep(random.random())
         return self.buf.pop('get status')
 
     def _post(self, path):

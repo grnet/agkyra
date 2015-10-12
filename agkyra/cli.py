@@ -40,6 +40,10 @@ NOTIFICATION = protocol.COMMON['NOTIFICATION']
 remaining = lambda st: st['unsynced'] - (st['synced'] + st['failed'])
 
 
+class ConfigError(protocol_client.UIClientError):
+    """Error with config settings"""
+
+
 class ConfigCommands(object):
     """Commands for handling Agkyra config options"""
     cnf = config.AgkyraConfig()
@@ -64,7 +68,8 @@ class ConfigCommands(object):
     def list_section_type(self, section):
         """print the contents of a configuration section"""
         names = ['', ] if section in ('global', ) else self.cnf.keys(section)
-        assert names, 'Section %s not found' % section
+        if not names:
+            ConfigError('Section %s not found' % section)
         for name in names:
             print section, name
             self.list_section(section, name)
@@ -75,12 +80,14 @@ class ConfigCommands(object):
             self.list_section_type(section)
 
     def set_global_setting(self, section, option, value):
-        assert section in ('global'), 'Syntax error'
+        if section not in ('global'):
+            raise ConfigError('Section "%s" not in global' % section)
         self.cnf.set(section, option, value)
         self.cnf.write()
 
     def set_setting(self, section, name, option, value):
-        assert section in self.cnf.sections(), 'Syntax error'
+        if section not in self.cnf.sections():
+            raise ConfigError('"%s" is not a section')
         self.cnf.set('%s.%s' % (section, name), option, value)
         self.cnf.write()
 
@@ -95,7 +102,8 @@ class ConfigCommands(object):
 
     def delete_section_option(self, section, name, option, yes=False):
         """Delete a section (sync or cloud) option"""
-        assert section in self.cnf.sections(), 'Syntax error'
+        if section not in self.cnf.sections():
+            raise ConfigError('"%s" not a section' % section)
         if (not yes and 'y' != raw_input(
                 'Delete %s of %s "%s"? [y|N]: ' % (option, section, name))):
             sys.stderr.write('Aborted\n')
@@ -326,8 +334,8 @@ class AgkyraCLI(cmd.Cmd):
                 try:
                     client.wait_until_syncing()
                     sys.stderr.write('OK\n')
-                except AssertionError as ae:
-                    sys.stderr.write('%s\n' % ae)
+                except protocol_client.UIClientError as uice:
+                    sys.stderr.write('%s\n' % uice)
             else:
                 sys.stderr.write('Already ')
         sys.stderr.flush()
@@ -348,8 +356,8 @@ class AgkyraCLI(cmd.Cmd):
                 try:
                     client.wait_until_paused()
                     sys.stderr.write('OK\n')
-                except AssertionError as ae:
-                    sys.stderr.write('%s\n' % ae)
+                except protocol_client.UIClientError as uice:
+                    sys.stderr.write('%s\n' % uice)
         sys.stderr.flush()
         self.do_status(line)
 
