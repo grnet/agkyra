@@ -48,8 +48,28 @@ class ConfigCommands(object):
     """Commands for handling Agkyra config options"""
     cnf = config.AgkyraConfig()
 
+    def _validate_section(self, section, err_msg='"%s" is not a valid section'):
+        """:raises ConfigError: if the section is invalid"""
+        if not self.cnf.has_section(section):
+            raise ConfigError(err_msg % section)
+
+    def _assert_section_name(self, section, name, err_msg='%s "%s" not found'):
+        """:raises ConfigError: if the section name does not exist"""
+        if name not in self.cnf.keys(section):
+            raise ConfigError(err_msg % (section, name))
+
+    def _assert_has_option(
+            self, section, name, option, err_msg='%s "%s" has no option "%s"'):
+        """:raises ConfigError: if the option does not exist"""
+        if option not in self.cnf.get(section, name):
+            raise ConfigError(err_msg % (section, name, option))
+
     def print_option(self, section, name, option):
         """Print a configuration option"""
+        self._validate_section(section)
+        self._assert_section_name(section, name or option)
+        if name:
+            self._assert_has_option(section, name, option)
         section = '%s.%s' % (section, name) if name else section
         value = self.cnf.get(section, option)
         sys.stdout.write('  %s: %s\n' % (option, value))
@@ -61,17 +81,19 @@ class ConfigCommands(object):
             self.print_option(section, '', name)
         else:
             if name:
+                self._assert_section_name(section, name)
                 content = content[name]
             for option in content.keys():
                 self.print_option(section, name, option)
 
     def list_section_type(self, section):
-        """print the contents of a configuration section"""
+        """Print the contents of a configuration section"""
         names = ['', ] if section in ('global', ) else self.cnf.keys(section)
         if not names:
-            ConfigError('Section %s not found' % section)
+            raise ConfigError('Section %s not found' % section)
         for name in names:
-            print section, name
+            sys.stdout.write('%s %s\n' % (section, name))
+            sys.stdout.flush()
             self.list_section(section, name)
 
     def list_sections(self):
@@ -80,19 +102,20 @@ class ConfigCommands(object):
             self.list_section_type(section)
 
     def set_global_setting(self, section, option, value):
-        if section not in ('global'):
-            raise ConfigError('Section "%s" not in global' % section)
+        assert section == 'global', 'section %s should be global"' % section
         self.cnf.set(section, option, value)
         self.cnf.write()
 
     def set_setting(self, section, name, option, value):
-        if section not in self.cnf.sections():
-            raise ConfigError('"%s" is not a section')
+        self._validate_section(section)
         self.cnf.set('%s.%s' % (section, name), option, value)
         self.cnf.write()
 
     def delete_global_option(self, section, option, yes=False):
         """Delete global option"""
+        assert section == 'global', 'Section must be global, not %s' % section
+        self._assert_section_name(
+            section, option, '%s option "%s" does not exist')
         if (not yes and 'y' != raw_input(
                 'Delete %s option %s? [y|N]: ' % (section, option))):
             sys.stderr.write('Aborted\n')
@@ -102,8 +125,9 @@ class ConfigCommands(object):
 
     def delete_section_option(self, section, name, option, yes=False):
         """Delete a section (sync or cloud) option"""
-        if section not in self.cnf.sections():
-            raise ConfigError('"%s" not a section' % section)
+        self._validate_section(section)
+        self._assert_section_name(section, name)
+        self._assert_has_option(section, name, option)
         if (not yes and 'y' != raw_input(
                 'Delete %s of %s "%s"? [y|N]: ' % (option, section, name))):
             sys.stderr.write('Aborted\n')
@@ -118,6 +142,8 @@ class ConfigCommands(object):
 
     def delete_section(self, section, name, yes=False):
         """Delete a section (sync or cloud)"""
+        self._validate_section(section)
+        self._assert_section_name(section, name)
         if (not yes and 'y' != raw_input(
                 'Delete %s "%s"? [y|N]: ' % (section, name))):
             sys.stderr.write('Aborted\n')
@@ -205,9 +231,8 @@ class AgkyraCLI(cmd.Cmd):
             for c in self.get_names():
                 if c.startswith(prefix):
                     actual_name = c[len(prefix):]
-                    print '-', actual_name, '-'
+                    sys.stderr.write('- %s -\n' % actual_name)
                     self.do_help(actual_name)
-                    print
         else:
             if not line:
                 cmd.Cmd.do_help(self, 'help')
@@ -238,6 +263,8 @@ class AgkyraCLI(cmd.Cmd):
             }[len(args)](*args)
         except Exception as e:
             LOGGER.debug('%s\n' % e)
+            if isinstance(e, ConfigError):
+                raise
             sys.stderr.write(self.config_list.__doc__ + '\n')
 
     def config_set(self, args):
@@ -254,6 +281,8 @@ class AgkyraCLI(cmd.Cmd):
             }[len(args)](*args)
         except Exception as e:
             LOGGER.debug('%s\n' % e)
+            if isinstance(e, ConfigError):
+                raise
             sys.stderr.write(self.config_set.__doc__ + '\n')
 
     def config_delete(self, args):
@@ -271,6 +300,8 @@ class AgkyraCLI(cmd.Cmd):
             }[len(args)](*args)
         except Exception as e:
             LOGGER.debug('%s\n' % e)
+            if isinstance(e, ConfigError):
+                raise
             sys.stderr.write(self.config_delete.__doc__ + '\n')
 
     def do_config(self, line):
@@ -287,6 +318,9 @@ class AgkyraCLI(cmd.Cmd):
             method(args[1:])
         except AttributeError:
             self.do_help('config')
+        except ConfigError as ce:
+            sys.stderr.write('%s\n' % ce)
+            sys.stderr.flush()
 
     def do_status(self, line):
         """Get Agkyra client status. Status may be one of the following:
