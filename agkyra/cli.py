@@ -152,6 +152,20 @@ class ConfigCommands(object):
             self.cnf.write()
 
 
+from functools import wraps
+
+def handle_UI_error(func):
+    def inner(*args, **kw):
+        try:
+            return func(*args, **kw)
+        except protocol_client.UIClientError as uice:
+            msg = '%s' % uice
+            LOGGER.debug(msg)
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+    return inner
+
+
 class AgkyraCLI(cmd.Cmd):
     """The CLI for Agkyra is connected to a protocol server"""
     cnf_cmds = ConfigCommands()
@@ -328,6 +342,10 @@ class AgkyraCLI(cmd.Cmd):
         Paused      Notifiers are active but syncing is paused
         Not running No active processes
         """
+        self._status(line)
+
+    @handle_UI_error
+    def _status(self, line):
         if self.must_help('status'):
             return
         client = self.client
@@ -345,6 +363,10 @@ class AgkyraCLI(cmd.Cmd):
         start         Start syncing. If daemon is down, start it up
         start daemon  Start the agkyra daemon and wait
         """
+        self._start(line)
+
+    @handle_UI_error
+    def _start(self, line):
         if self.must_help('start'):
             return
         if line in ['daemon']:
@@ -377,6 +399,10 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_pause(self, line):
         """Pause a session (stop it from syncing, but keep it running)"""
+        self._pause(line)
+
+    @handle_UI_error
+    def _pause(self, line):
         if self.must_help('pause'):
             return
         client = self.client
@@ -397,6 +423,10 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_shutdown(self, line):
         """Shutdown Agkyra, if it is running"""
+        self._shutdown(line)
+
+    @handle_UI_error
+    def _shutdown(self, line):
         if self.must_help('shutdown'):
             return
         client = self.client
