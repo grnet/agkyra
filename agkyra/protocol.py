@@ -682,18 +682,17 @@ class WebSocketProtocol(WebSocket):
 def launch_server(callback, debug):
     """Launch the server in a separate process"""
     LOG.info('Start SessionHelper session')
+    opts = ["start", "daemon"]
+    if debug:
+        opts.append('-d')
     if utils.iswin():
         command = [] if ISFROZEN else ["pythonw.exe"]
         command.append(callback)
-        if debug:
-            command.append('-d')
-        command.append("start daemon")
+        command += opts
         subprocess.Popen(command, close_fds=True)
     else:
         pid = os.fork()
         if not pid:
             command = [callback, callback]
-            if debug:
-                command.append('-d')
-            command.append("start daemon")
+            command += opts
             os.execlp(*command)
