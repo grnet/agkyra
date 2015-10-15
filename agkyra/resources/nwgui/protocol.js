@@ -104,14 +104,16 @@ socket.onopen = function() {
   log_debug('Send GUI ID to helper');
   post_ui_id(this);
 }
+
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
-  log_debug('RECV: ' + r['action'])
-  if (globals.authenticated && r['UNAUTHORIZED'] === 401) {
-    log_debug('Authentication error (wrong token?)');
+  log_debug('RECV: ' + r['action']);
+  if  (globals.authenticated && r.code >= 200
+  && (r.code !== (globals.previous_status || 0))
+  && (!globals.settings_are_open)) {
     globals.open_settings = true;
     return
-  }
+  } else globals.open_settings = false;
 
   switch(r['action']) {
     case 'post ui_id':
@@ -147,8 +149,7 @@ socket.onmessage = function(e) {
     break;
     case 'get status':
       globals['status'] = r;
-      if (!globals.open_settings)
-        globals.open_settings = has_settings_error(r.code);
+      globals.previous_status = r.code;
     break;
     default:
       console.log('Incomprehensible response ' + JSON.stringify(r));

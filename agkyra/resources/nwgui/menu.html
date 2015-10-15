@@ -288,7 +288,8 @@ window.setInterval(function() {
     default: notify('warning'); break;
   }
 
-  if (globals.open_settings) {
+  if (globals.open_settings && !globals.settings_are_open) {
+    log_debug('OPEN SETTINGS IS ' + globals.open_settings);
     new_progress = COMMON.MENU.SETTINGSOPEN;
     globals.open_settings = false;
     settings_menu.click();
