@@ -287,7 +287,7 @@ class WebSocketProtocol(WebSocket):
 
     def set_status(self, **kwargs):
         with self.status.lock() as d:
-            LOGGER.debug('CHANGING STATUS TO %s' % kwargs)
+            LOGGER.debug('Set status to %s' % kwargs)
             d.update(kwargs)
 
     @property
@@ -346,16 +346,15 @@ class WebSocketProtocol(WebSocket):
         sync = self._get_default_sync()
         cloud = self._get_sync_cloud(sync)
 
-        try:
-            self.settings['url'] = self.cnf.get_cloud(cloud, 'url')
-        except Exception:
-            self.settings['url'] = None
-            self.set_status(code=STATUS['SETTINGS MISSING'])
-        try:
-            self.settings['token'] = self.cnf.get_cloud(cloud, 'token')
-        except Exception:
-            self.settings['url'] = None
-            self.set_status(code=STATUS['SETTINGS MISSING'])
+        for option in ('url', 'token'):
+            try:
+                value = self.cnf.get_cloud(cloud, option)
+                if not value:
+                    raise Exception()
+                self.settings[option] = value
+            except Exception:
+                self.settings[option] = None
+                self.set_status(code=STATUS['SETTINGS MISSING'])
 
         self.settings['sync_on_start'] = (
             self.cnf.get('global', 'sync_on_start') == 'on')
@@ -364,7 +363,10 @@ class WebSocketProtocol(WebSocket):
         # for option in ('container', 'directory', 'exclude'):
         for option in ('container', 'directory'):
             try:
-                self.settings[option] = self.cnf.get_sync(sync, option)
+                 value = self.cnf.get_sync(sync, option)
+                 if not value:
+                    raise KeyError()
+                 self.settings[option] = value
             except KeyError:
                 LOGGER.debug('No %s is set' % option)
                 self.set_status(code=STATUS['SETTINGS MISSING'])
