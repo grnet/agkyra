@@ -691,8 +691,12 @@ def launch_server(callback, debug):
         command += opts
         subprocess.Popen(command, close_fds=True)
     else:
+        import daemon
         pid = os.fork()
         if not pid:
-            command = [callback, callback]
-            command += opts
-            os.execlp(*command)
+            with daemon.DaemonContext():
+                command = [callback, callback]
+                command += opts
+                os.execlp(*command)
+        else:
+            os.wait()

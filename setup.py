@@ -43,6 +43,9 @@ INSTALL_REQUIRES = [
     'certifi',
 ]
 
+if not sys.platform.startswith("win"):
+    INSTALL_REQUIRES.append("python-daemon")
+
 EXTRAS_REQUIRES = {
 }
 
