@@ -548,22 +548,31 @@ class WebSocketProtocol(WebSocket):
         """Set the settings and dump them to permanent storage if needed"""
         # Prepare setting save
         could_sync = self.syncer and self.can_sync()
-        was_active = False
-        if could_sync and not self.syncer.paused:
-            was_active = True
-            self.pause_sync()
+        old_status = self.get_status('code')
+        active = (STATUS['SYNCING'], STATUS['PAUSING'], STATUS['PAUSED'])
+
         must_reset_syncing = self._essentials_changed(new_settings)
+        if must_reset_syncing and old_status in active:
+            LOGGER.debug('Temporary backend shutdown to save settings')
+            self.shutdown_syncer()
 
         # save settings
         self.settings.update(new_settings)
         self._dump_settings()
 
         # Restart
-        if self.can_sync():
-            if must_reset_syncing or not could_sync:
-                self.init_sync()
-            if was_active:
-                self.start_sync()
+        LOGGER.debug('Reload settings')
+        self._load_settings()
+        can_sync = must_reset_syncing and self.can_sync()
+        if can_sync:
+            LOGGER.debug('Restart backend')
+            self.init_sync()
+            new_status = self.get_status('code')
+            if new_status in active:
+                must_sync = old_status == STATUS['SYNCING'] or (
+                    old_status not in active and (
+                        self.settings.get('sync_on_start', False)))
+                (self.start_sync if must_sync else self.pause_sync)()
 
     def _pause_syncer(self):
         syncer_ = self.syncer
