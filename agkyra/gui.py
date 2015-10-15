@@ -101,24 +101,3 @@ class GUI(WebSocketBaseClient):
         finally:
             self.clean_exit()
         LOG.debug('GUI finished, close GUI wrapper connection')
-
-
-def run(callback, debug):
-    """Prepare SessionHelper and GUI and run them in the proper order"""
-    launch_server(callback, debug)
-    LOG.info('Client blocks until session is ready')
-    session = SessionHelper().wait_session_to_load()
-    assert session, 'UI server failed to load...'
-    LOG.info('Server session is ready, setup the GUI session')
-    gui = GUI(session, debug=debug)
-
-    try:
-        LOG.info('Start GUI')
-        gui.start()
-    except KeyboardInterrupt:
-        LOG.info('Shutdown GUI')
-        gui.clean_exit()
-
-if __name__ == '__main__':
-    logging.basicConfig(filename='agkyra.log', level=logging.DEBUG)
-    run(os.path.abspath('gui/app'))

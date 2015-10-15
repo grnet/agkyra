@@ -449,4 +449,23 @@ class AgkyraCLI(cmd.Cmd):
         """
         if self.must_help('gui'):
             return
-        gui.run(callback=self.callback, debug=self.args.debug)
+        session = self.helper.load_active_session()
+        if not session:
+            self._start('')
+            session = self.helper.wait_session_to_load()
+        if session:
+            LOGGER.info('Start new GUI')
+            new_gui = gui.GUI(session, debug=self.args.debug)
+            try:
+                new_gui.start()
+            except KeyboardInterrupt:
+                LOGGER.info('GUI interrupted by user')
+                sys.stderr.write('GUI interrupted by user, exiting\n')
+                sys.stderr.flush()
+                new_gui.clean_exit()
+            LOGGER.info('GUI is shutdown')
+            if self.client:
+                self._shutdown('')
+        else:
+            sys.stderr.write('Session failed to load\n')
+            sys.stderr.flush()
