@@ -31,6 +31,8 @@ FORMATTER = logging.Formatter(
 HANDLER.setFormatter(FORMATTER)
 AGKYRA_LOGGER.addHandler(HANDLER)
 
+logging.getLogger('astakosclient').addHandler(logging.NullHandler())
+
 LOGGER = logging.getLogger(__name__)
 STATUS = protocol.STATUS
 NOTIFICATION = protocol.COMMON['NOTIFICATION']
