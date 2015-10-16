@@ -105,11 +105,13 @@ class ConfigCommands(object):
         assert section == 'global', 'section %s should be global"' % section
         self.cnf.set(section, option, value)
         self.cnf.write()
+        return True
 
     def set_setting(self, section, name, option, value):
         self._validate_section(section)
         self.cnf.set('%s.%s' % (section, name), option, value)
         self.cnf.write()
+        return True
 
     def delete_global_option(self, section, option, yes=False):
         """Delete global option"""
@@ -119,9 +121,10 @@ class ConfigCommands(object):
         if (not yes and 'y' != raw_input(
                 'Delete %s option %s? [y|N]: ' % (section, option))):
             sys.stderr.write('Aborted\n')
-        else:
-            self.cnf.remove_option(section, option)
-            self.cnf.write()
+            return False
+        self.cnf.remove_option(section, option)
+        self.cnf.write()
+        return True
 
     def delete_section_option(self, section, name, option, yes=False):
         """Delete a section (sync or cloud) option"""
@@ -131,14 +134,15 @@ class ConfigCommands(object):
         if (not yes and 'y' != raw_input(
                 'Delete %s of %s "%s"? [y|N]: ' % (option, section, name))):
             sys.stderr.write('Aborted\n')
+            return False
+        if section == config.CLOUD_PREFIX:
+            self.cnf.remove_from_cloud(name, option)
+        elif section == config.SYNC_PREFIX:
+            self.cnf.remove_from_sync(name, option)
         else:
-            if section == config.CLOUD_PREFIX:
-                self.cnf.remove_from_cloud(name, option)
-            elif section == config.SYNC_PREFIX:
-                self.cnf.remove_from_sync(name, option)
-            else:
-                self.cnf.remove_option('%s.%s' % (section, name), option)
-            self.cnf.write()
+            self.cnf.remove_option('%s.%s' % (section, name), option)
+        self.cnf.write()
+        return True
 
     def delete_section(self, section, name, yes=False):
         """Delete a section (sync or cloud)"""
@@ -147,9 +151,10 @@ class ConfigCommands(object):
         if (not yes and 'y' != raw_input(
                 'Delete %s "%s"? [y|N]: ' % (section, name))):
             sys.stderr.write('Aborted\n')
-        else:
-            self.cnf.remove_option(section, name)
-            self.cnf.write()
+            return False
+        self.cnf.remove_option(section, name)
+        self.cnf.write()
+        return True
 
 
 from functools import wraps
@@ -281,6 +286,15 @@ class AgkyraCLI(cmd.Cmd):
                 raise
             sys.stderr.write(self.config_list.__doc__ + '\n')
 
+    def _warn_user_about_setting_updates(self):
+        if self.helper.load_active_session():
+            sys.stderr.write(
+                'Done\n'
+                'WARNING: Setting updates will take effect after agkyra is '
+                'shutdown and started again. To do this:\n'
+                '\t$ agkyra shutdown\n\t$ agkyra start\n');
+            sys.stderr.flush()
+
     def config_set(self, args):
         """Set an option
         set global OPTION VALUE                 Set a global option
@@ -288,8 +302,9 @@ class AgkyraCLI(cmd.Cmd):
                                                 Creates a sync or cloud, if it
                                                 does not exist
         """
+        r = False
         try:
-            {
+            r = {
                 3: self.cnf_cmds.set_global_setting,
                 4: self.cnf_cmds.set_setting
             }[len(args)](*args)
@@ -298,6 +313,8 @@ class AgkyraCLI(cmd.Cmd):
             if isinstance(e, ConfigError):
                 raise
             sys.stderr.write(self.config_set.__doc__ + '\n')
+        if r:
+            self._warn_user_about_setting_updates()
 
     def config_delete(self, args):
         """Delete an option
@@ -306,8 +323,9 @@ class AgkyraCLI(cmd.Cmd):
         delete <cloud |sync> NAME OPTION [-y]   Delete a sync or cloud option
         """
         args.append(self.args.yes)
+        r = False
         try:
-            {
+            r = {
                 3: self.cnf_cmds.delete_global_option if (
                     args[0] == 'global') else self.cnf_cmds.delete_section,
                 4: self.cnf_cmds.delete_section_option
@@ -317,6 +335,8 @@ class AgkyraCLI(cmd.Cmd):
             if isinstance(e, ConfigError):
                 raise
             sys.stderr.write(self.config_delete.__doc__ + '\n')
+        if r:
+            self._warn_user_about_setting_updates()
 
     def do_config(self, line):
         """Commands for managing the agkyra settings
