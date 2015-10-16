@@ -455,6 +455,16 @@ class WebSocketProtocol(WebSocket):
                         'STOP BACKEND, %s'% getattr(msg, 'objname', ''))
                     self.set_status(code=STATUS['CONTAINER ERROR'])
                     self.syncer.stop_all_daemons()
+                elif isinstance(msg, messaging.PithosAuthTokenError):
+                    LOGGER.debug(
+                        'STOP BACKEND, %s'% getattr(msg, 'objname', ''))
+                    self.set_status(code=STATUS['TOKEN ERROR'])
+                    self.syncer.stop_all_daemons()
+                elif isinstance(msg, messaging.PithosGenericError):
+                    LOGGER.debug(
+                        'STOP BACKEND, %s'% getattr(msg, 'objname', ''))
+                    self.set_status(code=STATUS['CRITICAL ERROR'])
+                    self.syncer.stop_all_daemons()
                 LOGGER.debug('Backend message: %s %s' % (msg.name, type(msg)))
                 # Limit the amount of messages consumed each time
                 max_consumption -= 1

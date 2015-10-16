@@ -287,8 +287,12 @@ class PithosFileClient(FileClient):
                 self.settings.set_pithos_enabled(False)
                 msg = messaging.PithosSyncDisabled(logger=logger)
                 self.settings.messager.put(msg)
+            elif e.status == 401:
+                msg = messaging.PithosAuthTokenError(logger=logger, exc=e)
+                self.settings.messager.put(msg)
             else:
-                logger.error(e)
+                msg = messaging.PithosGenericError(logger=logger, exc=e)
+                self.settings.messager.put(msg)
             return {}
         self.objects = objects
         upstream_all = {}

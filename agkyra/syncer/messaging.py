@@ -191,3 +191,17 @@ class PithosSyncEnabled(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
         self.logger.info("Pithos sync is enabled")
+
+
+class PithosGenericError(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.exc = kwargs["exc"]
+        self.logger.error(self.exc)
+
+
+class PithosAuthTokenError(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.exc = kwargs["exc"]
+        self.logger.error(self.exc)
