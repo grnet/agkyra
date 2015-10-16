@@ -43,25 +43,23 @@ function set_dialogue(msg, terms, response) {
 
 function refresh_endpoints(identity_url) {
     $.post(identity_url + '/tokens', function(data) {
-        var endpoints = data.access.serviceCatalog
-        global.pithos_ui = null;
-        global.account_ui = null;
-        global.url_error = null;
+        var endpoints = data.access.serviceCatalog;
+        global.url_error = global.url_error || null;
         $.each(endpoints, function(i, endpoint) {
             switch(endpoint.type) {
             case 'object-store': try {
+                global.pithos_ui = null;
                 global.pithos_ui = endpoint['endpoints'][0]['SNF:uiURL'];
             } catch(err) { console.log('Failed to get pithos_ui ' + err); }
             break;
             case 'account': try {
+                global.account_ui = null;
                 global.account_ui = endpoint['endpoints'][0]['SNF:uiURL'];
             } catch(err) { console.log('Failed to get account_ui ' + err); }
             break;
             }
         });
     }).fail(function(xhr, status, msg) {
-        global.pithos_ui = null;
-        global.account_ui = null;
         global.url_error = xhr.status + ' ' + msg;
         console.log(xhr.status + ' ' + xhr.responseText);
     });
@@ -87,22 +85,10 @@ function check_auth(identity_url, token) {
     });
 }
 
-function get_pithos_ui() {
-    if (global.pithos_ui) return global.pithos_ui;
-    return null;
-}
+function get_pithos_ui() {return global.pithos_ui || null;}
 
-function get_account_ui() {
-    if (global.account_ui) return global.account_ui;
-    return null;
-}
+function get_account_ui() {return global.account_ui || null;}
 
-function get_url_error() {
-    if (global.url_error) return global.url_error;
-    return null;
-}
+function get_url_error() {return global.url_error || null;}
 
-function get_auth_error() {
-    if (global.auth_error) return global.auth_error;
-    return null;
-}
+function get_auth_error() {return global.auth_error || null;}
