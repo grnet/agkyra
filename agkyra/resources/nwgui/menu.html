@@ -84,7 +84,7 @@ var local_folder_menu = new gui.MenuItem({
   click: function () {
     var dir = globals['settings']['directory'];
     log_debug('Open ' + dir);
-    gui.Shell.showItemInFolder(dir + path.sep + '.');
+    gui.Shell.openItem(dir)
   }
 })
 menu.append(local_folder_menu);
