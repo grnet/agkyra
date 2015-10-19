@@ -707,6 +707,86 @@ class WebSocketProtocol(WebSocket):
             self.terminate()
 
 
+def close_fds():
+    import resource
+    # Default maximum for the number of available file descriptors.
+    MAXFD = 1024
+
+    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if (maxfd == resource.RLIM_INFINITY):
+        maxfd = MAXFD
+
+    # Iterate through and close all file descriptors.
+    for fd in range(2, maxfd):
+        try:
+            os.close(fd)
+        except OSError:  # ERROR, fd wasn't open to begin with (ignored)
+            pass
+
+
+# Adapted from https://code.activestate.com/recipes/278731/
+def daemonize(command):
+    # Default daemon parameters.
+    # File mode creation mask of the daemon.
+    UMASK = 0
+
+    # Default working directory for the daemon.
+    WORKDIR = "/"
+
+    # The standard I/O file descriptors are redirected to /dev/null by default.
+    if (hasattr(os, "devnull")):
+        REDIRECT_TO = os.devnull
+    else:
+        REDIRECT_TO = "/dev/null"
+
+    pid = os.fork()
+    if not pid:
+        # To become the session leader of this new session and the process
+        # group leader of the new process group, we call os.setsid(). The
+        # process is also guaranteed not to have a controlling terminal.
+        os.setsid()
+
+        # Fork a second child and exit immediately to prevent zombies.
+        pid = os.fork()
+        if not pid:
+            # Since the current working directory may be a mounted
+            # filesystem, we avoid the issue of not being able to unmount
+            # the filesystem at shutdown time by changing it to the root
+            # directory.
+            os.chdir(WORKDIR)
+
+            # We probably don't want the file mode creation mask inherited
+            # from the parent, so we give the child complete control over
+            # permissions.
+            os.umask(0)
+
+            # Close all open file descriptors. This prevents the child from
+            # keeping open any file descriptors inherited from the parent.
+            # There is a variety of methods to accomplish this task.
+            close_fds()
+
+            # Redirect the standard I/O file descriptors to the specified
+            # file. Since the daemon has no controlling terminal, most
+            # daemons redirect stdin, stdout, and stderr to /dev/null. This
+            # is done to prevent side-effects from reads and writes to the
+            # standard I/O file descriptors.
+
+            # This call to open is guaranteed to return the lowest file
+            # descriptor, which will be 0 (stdin), since it was closed
+            # above.
+            os.open(REDIRECT_TO, os.O_RDWR)  # standard input (0)
+
+            # Duplicate standard input to standard output and standard error.
+            os.dup2(0, 1)  # standard output (1)
+            os.dup2(0, 2)  # standard error (2)
+
+            os.execlp(*command)
+        else:
+            os._exit(0)
+    else:
+        os.wait()
+
+
 def launch_server(callback, debug):
     """Launch the server in a separate process"""
     LOGGER.info('Start SessionHelper session')
@@ -719,12 +799,6 @@ def launch_server(callback, debug):
         command += opts
         subprocess.Popen(command, close_fds=True)
     else:
-        import daemon
-        pid = os.fork()
-        if not pid:
-            with daemon.DaemonContext():
-                command = [callback, callback]
-                command += opts
-                os.execlp(*command)
-        else:
-            os.wait()
+        command = [callback, callback]
+        command += opts
+        daemonize(command)
