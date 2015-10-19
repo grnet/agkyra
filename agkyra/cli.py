@@ -177,10 +177,11 @@ class AgkyraCLI(cmd.Cmd):
     helper = protocol.SessionHelper()
 
     def __init__(self, *args, **kwargs):
-        self.callback = kwargs.pop('callback', sys.argv[0])
+        self.callback = kwargs.pop('callback', os.path.realpath(sys.argv[0]))
         self.args = kwargs.pop('parsed_args', None)
         AGKYRA_LOGGER.setLevel(logging.DEBUG
                                if self.args.debug else logging.INFO)
+        LOGGER.debug("Callback is %s" % self.callback)
         cmd.Cmd.__init__(self, *args, **kwargs)
 
     @staticmethod
