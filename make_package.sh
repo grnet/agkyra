@@ -14,14 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-CURPWD=$(pwd)
 cd "$(dirname "$0")"
 ROOTPATH=$(pwd)
 
 ID=agkyra-$(date +%s)
-BUILDDIR=$CURPWD/build/$ID
+BUILDDIR=$ROOTPATH/build/$ID
 echo building under $BUILDDIR
-DISTDIR=$CURPWD/dist
+DISTDIR=$ROOTPATH/dist
 TMPAGKYRA=$BUILDDIR/agkyra
 mkdir -p $TMPAGKYRA
 WHEELHOUSE=$TMPAGKYRA/wheelhouse
