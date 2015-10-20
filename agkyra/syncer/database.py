@@ -29,14 +29,13 @@ from agkyra.syncer import common, utils
 
 logger = logging.getLogger(__name__)
 
-logger.debug("sqlite3.version = %s" % sqlite3.version)
-logger.debug("sqlite3.sqlite_version = %s" % sqlite3.sqlite_version)
-
 thread_local_data = threading.local()
 
 
 class DB(object):
     def __init__(self, dbname, initialize=False):
+        logger.debug("sqlite3.version = %s" % sqlite3.version)
+        logger.debug("sqlite3.sqlite_version = %s" % sqlite3.sqlite_version)
         self.dbname = dbname
         self.db = sqlite3.connect(dbname)
         if initialize:
