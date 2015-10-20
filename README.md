@@ -51,10 +51,8 @@ the Python framework can be created with PyInstaller.
   work properly. You can build agkyra with a newer sqlite3
   library. Assuming you have installed one (eg with brew) under
   `/usr/local/opt/sqlite`, you need to build with environment variable
-  `DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib`. Then go to
-  `dist/agkyra.app/Contents/MacOS` and run `install_name_tool -change
-  '/usr/lib/libsqlite3.dylib' '@loader_path/libsqlite3.dylib'
-  _sqlite3.so`
+  `DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib`. Then run
+  `fix_sqlite_osx.sh`.
 
 3. Make an archive (zip, or gzipped tar) with `python bundle.py <platform>`.
 
