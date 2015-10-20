@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-CURPWD=$(pwd)
 cd "$(dirname "$0")"
 
 cd dist/agkyra.app/Contents/MacOS
