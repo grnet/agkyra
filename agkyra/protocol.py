@@ -726,10 +726,6 @@ def close_fds():
 
 # Adapted from https://code.activestate.com/recipes/278731/
 def daemonize(command):
-    # Default daemon parameters.
-    # File mode creation mask of the daemon.
-    UMASK = 0
-
     # Default working directory for the daemon.
     WORKDIR = "/"
 
@@ -754,11 +750,6 @@ def daemonize(command):
             # the filesystem at shutdown time by changing it to the root
             # directory.
             os.chdir(WORKDIR)
-
-            # We probably don't want the file mode creation mask inherited
-            # from the parent, so we give the child complete control over
-            # permissions.
-            os.umask(0)
 
             # Close all open file descriptors. This prevents the child from
             # keeping open any file descriptors inherited from the parent.
