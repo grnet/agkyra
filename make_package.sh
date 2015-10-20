@@ -37,7 +37,7 @@ cd $TMPAGKYRA
 rm -r $WHEELHOUSE
 
 cp $ROOTPATH/agkyra/scripts/agkyra $TMPAGKYRA/agkyra
-rm -r $DISTDIR/agkyra
-
+rm -rf $DISTDIR/agkyra
+mkdir -p $DISTDIR
 mv $TMPAGKYRA $DISTDIR
 echo built in $DISTDIR/agkyra
