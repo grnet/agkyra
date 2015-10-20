@@ -27,25 +27,24 @@ operating system, visit `https://www.python.org/downloads/`.
   Explorer. You will be prompted to accept the website's certificate. Do so
   and then retry step 2.
 
-### Packaging
+### Packaging for Windows and OSX
 
-A package for Windows, OSX and Linux, that fully contains dependencies and
-the Python framework can be created with PyInstaller.
+A package for Windows, OSX, that fully contains dependencies and the
+Python framework, can be created with PyInstaller.
 
-1. Run `pip install pyinstaller`.
-
-* Note: On Linux, we currently need the development version 3.0.dev2 of
-  PyInstaller.
-  Get the code from `https://github.com/pyinstaller/pyinstaller`. No
-  installation is needed: `pyinstaller.py` can directly run from the repo's
-  root directory.
+1. We currently need the development version 3.0.dev2 of PyInstaller. Get
+   the code from `https://github.com/pyinstaller/pyinstaller` and `git
+   checkout 3.0.dev2`. No installation is needed: `pyinstaller.py` can
+   directly run from the repo's root directory.
 
 * Note: On Windows, PyWin32 is a prerequisite. Visit
-  `http://sourceforge.net/projects/pywin32/files/` and pick the appropriate
-  version for your Python installation.
+  `http://sourceforge.net/projects/pywin32/files/` and pick the
+  appropriate version for your Python installation. If you run in a
+  virtualenv, you can install PyWin32 by running `easy_install` on the
+  downloaded setup executable.
 
 2. Run `pyinstaller agkyra.spec`. This will make the application under
-   `dist/agkyra` (and `dist/agkyra.app` under OSX).
+   `dist/agkyra` (and `dist/agkyra.app` on OSX).
 
 * The sqlite3 version 3.8.5 that comes with Mac OS X 10.10 does not
   work properly. You can build agkyra with a newer sqlite3
@@ -54,7 +53,20 @@ the Python framework can be created with PyInstaller.
   `DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib`. Then run
   `fix_sqlite_osx.sh`.
 
-3. Make an archive (zip, or gzipped tar) with `python bundle.py <platform>`.
+3. Make a zip archive with `python bundle.py <platform>`.
+
+### Packaging for Linux
+
+You can make a package for Linux that contains dependencies but not the
+standard Python libraries or the Python interpreter using a script based
+on `wheel`.
+
+1. Run `pip install wheel`.
+
+2. Run `make_package.sh`. This will make the application under
+   `dist/agkyra`.
+
+3. Make a gzipped tar archive with `python bundle.py <platform>`.
 
 ## Copyright and license
 
