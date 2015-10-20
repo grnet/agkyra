@@ -43,18 +43,20 @@ def main():
 
     os.chdir(DISTPATH)
     filename = 'agkyra-%s-%s' % (version, osarg)
-    if osarg.startswith("linux"):
-        arch_type = 'gztar'
-        base_dir = 'agkyra'
-    elif osarg.startswith('osx'):
-        arch_type = 'zip'
+    if osarg.startswith('osx'):
         base_dir = 'agkyra.app'
-    elif osarg.startswith('win'):
-        arch_type = 'zip'
-        base_dir = 'agkyra'
+        arch_name = "%s.zip" % filename
+        os.system("zip -ry %s %s" % (arch_name, base_dir))
+    else:
+        if osarg.startswith("linux"):
+            arch_type = 'gztar'
+            base_dir = 'agkyra'
+        elif osarg.startswith('win'):
+            arch_type = 'zip'
+            base_dir = 'agkyra'
 
-    arch_name = shutil.make_archive(
-        filename, arch_type, root_dir='.', base_dir=base_dir)
+        arch_name = shutil.make_archive(
+            filename, arch_type, root_dir='.', base_dir=base_dir)
     print "Wrote %s" % os.path.join(DISTPATH, arch_name)
 
 if __name__ == "__main__":
