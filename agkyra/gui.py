@@ -88,7 +88,11 @@ class GUI(WebSocketBaseClient):
             LOG.debug('Removed session file %s' % self.session_file)
         except Exception as e:
             LOG.warning('While cleaning GUI: %s' % e)
-        self.close()
+        try:
+            self.close()
+            LOG.debug('Closed GUI connection')
+        except Exception as e:
+            LOG.warning('While cleaning GUI: %s' % e)
 
     def handshake_ok(self):
         """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""

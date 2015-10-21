@@ -18,6 +18,8 @@ import os
 import sys
 import logging
 import argparse
+import errno
+import socket
 
 from agkyra import protocol, protocol_client, gui, config
 
@@ -229,12 +231,28 @@ class AgkyraCLI(cmd.Cmd):
     def client(self):
         """Return the helper client instace or None"""
         self._client = getattr(self, '_client', None)
-        if not self._client:
-            session = self.helper.load_active_session()
-            if session:
-                self._client = protocol_client.UIClient(session)
-                self._client.connect()
+        if self._client is None:
+            self._client = self.try_make_client()
         return self._client
+
+    def try_make_client(self):
+        session = self.helper.load_active_session()
+        if session:
+            client = protocol_client.UIClient(session)
+            try:
+                client.connect()
+                return client
+            except socket.error as e:
+                if e.errno == errno.ECONNREFUSED:
+                    sys.stderr.write(
+                        "It seems that a previous Agkyra execution hasn't "
+                        "exited properly.\nPlease, try again after a few "
+                        "seconds.\n")
+                    exit(1)
+                else:
+                    raise
+        else:
+            return None
 
     def do_help(self, line):
         """Help on agkyra GUI and CLI
@@ -484,6 +502,17 @@ class AgkyraCLI(cmd.Cmd):
                 sys.stderr.write('GUI interrupted by user, exiting\n')
                 sys.stderr.flush()
                 new_gui.clean_exit()
+            except socket.error as e:
+                if e.errno == errno.ECONNREFUSED:
+                    sys.stderr.write(
+                        "It seems that a previous Agkyra execution hasn't "
+                        "exited properly.\nPlease, try again after a few "
+                        "seconds.\n")
+                    new_gui.clean_exit()
+                    exit(1)
+                else:
+                    raise
+
             LOGGER.info('GUI is shutdown')
             if self.client:
                 self._shutdown('')
