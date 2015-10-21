@@ -108,7 +108,9 @@ socket.onopen = function() {
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
   log_debug('RECV: ' + r['action']);
+  dont_open_settings = [STATUS['DIRECTORY ERROR'], STATUS['CONTAINER ERROR']];
   if  (globals.authenticated && r.code >= 200
+  && (dont_open_settings.indexOf(r.code) == -1)
   && (r.code !== (globals.previous_status || 0))
   && (!globals.settings_are_open)) {
     globals.open_settings = true;
