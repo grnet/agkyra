@@ -531,7 +531,7 @@ class WebSocketProtocol(WebSocket):
                     break
             if local_ok and remote_ok:
                 syncer_.initiate_probe()
-                self.set_status(code=STATUS['SYNCING'])
+                self.set_status(code=STATUS['PAUSED'])
         except pithos_client.ClientError as ce:
             LOGGER.debug('backend init failed: %s %s' % (ce, ce.status))
             try:
@@ -636,7 +636,7 @@ class WebSocketProtocol(WebSocket):
                 self.init_sync()
                 status = self.get_status('code')
                 if self.syncer and self.settings['sync_on_start'] and \
-                   status == STATUS["SYNCING"]:
+                   status == STATUS["PAUSED"]:
                     self.start_sync()
         else:
             action = r.get('path', 'ui_id')
