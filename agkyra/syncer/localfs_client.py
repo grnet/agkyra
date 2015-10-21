@@ -709,6 +709,8 @@ class LocalfsFileClient(FileClient):
             if path.startswith(self.CACHEPATH):
                 return
             rel_path = os.path.relpath(path, start=self.ROOTPATH)
+            if rel_path == '.':
+                return
             objname = utils.to_standard_sep(rel_path)
             leaves = self.get_dir_contents(objname) if rec else None
             with self.probe_candidates.lock() as d:
@@ -729,10 +731,11 @@ class LocalfsFileClient(FileClient):
             def on_deleted(this, event):
                 path = event.src_path
                 logger.debug("Handling %s" % event)
-                if path == root_path:
+                if utils.normalize_local_suffix(path) == root_path:
                     self.settings.set_localfs_enabled(False)
                     msg = messaging.LocalfsSyncDisabled(logger=logger)
                     self.settings.messager.put(msg)
+                    return
                 handle_path(path, rec=utils.iswin())
 
             def on_modified(this, event):
