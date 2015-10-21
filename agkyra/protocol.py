@@ -505,7 +505,6 @@ class WebSocketProtocol(WebSocket):
             master = pithos_client.PithosFileClient(syncer_settings)
             slave = localfs_client.LocalfsFileClient(syncer_settings)
             syncer_ = syncer.FileSyncer(syncer_settings, master, slave)
-            self.syncer_settings = syncer_settings
             # Check if syncer is ready, by consuming messages
             local_ok, remote_ok = False, False
             for i in range(2):
@@ -533,8 +532,6 @@ class WebSocketProtocol(WebSocket):
             if local_ok and remote_ok:
                 syncer_.initiate_probe()
                 self.set_status(code=STATUS['SYNCING'])
-            else:
-                syncer_ = None
         except pithos_client.ClientError as ce:
             LOGGER.debug('backend init failed: %s %s' % (ce, ce.status))
             try:
@@ -605,13 +602,10 @@ class WebSocketProtocol(WebSocket):
     def force_sync(self):
         """Force syncing, assuming there is a directory or container problem"""
         self.set_status(code=STATUS['INITIALIZING'])
-        self.syncer_settings.purge_db_archives_and_enable()
-        self.init_sync()
-        if self.syncer:
-            self.syncer.start_decide()
-            self.set_status(code=STATUS['SYNCING'])
-        else:
-            self.set_status(code=STATUS['CRITICAL ERROR'])
+        self.syncer.settings.purge_db_archives_and_enable()
+        self.syncer.initiate_probe()
+        self.syncer.start_decide()
+        self.set_status(code=STATUS['SYNCING'])
 
     def send_json(self, msg):
         LOGGER.debug('send: %s' % msg)
@@ -640,7 +634,9 @@ class WebSocketProtocol(WebSocket):
             self._load_settings()
             if (not self.syncer) and self.can_sync():
                 self.init_sync()
-                if self.syncer and self.settings['sync_on_start']:
+                status = self.get_status('code')
+                if self.syncer and self.settings['sync_on_start'] and \
+                   status == STATUS["SYNCING"]:
                     self.start_sync()
         else:
             action = r.get('path', 'ui_id')
