@@ -262,7 +262,7 @@ class AgkyraCLI(cmd.Cmd):
         """Help on agkyra GUI and CLI
         agkyra              Run agkyra with GUI (equivalent to "agkyra gui")
         agkyra <cmd>        Run a command through agkyra CLI
-        agkyra --version    Print agkyra version ans exit
+        agkyra --version    Print agkyra version and exit
 
         To get help on agkyra commands:
             help <cmd>            for an individual command
