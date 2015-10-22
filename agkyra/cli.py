@@ -50,7 +50,8 @@ class ConfigCommands(object):
     """Commands for handling Agkyra config options"""
     cnf = config.AgkyraConfig()
 
-    def _validate_section(self, section, err_msg='"%s" is not a valid section'):
+    def _validate_section(
+            self, section, err_msg='"%s" is not a valid section'):
         """:raises ConfigError: if the section is invalid"""
         if not self.cnf.has_section(section):
             raise ConfigError(err_msg % section)
@@ -159,8 +160,6 @@ class ConfigCommands(object):
         return True
 
 
-from functools import wraps
-
 def handle_UI_error(func):
     def inner(*args, **kw):
         try:
@@ -198,6 +197,11 @@ class AgkyraCLI(cmd.Cmd):
             action='store_true', help='set logging level to "debug"')
         parser.add_argument('cmd', nargs="*")
 
+        if not any([a for a in sys.argv[1:] if not a.startswith('-')]):
+            parser.add_argument(
+                '--version',
+                action='store_true', help='Output agkyra version and exit')
+
         for terms in (['help', ], ['config', 'delete']):
             if not set(terms).difference(sys.argv):
                 {
@@ -206,7 +210,7 @@ class AgkyraCLI(cmd.Cmd):
                         action='store_true', help='List all commands'),
                     'config_delete': lambda: parser.add_argument(
                         '--yes', '-y',
-                        action='store_true', help='Yes to all questions')
+                        action='store_true', help='Yes to all questions'),
                 }['_'.join(terms)]()
 
         return parser.parse_args()
@@ -256,8 +260,9 @@ class AgkyraCLI(cmd.Cmd):
 
     def do_help(self, line):
         """Help on agkyra GUI and CLI
-        agkyra         Run agkyra with GUI (equivalent to "agkyra gui")
-        agkyra <cmd>   Run a command through agkyra CLI
+        agkyra              Run agkyra with GUI (equivalent to "agkyra gui")
+        agkyra <cmd>        Run a command through agkyra CLI
+        agkyra --version    Print agkyra version ans exit
 
         To get help on agkyra commands:
             help <cmd>            for an individual command
@@ -277,9 +282,12 @@ class AgkyraCLI(cmd.Cmd):
             cmd.Cmd.do_help(self, line)
 
     def emptyline(self):
-        if self.must_help(''):
-            return
-        return self.do_gui('')
+        if self.args.version:
+            from agkyra import __version__
+            sys.stdout.write('%s\n' % __version__)
+            sys.stdout.flush()
+        elif not self.must_help(''):
+            return self.do_gui('')
 
     def default(self, line):
         self.do_help(line)
