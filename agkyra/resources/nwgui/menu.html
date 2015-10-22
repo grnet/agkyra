@@ -118,7 +118,7 @@ var settings_menu = new gui.MenuItem({
     $.each(globals.settings, function(key, val) {old_settings[key]=val;});
     windows['settings'] = gui.Window.open("settings.html", {
       toolbar: false, focus: true,
-      width: 860, height: 860
+      width: 640, height: 800
     });
     windows['settings'].on('closed', function() {
     log_debug('Settings windows is closed');
@@ -149,7 +149,7 @@ var about_menu = new gui.MenuItem({
     windows['about'] = gui.Window.open(
         "about_" + globals.settings.language + ".html", {
       toolbar: false, resizable: false, focus: true,
-      width: 860, height: 620
+      width: 640, height: 800
     });
   }
 });
