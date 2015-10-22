@@ -18,6 +18,7 @@ import sys
 import threading
 import logging
 import ctypes
+import stat
 
 from functools import wraps
 
@@ -122,7 +123,7 @@ class SyncerSettings():
         default_settings_path = join_path(home_dir, GLOBAL_SETTINGS_NAME)
         self.settings_path = utils.to_unicode(
             kwargs.get("agkyra_path", default_settings_path))
-        self.create_dir(self.settings_path)
+        self.create_dir(self.settings_path, mode=stat.S_IRWXU)
 
         self.instances_path = join_path(self.settings_path, INSTANCES_NAME)
         self.create_dir(self.instances_path)
@@ -233,13 +234,13 @@ class SyncerSettings():
         logger.info("Filesystem is case-%ssensitive" % case)
         self.case_insensitive = case_insensitive
 
-    def create_dir(self, path):
+    def create_dir(self, path, mode=0777):
         if os.path.exists(path):
             if os.path.isdir(path):
                 return
             raise Exception("Cannot create dir '%s'; file exists" % path)
         logger.warning("Creating dir: '%s'" % path)
-        os.makedirs(path)
+        os.makedirs(path, mode=mode)
         return path
 
     @ssl_fall_back

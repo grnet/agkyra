@@ -28,6 +28,7 @@ The operations of a sync are similar to the operations of a cloud, as they are
 implemented in kamaki.cli.config
 """
 import os
+import stat
 from re import match
 from ConfigParser import Error
 from kamaki.cli import config
@@ -48,7 +49,7 @@ if os.path.exists(AGKYRA_DIR):
     if not os.path.isdir(AGKYRA_DIR):
         raise Exception("Cannot create dir '%s'; file exists" % AGKYRA_DIR)
 else:
-    os.makedirs(AGKYRA_DIR)
+    os.makedirs(AGKYRA_DIR, mode=stat.S_IRWXU)
 
 CONFIG_PATH = os.path.join(AGKYRA_DIR, 'config.rc')
 config.CONFIG_PATH = CONFIG_PATH
