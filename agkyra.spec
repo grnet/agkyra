@@ -41,6 +41,7 @@ a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', '
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'nwgui'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'ui_data'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'cacert.pem'))
+a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'defaults.conf'))
 
 pyz = PYZ(a.pure)
 exe = EXE(pyz,

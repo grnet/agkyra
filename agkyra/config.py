@@ -28,6 +28,8 @@ The operations of a sync are similar to the operations of a cloud, as they are
 implemented in kamaki.cli.config
 """
 import os
+import sys
+import imp
 import stat
 from re import match
 from ConfigParser import Error
@@ -57,30 +59,24 @@ config.CONFIG_PATH = CONFIG_PATH
 config.CONFIG_ENV = ''
 
 SYNC_PREFIX = 'sync'
+
+if getattr(sys, 'frozen', False):
+    # we are running in a |PyInstaller| bundle
+    BASEDIR = sys._MEIPASS
+else:
+    # we are running in a normal Python environment
+    BASEDIR = os.path.dirname(os.path.realpath(__file__))
+
+RESOURCES = os.path.join(BASEDIR, 'resources')
+defaults_file = os.path.join(RESOURCES, 'defaults.conf')
+imp.load_source('default_settings', defaults_file)
+from default_settings import DEFAULT_GLOBAL, DEFAULT_CLOUDS, DEFAULT_SYNCS
+DEFAULT_GLOBAL['agkyra_dir'] = AGKYRA_DIR
+
 config.DEFAULTS = {
-    'global': {
-        'agkyra_dir': AGKYRA_DIR,
-        'sync_on_start': 'on',
-        'language': 'en'
-    },
-    CLOUD_PREFIX: {
-        # <cloud>: {
-        #     'url': '',
-        #     'token': '',
-        #     'ignore_ssl': True or False overwrites ca_certs,
-        #     'ca_certs': /path/to/ca/certificate/buddle
-        #     whatever else may be useful in this context
-        # },
-        # ... more clouds
-    },
-    SYNC_PREFIX: {
-        # <sync>: {
-        #     'cloud': '',
-        #     'container': '',
-        #     'directory': ''
-        # },
-        # ... more syncs
-    },
+    'global': DEFAULT_GLOBAL,
+    CLOUD_PREFIX: DEFAULT_CLOUDS,
+    SYNC_PREFIX: DEFAULT_SYNCS,
 }
 
 
