@@ -54,6 +54,10 @@ else:
     os.makedirs(AGKYRA_DIR, mode=stat.S_IRWXU)
 
 CONFIG_PATH = os.path.join(AGKYRA_DIR, 'config.rc')
+if not os.path.exists(CONFIG_PATH):
+    open(CONFIG_PATH, mode="a+").close()
+    os.chmod(CONFIG_PATH, stat.S_IRUSR | stat.S_IWUSR)
+
 config.CONFIG_PATH = CONFIG_PATH
 # neutralize kamaki CONFIG_ENV for this session
 config.CONFIG_ENV = ''
