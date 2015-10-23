@@ -84,6 +84,11 @@ class FileSyncer(object):
                 # when attempting to stop a notifier after the watched
                 # directory has been deleted
                 logger.warning("Ignored KeyError: %s" % e)
+            except TypeError as e:
+                # bypass watchdog osx bug that causes a TypeError
+                # when attempting to stop a notifier after the watched
+                # directory has been deleted
+                logger.warning("Ignored TypeError: %s" % e)
         for notifier in self.notifiers.values():
             notifier.join()
 
