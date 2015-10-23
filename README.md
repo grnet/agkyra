@@ -29,7 +29,7 @@ operating system, visit `https://www.python.org/downloads/`.
 
 ### Packaging for Windows and OSX
 
-A package for Windows, OSX, that fully contains dependencies and the
+A package for Windows, that fully contains dependencies and the
 Python framework, can be created with PyInstaller.
 
 1. We currently need the development version 3.0.dev2 of PyInstaller. Get
@@ -44,29 +44,33 @@ Python framework, can be created with PyInstaller.
   downloaded setup executable.
 
 2. Run `pyinstaller agkyra.spec`. This will make the application under
-   `dist/agkyra` (and `dist/agkyra.app` on OSX).
-
-* The sqlite3 version 3.8.5 that comes with Mac OS X 10.10 does not
-  work properly. You can build agkyra with a newer sqlite3
-  library. Assuming you have installed one (eg with brew) under
-  `/usr/local/opt/sqlite`, you need to build with environment variable
-  `DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib`. Then run
-  `fix_sqlite_osx.sh`.
+   `dist/agkyra`.
 
 3. Make a zip archive with `python bundle.py <platform>`.
 
-### Packaging for Linux
+### Packaging for Linux and OSX
 
-You can make a package for Linux that contains dependencies but not the
-standard Python libraries or the Python interpreter using a script based
-on `wheel`.
+You can make a package for Linux and OSX, that contains dependencies
+but not the standard Python libraries or the Python interpreter, using
+a script based on `wheel`.
 
 1. Run `pip install wheel`.
 
 2. Run `make_package.sh`. This will make the application under
-   `dist/agkyra`.
+   `dist/agkyra` on Linux and `dist/agkyra.app` on OSX.
 
-3. Make a gzipped tar archive with `python bundle.py <platform>`.
+* The sqlite3 version 3.8.5 that comes with Mac OS X 10.10 does not
+  work properly. You can build agkyra with a newer sqlite3
+  library. Assuming you have installed one (eg with brew) under
+  `/usr/local/opt/sqlite`, run `fix_sqlite_osx.sh
+  /usr/local/opt/sqlite/lib/libsqlite3.dylib`.
+
+3. On OSX, we can make an app with `platypus`. Get the tool from
+`http://www.sveinbjorn.org/platypus` and install its command-line
+version, too. Then run `mk_osx_app.sh`.
+
+4. Make an archive (gzipped tar on Linux, zip on OSX) with `python
+bundle.py <platform>`.
 
 ## Copyright and license
 
