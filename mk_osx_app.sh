@@ -15,16 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 cd "$(dirname "$0")"
-if [ -z "$1" ]
-then
-    echo "Usage: $0 <path_to_libsqlite3.dylib>"
-    exit
-fi
+ROOTPATH=$(pwd)
+DIST=$ROOTPATH/dist
+LOGO=$DIST/agkyra/lib/agkyra/resources/nwgui/static/images/logo.icns
+IDENT=org.synnefo.agkyra
+VERSION=$(python -c "import agkyra; print agkyra.__version__")
 
-DIST=dist
-LIBDIR=$DIST/agkyra/lib
-cp $(python -c "import _sqlite3; print _sqlite3.__file__") $LIBDIR
-cp $1 $LIBDIR
-
-cd $LIBDIR
-install_name_tool -change '/usr/lib/libsqlite3.dylib' '@loader_path/libsqlite3.dylib' _sqlite3.so
+platypus -a Agkyra -u 'GRNET S.A.' -o None -i $LOGO -Q $LOGO -p /usr/bin/env -V $VERSION -f $DIST/agkyra/lib -I $IDENT -B -R $DIST/agkyra/agkyra $DIST/Agkyra.app

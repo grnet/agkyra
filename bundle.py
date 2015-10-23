@@ -44,7 +44,7 @@ def main():
     os.chdir(DISTPATH)
     filename = 'agkyra-%s-%s' % (version, osarg)
     if osarg.startswith('osx'):
-        base_dir = 'agkyra.app'
+        base_dir = 'Agkyra.app'
         arch_name = "%s.zip" % filename
         os.system("zip -ry %s %s" % (arch_name, base_dir))
     else:
