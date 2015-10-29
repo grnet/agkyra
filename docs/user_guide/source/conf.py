@@ -66,7 +66,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Agkyra'
-copyright = u'2015, Synnefo development team'
+copyright = u'2015, GRNET S.A.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
