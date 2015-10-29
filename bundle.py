@@ -39,10 +39,11 @@ def main():
         exit(1)
 
     osarg = sys.argv[1]
+    descr = "-".join(sys.argv[1:])
     version = agkyra.__version__
 
     os.chdir(DISTPATH)
-    filename = 'agkyra-%s-%s' % (version, osarg)
+    filename = 'agkyra-%s-%s' % (version, descr)
     if osarg.startswith('osx'):
         base_dir = 'Agkyra.app'
         arch_name = "%s.zip" % filename
