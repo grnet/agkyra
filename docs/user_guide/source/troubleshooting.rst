@@ -49,4 +49,4 @@ it, e.g.:
 I still have problems
 ---------------------
 
-Please, contact us at TODO
+Please, contact us at `agkyra@googlegroups.com`.
