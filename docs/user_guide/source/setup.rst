@@ -4,60 +4,22 @@ Installation
 ============
 
 There are packages to easily install and run the application in all major
-platforms. There is also the option for downloading the source code and
-installing everything manually.
+platforms. You can download them from the `Agkyra home page`_.
 
 Linux
 -----
 
-TODO
+Untar the agkyra package and run the executable `agkyra`.
 
 Windows
 -------
 
-TODO
+Unzip the agkyra package and double-click the executable `agkyra.exe`.
 
 Mac OS X
 --------
 
-TODO
-
-Install from source
--------------------
-
-Essential Requirements:
-
-* `Python 2.7 <https://www.python.org/downloads/>`_
-* setuptools_
-
-GUI requirements:
-
-* nwjs_
-
-.. note:: If the nwjs_ installation is skipped, the GUI won't function, but the
-    CLI will
-
-When the essential requirements are installed, use setuptools to download and
-install the agkyra package. It contains a back-end, a UI helper, a CLI and a
-GUI.
-
-.. code-block:: console
-
-    $ pip install agkyra
-
-.. hint:: if `pip install` does not work in windows, try `easy_setup`
-
-To install the GUI, download the latest stable nwjs_ build and move it to the
-agkyra source directory.
-
-.. code-block:: console
-
-    $ wget http://dl.nwjs.io/v0.12.3/nwjs-v0.12.3-YOUR_OS-x32OR64.tar.gz
-    $ tar xvfz nwjs-v0.12.3-YOUR_OS-x32OR64.tar.gz
-    $ mv nwjs `$AGKYRA_SOURCE/agkyra/nwjs
-
-TODO: Different names between operating systems
-
+Unzip the agkyra package and double-click the app `Agkyra.app`.
 
 .. _setup:
 
@@ -145,6 +107,6 @@ Here is a typical configuration:
 Users can create as many clouds and syncs as they like, but only the
 `default_sync` cloud is running each time `agkyra` is launched.
 
-.. _Python: http://www.python.org
-.. _setuptools: https://pypi.python.org/pypi/setuptools/
-.. _nwjs: http://nwjs.io/
+.. External links
+
+.. _Agkyra home page: https://www.synnefo.org/agkyra/
