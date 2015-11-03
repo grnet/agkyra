@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
 import threading
 import logging
 from collections import defaultdict
@@ -496,11 +495,9 @@ class FileSyncer(object):
         self.probe_archive(self.SLAVE, forced=forced)
 
     def _poll_decide(self, interval=3):
-        class DecideThread(utils.StoppableThread):
-            def run_body(this):
-                self.decide_all_archives()
-                time.sleep(interval)
-        return utils.start_daemon(DecideThread)
+        thread = utils.StoppableThread(interval, self.decide_all_archives)
+        thread.start()
+        return thread
 
     def check_decisions(self):
         deciding = self.list_deciding()

@@ -21,6 +21,7 @@ import watchdog.utils
 import sys
 import logging
 import platform
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -113,21 +114,29 @@ BaseStoppableThread = watchdog.utils.BaseThread
 
 
 class StoppableThread(BaseStoppableThread):
-    def run_body(self):
+    period = 0
+    step = 0
+
+    def run_body(self, period):
         raise NotImplementedError()
 
     def run(self):
+        remaining = 0
         while True:
             if not self.should_keep_running():
                 return
-            self.run_body()
+            if remaining <= 0:
+                remaining = self.period
+                self.run_body()
+            time.sleep(self.step)
+            remaining -= self.step
 
-
-def start_daemon(threadClass):
-    thread = threadClass()
-    thread.daemon = True
-    thread.start()
-    return thread
+    def __init__(self, period, target=None, step=0.1):
+        BaseStoppableThread.__init__(self)
+        self.period = period
+        self.step = step
+        if target:
+            self.run_body = target
 
 
 class ThreadSafeDict(object):

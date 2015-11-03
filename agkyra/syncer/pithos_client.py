@@ -334,16 +334,17 @@ class PithosFileClient(FileClient):
         return dict((name, {"ident": None, "info": {}})
                     for name in newly_deleted_names)
 
+    def run_notifier(self):
+        candidates = self.get_pithos_candidates(
+            last_modified=self.last_modification)
+        with self.probe_candidates.lock() as d:
+            d.update(candidates)
+
     def notifier(self):
         interval = self.settings.pithos_list_interval
-        class PollPithosThread(utils.StoppableThread):
-            def run_body(this):
-                candidates = self.get_pithos_candidates(
-                    last_modified=self.last_modification)
-                with self.probe_candidates.lock() as d:
-                    d.update(candidates)
-                time.sleep(interval)
-        return utils.start_daemon(PollPithosThread)
+        thread = utils.StoppableThread(interval, self.run_notifier)
+        thread.start()
+        return thread
 
     def get_object(self, objname):
         try:
