@@ -366,6 +366,7 @@ class FileSyncer(object):
                                      source_state.objname)
             assert beat["thread"] is None
             beat["thread"] = thread
+        thread.daemon = True
         thread.start()
         self.sync_threads.append(thread)
 
