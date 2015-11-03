@@ -98,6 +98,7 @@ class AgkyraTest(unittest.TestCase):
             auth_token=TOKEN,
             container=cls.ID,
             local_root_path=cls.LOCAL_ROOT_PATH,
+            action_max_wait=5,
             ignore_ssl=True)
 
         cls.master = PithosFileClient(cls.settings)
@@ -329,6 +330,11 @@ class AgkyraTest(unittest.TestCase):
         self.assert_message(messaging.CollisionMessage)
         self.assert_message(messaging.SyncErrorMessage)
 
+        # this will fail because of recent failed sync
+        self.s.decide_file_sync(fil)
+        self.assert_message(messaging.HeartbeatSkipDecideMessage)
+        time.sleep(self.settings.action_max_wait)
+
         # this will fail because serial is marked as failed
         self.s.decide_file_sync(fil)
         self.assert_message(messaging.FailedSyncIgnoreDecisionMessage)
@@ -463,6 +469,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
+        time.sleep(self.settings.action_max_wait)
 
         # but if we fist sync the dir, it's ok
         self.s.decide_file_sync(fil)
@@ -595,6 +602,7 @@ class AgkyraTest(unittest.TestCase):
         self.s.launch_syncs()
         self.assert_message(messaging.SyncMessage)
         self.assert_message(messaging.SyncErrorMessage)
+        time.sleep(self.settings.action_max_wait)
 
         # but this is ok
         self.s.decide_file_sync(innerd)

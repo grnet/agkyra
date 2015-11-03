@@ -34,21 +34,11 @@ class FileClient(object):
         raise NotImplementedError
 
     def start_pulling_file(self, source_handle, target_state, sync_state,
-                           callback=None, failure_callback=None):
-        try:
-            synced_source_state, synced_target_state = \
-                self._start(source_handle, target_state, sync_state)
-            if callback is not None:
-                callback(synced_source_state, synced_target_state)
-        except common.SyncError as e:
-            hard = isinstance(e, common.HardSyncError)
-            if failure_callback is not None:
-                failure_callback(source_handle.source_state, hard=hard)
-            msg = messaging.SyncErrorMessage(
-                objname=target_state.objname,
-                serial=source_handle.source_state.serial,
-                exception=e, logger=logger)
-            self.settings.messager.put(msg)
+                           callback=None):
+        synced_source_state, synced_target_state = \
+            self._start(source_handle, target_state, sync_state)
+        if callback is not None:
+            callback(synced_source_state, synced_target_state)
 
     def _start(self, source_handle, target_state, sync_state):
         try:

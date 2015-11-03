@@ -28,6 +28,31 @@ from agkyra.syncer import messaging, utils
 logger = logging.getLogger(__name__)
 
 
+class HandleSyncErrors(object):
+    def __init__(self, state, messager, callback=None):
+        self.state = state
+        self.callback = callback
+        self.messager = messager
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exctype, value, traceback):
+        if value is None:
+            return
+        if not isinstance(value, common.SyncError):
+            return False  # re-raise
+        hard = isinstance(value, common.HardSyncError)
+        if self.callback is not None:
+            self.callback(self.state, hard=hard)
+        msg = messaging.SyncErrorMessage(
+            objname=self.state.objname,
+            serial=self.state.serial,
+            exception=value, logger=logger)
+        self.messager.put(msg)
+        return True
+
+
 class FileSyncer(object):
 
     dbname = None
@@ -274,6 +299,13 @@ class FileSyncer(object):
                             objname=objname, heartbeat=beat, logger=logger)
                         self.messager.put(msg)
                     return None
+                if utils.younger_than(beat["ident"],
+                                      self.settings.action_max_wait):
+                    if not dry_run:
+                        msg = messaging.HeartbeatSkipDecideMessage(
+                            objname=objname, heartbeat=beat, logger=logger)
+                        self.messager.put(msg)
+                    return None
                 logger.warning("Ignoring previous run: %s %s" %
                                (objname, beat))
 
@@ -372,16 +404,13 @@ class FileSyncer(object):
     def _sync_file(self, source_state, target_state, sync_state):
         clients = self.clients
         source_client = clients[source_state.archive]
-        try:
-            source_handle = source_client.stage_file(source_state)
-        except common.SyncError as e:
-            logger.warning(e)
-            return
         target_client = clients[target_state.archive]
-        target_client.start_pulling_file(
-            source_handle, target_state, sync_state,
-            callback=self.ack_file_sync,
-            failure_callback=self.mark_as_failed)
+        with HandleSyncErrors(
+                source_state, self.messager, self.mark_as_failed):
+            source_handle = source_client.stage_file(source_state)
+            target_client.start_pulling_file(
+                source_handle, target_state, sync_state,
+                callback=self.ack_file_sync)
 
     def mark_as_failed(self, state, hard=False):
         serial = state.serial
@@ -392,7 +421,6 @@ class FileSyncer(object):
                 (serial, state.archive, objname))
             with self.failed_serials.lock() as d:
                 d[(serial, objname)] = state
-        self.clean_heartbeat([objname])
 
     def update_state(self, db, old_state, new_state):
         db.put_state(new_state)

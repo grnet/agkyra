@@ -98,6 +98,15 @@ class HeartbeatReplayDecideMessage(Message):
                          % self.heartbeat["ident"])
 
 
+class HeartbeatSkipDecideMessage(Message):
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
+        self.objname = kwargs["objname"]
+        self.heartbeat = kwargs["heartbeat"]
+        self.logger.debug("Skipping decide due to recent failure: %s" %
+                          self.objname)
+
+
 class FailedSyncIgnoreDecisionMessage(Message):
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
