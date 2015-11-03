@@ -304,15 +304,15 @@ class WebSocketProtocol(WebSocket):
         with database.TransactedConnection(self.session_db) as db:
             db.unregister_heartbeat(self.ui_id)
 
-    def shutdown_syncer(self, syncer_key=0):
+    def shutdown_syncer(self, syncer_key=0, timeout=None):
         """Shutdown the syncer backend object"""
         LOGGER.debug('Shutdown syncer')
         with SYNCERS.lock() as d:
             syncer = d.pop(syncer_key, None)
             if syncer and self.can_sync():
-                syncer.stop_all_daemons()
+                remaining = syncer.stop_all_daemons(timeout=timeout)
                 LOGGER.debug('Wait open syncs to complete')
-                syncer.wait_sync_threads()
+                syncer.wait_sync_threads(timeout=remaining)
 
     def _get_default_sync(self):
         """Get global.default_sync or pick the first sync as default
@@ -619,7 +619,7 @@ class WebSocketProtocol(WebSocket):
             if action == 'shutdown':
                 # Clean db to cause syncer backend to shut down
                 self.set_status(code=STATUS['SHUTTING DOWN'])
-                self.shutdown_syncer()
+                self.shutdown_syncer(timeout=5)
                 self.clean_db()
                 return
             {

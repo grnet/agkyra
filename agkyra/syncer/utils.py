@@ -139,6 +139,22 @@ class StoppableThread(BaseStoppableThread):
             self.run_body = target
 
 
+def _remaining(timeout, total_elapsed):
+    return max(0, timeout - total_elapsed) if timeout is not None else None
+
+
+def wait_joins(threads, timeout=None):
+    total_elapsed = 0
+    for thread in threads:
+        tbefore = datetime.datetime.now()
+        remaining_timeout = _remaining(timeout, total_elapsed)
+        thread.join(timeout=remaining_timeout)
+        tafter = datetime.datetime.now()
+        elapsed = (tafter - tbefore).total_seconds()
+        total_elapsed += elapsed
+    return _remaining(timeout, total_elapsed)
+
+
 class ThreadSafeDict(object):
     def __init__(self, *args, **kwargs):
         self._DICT = {}

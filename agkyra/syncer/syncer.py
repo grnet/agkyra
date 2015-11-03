@@ -74,7 +74,7 @@ class FileSyncer(object):
             else:
                 logger.info("Notifier %s already up" % signature)
 
-    def stop_notifiers(self):
+    def stop_notifiers(self, timeout=None):
         for notifier in self.notifiers.values():
             try:
                 notifier.stop()
@@ -88,25 +88,24 @@ class FileSyncer(object):
                 # when attempting to stop a notifier after the watched
                 # directory has been deleted
                 logger.warning("Ignored TypeError: %s" % e)
-        for notifier in self.notifiers.values():
-            notifier.join()
+        return utils.wait_joins(self.notifiers.values(), timeout)
 
     def start_decide(self):
         if not self.decide_active:
             self.decide_thread = self._poll_decide()
 
-    def stop_decide(self):
+    def stop_decide(self, timeout=None):
         if self.decide_active:
             self.decide_thread.stop()
-            self.decide_thread.join()
+            return utils.wait_joins([self.decide_thread], timeout)
+        return timeout
 
-    def stop_all_daemons(self):
-        self.stop_decide()
-        self.stop_notifiers()
+    def stop_all_daemons(self, timeout=None):
+        remaining = self.stop_decide(timeout=timeout)
+        return self.stop_notifiers(timeout=remaining)
 
-    def wait_sync_threads(self):
-        for thread in self.sync_threads:
-            thread.join()
+    def wait_sync_threads(self, timeout=None):
+        return utils.wait_joins(self.sync_threads, timeout=timeout)
 
     def get_next_message(self, block=False):
         return self.messager.get(block=block)
