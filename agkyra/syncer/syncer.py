@@ -306,14 +306,14 @@ class FileSyncer(object):
                             objname=objname, heartbeat=beat, logger=logger)
                         self.messager.put(msg)
                     return None
-                logger.warning("Ignoring previous run: %s %s" %
-                               (objname, beat))
+                logger.debug("Ignoring previous run: %s %s" %
+                             (objname, beat))
 
         if decision_serial != sync_serial:
             with self.failed_serials.lock() as d:
                 failed_sync = d.get((decision_serial, objname))
             if failed_sync is None:
-                logger.warning(
+                logger.debug(
                     "Already decided: '%s', decision: %s, sync: %s" %
                     (objname, decision_serial, sync_serial))
                 if decision_serial == master_serial:

@@ -65,8 +65,8 @@ class AlreadyProbedMessage(Message):
         self.archive = kwargs["archive"]
         self.objname = kwargs["objname"]
         self.serial = kwargs["serial"]
-        self.logger.warning("Serial mismatch in probing archive: %s, "
-                            "object: '%s'" % (self.archive, self.objname))
+        self.logger.debug("Already probed archive: %s, "
+                          "object: '%s'" % (self.archive, self.objname))
 
 
 class HeartbeatNoProbeMessage(Message):
@@ -75,9 +75,9 @@ class HeartbeatNoProbeMessage(Message):
         self.archive = kwargs["archive"]
         self.objname = kwargs["objname"]
         self.heartbeat = kwargs["heartbeat"]
-        self.logger.warning("Object '%s' is being synced; "
-                            "Probe in archive %s aborted." %
-                            (self.objname, self.archive))
+        self.logger.debug("Object '%s' is being synced; "
+                          "Probe in archive %s aborted." %
+                          (self.objname, self.archive))
 
 
 class HeartbeatNoDecideMessage(Message):
