@@ -42,7 +42,10 @@ LOCAL_OTHER = 5
 
 DEFAULT_MTIME_PRECISION = 1e-4
 
-exclude_regexes = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
+exclude_temps = ["\.#", "\.~", "~\$", "~.*\.tmp$", "\..*\.swp$"]
+exclude_files = ["desktop.ini$", "thumbs.db$", ".ds_store$", "icon\r$",
+                 ".dropbox$", ".dropbox.attr$"]
+exclude_regexes = exclude_temps + exclude_files
 exclude_pattern = re.compile('|'.join(exclude_regexes))
 
 
@@ -665,7 +668,7 @@ class LocalfsFileClient(FileClient):
         if init_part in [self.settings.cache_name]:
             return True
         final_part = parts[-1]
-        return exclude_pattern.match(final_part)
+        return exclude_pattern.match(final_part.lower())
 
     def probe_file(self, objname, old_state, ref_state, ident):
         with self.probe_candidates.lock() as d:
