@@ -126,6 +126,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             }
 
             function check_cloud_url() {
+
                 var url = $('#cloud-url').val().replace(/\/+$/, '');
                 if(!url) {
                     $('#cloud-error small').text(errors.cloud_url_empty);
@@ -206,19 +207,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 fs.readFileSync(path.join('..', 'ui_data/common_' + cur_lang + '.json')));
                 var SETTINGS = COMMON.SETTINGS;
                 document.title = SETTINGS.TITLE;
-                document.getElementById('title').innerHTML = SETTINGS.TITLE;
-                document.getElementById('appearance_label').innerHTML = SETTINGS.APPEARANCE;
-                document.getElementById('language_label').innerHTML = SETTINGS.LANGUAGE;
-                document.getElementById('start_sync_label').innerHTML = SETTINGS.SYNCONSTART;
-                document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD;
-                document.getElementById('url_label').innerHTML = SETTINGS.URL;
-                document.getElementById('token_label').innerHTML = SETTINGS.TOKEN;
-                document.getElementById('get_creds').innerHTML = SETTINGS.RETRIEVE;
-                document.getElementById('sync_label').innerHTML = SETTINGS.SYNC;
-                document.getElementById('container_label').innerHTML = SETTINGS.CONTAINER;
-                document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY;
-                document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE;
+                errors = {
+                    cloud_url_empty: SETTINGS["CLOUD URL IS EMPTY"] || 'Provide a Cloud Authentication URL',
+                    cloud_inaccessible: SETTINGS["CLOUD URL UNEXPECTED RESPONSE"] || 'Cloud URL did not respond as expected',
+                    token_empty: SETTINGS["TOKEN IS EMPTY"] || 'Provide a user token (Login to retrieve token)',
+                    token_error: SETTINGS["AUTHENTICATION FAILED"] || 'Failed to authenticate',
+                    token_cloudless: SETTINGS["TOKEN WITHOUT CLOUD"] || 'No cloud to try this token against',
+                    container_empty: SETTINGS["PROVIDE CONTAINER"] || 'Provide the name of the remote container',
+                    dir_not_chosen: SETTINGS["SELECT DIRECTORY"] || 'Select the local directory'
+                }
+                document.getElementById('title').innerHTML = SETTINGS.TITLE || "Settings";
+                document.getElementById('appearance_label').innerHTML = SETTINGS.GENERAL || "General";
+                document.getElementById('language_label').innerHTML = SETTINGS.LANGUAGE || "Language";
+                document.getElementById('start_sync_label').innerHTML = SETTINGS.SYNCONSTART || "Sync on Start";
+                document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD || "Cloud";
+                document.getElementById('url_label').innerHTML = SETTINGS.URL || "URL";
+                document.getElementById('token_label').innerHTML = SETTINGS.TOKEN || "Token";
+                document.getElementById('get_creds').innerHTML = SETTINGS.RETRIEVE || "Retrieve token";
+                document.getElementById('sync_label').innerHTML = SETTINGS.SYNC || "Sync pair";
+                document.getElementById('container_label').innerHTML = SETTINGS.CONTAINER || "Container";
+                document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY || "Directory";
+                document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE || "Select directory";
                 document.getElementById('sync_button').innerHTML = SETTINGS.SAVE;
+
+                var cloud_placeholder = SETTINGS["CLOUD URL PLACEHOLDER"] || "Authentication URL";
+                $('#cloud-url').attr('placeholder', cloud_placeholder);
+                var token_placeholder = SETTINGS["TOKEN PLACEHOLDER"] || "User Token";
+                $('#token').attr('placeholder', token_placeholder);
+                var container_placeholder = SETTINGS["CONTAINER PLACEHOLDER"] || "Container";
+                $('#container').attr('placeholder', container_placeholder)
 
                 var lang_code = '';
                 for (key in LANG) {
