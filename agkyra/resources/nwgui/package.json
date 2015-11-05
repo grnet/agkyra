@@ -6,7 +6,8 @@
   "window": {
     "show": false,
     "toolbar": false,
-    "frame": false
+    "frame": false,
+    "focus": true
   },
   "maintainers": [{
     "name": "Synnefo Development Team",
