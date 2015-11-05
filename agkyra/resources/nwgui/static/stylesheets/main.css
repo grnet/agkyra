@@ -21,23 +21,28 @@ body {
 }
 
 .wrapper {
-    padding: 30px 20px;
-    max-width: 760px;
-    min-width: 520px;
+    padding: 10px 15px 10px 15px;
+    max-width: 640px;
+    min-width: 220px;
     margin: 0 auto;
     position: relative;
+}
+
+.wrapper p {
+    font-size: 0.7rem;
 }
 
 header {
     text-align: center;
 }
 
-h1 {
-    font-size: 20px;
-}
+header h1 {font-size: 18px; font-weight: 680; }
+
+header h2 { font-size: 16px; font-weight: 640;}
+header h2 img { height: 16px;}
 
 .logo {
-    height: 64px;
+    height: 32px;
 }
 
 .licence {
@@ -50,7 +55,7 @@ h1 {
 
 .disclaimer {
     margin: 0;
-    font-size: 13px;
+    font-size: 11px;
     padding-bottom: 0.5em;
     letter-spacing: 1px;
 }
@@ -82,6 +87,7 @@ h1 {
 }
 
 .small-3 { width: 25%; }
+.small-6 { width: 50%; }
 .small-9 { width: 75%; }
 
 .footer {
@@ -117,10 +123,10 @@ form small                  { display: none; }
     display: block;
     font-size: 0.75rem;
     font-style: italic;
-    font-weight: normal;
-    margin-bottom: 1rem;
-    margin-top: -1rem;
-    padding: 3px 10px;
+    font-weight: 300;
+    margin-bottom: 0.75rem;
+    margin-top: -0.5rem;
+    padding: 0.35rem 0.2rem 0.35rem 0.2rem;
     background: #f04124;
     color: #fff;
 }
@@ -135,24 +141,20 @@ button, .button, .pickdir {
     font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
     font-weight: normal;
     line-height: normal;
-    margin: 0 13px;
+    margin-right: 1rem;
     position: relative;
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    padding: .5rem 2rem;
-    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
     background-color: #008CBA;
     border-color: #007095;
     color: #FFFFFF;
     transition: background-color 300ms ease-out;
 }
-.pickdir {
-    font-size: 0.8rem;
-    padding: 0.5rem 2rem;
-}
 
-  input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="url"],  textarea {
+input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="url"],  textarea {
     -webkit-appearance: none;
     -moz-appearance: none;
     border-radius: 0;
@@ -164,10 +166,10 @@ button, .button, .pickdir {
     color: rgba(0, 0, 0, 0.75);
     display: block;
     font-family: inherit;
-    font-size: 0.875rem;
-    height: 2.3125rem;
-    margin: 0 0 1rem 0;
-    padding: 0.5rem;
+    font-size: 0.8rem;
+    height: 1.8125rem;
+    margin: 0 0 0.7rem 0;
+    padding: 0.2rem;
     width: 100%;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
@@ -177,14 +179,14 @@ button, .button, .pickdir {
     -ms-transition: border-color 0.15s linear, background 0.15s linear;
     -o-transition: border-color 0.15s linear, background 0.15s linear;
     transition: border-color 0.15s linear, background 0.15s linear;
-  }
+}
 
 label {
     color: #4d4d4d;
     cursor: pointer;
     display: block;
-    font-size: 0.875rem;
-    font-weight: normal;
+    font-size: 0.75rem;
+    font-weight: 500;
     line-height: 1.5;
     margin-bottom: 0;
 }
@@ -194,20 +196,19 @@ label.right {
 }
 label.inline {
     margin: 0;
-    padding: 0.5625rem 0;
+    padding: 0.25rem 0;
 }
 
 fieldset {
     border: 1px solid #DDDDDD;
-    margin: 1.125rem 0;
-    padding: .5rem;
+    margin: 0.5rem 0;
+    padding: 0.2rem;
 }
 fieldset legend {
     background: #FFFFFF;
-    font-weight: bold;
-    margin-left: -0.1875rem;
-    margin: 0;
-    padding: 0 0.1875rem;
+    font-weight: 600;
+    margin: 0 0.1875rem 0.25rem 0.1875rem;
+    font-size: 0.85rem;
 }
 textarea {
     height: 150px;
@@ -215,12 +216,15 @@ textarea {
 }
 
 #directory {
+    padding-top: 0.35rem;
+    font-size: 0.75rem;
+    font-style: italic;
     word-break: break-all;
 }
 
 #start_sync,
 #language_space {
-    padding: 0.5625rem 0px;
+    padding: 0.25rem 0px;
 }
 
 .lang {
