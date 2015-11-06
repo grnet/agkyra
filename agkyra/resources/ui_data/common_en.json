@@ -66,15 +66,17 @@
         "DIRECTORY": "Local directory",
         "DIRDIALOGUE": "Select directory",
         "SAVE": "Save",
-        "CLOUD URL PLACEHOLDER": "Authentication URL",
-        "TOKEN PLACEHOLDER": "User token",
-        "CONTAINER PLACEHOLDER": "Pithos+ container",
+        "CLOUD URL PLACEHOLDER": "https://accounts.example.com/identity/v2.0",
+        "TOKEN PLACEHOLDER": "Copy your token here",
+        "CONTAINER PLACEHOLDER": "Type a Pithos+ container here",
         "CLOUD URL IS EMPTY": "Provide a Cloud Authentication URL",
         "CLOUD URL UNEXPECTED RESPONSE": "Cloud URL did not respond as expected",
         "TOKEN IS EMPTY": "Provide a user token or login with user name/password",
         "AUTHENTICATION FAILED": "Failed to authenticate",
         "TOKEN WITHOUT CLOUD": "The cloud URL is missing",
         "PROVIDE CONTAINER": "Provide the name of the Pithos+ container",
-        "SELECT DIRECTORY": "Select the local directory"
+        "SELECT DIRECTORY": "Select the local directory",
+        "EXPLAIN CLOUD": "To get the cloud credentials, browse to your cloud website, log in and click on <u>API Access</u>. Find the URL and token and copy them bellow, or copy the URL and click the button to login with username/password.",
+        "EXPLAIN SYNC": "To pair a container with a directory, type the container and click on <u>Select directory</u>. If the container does not exist on the remote site, it will be created."
     }
 }

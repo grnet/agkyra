@@ -93,11 +93,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             var logout_win = null;
             var got_cookie = false;
             var show_creds = true;
+
+            function creds_on() {
+                $('#get_creds').removeClass("off");
+                $('#get_creds').addClass("on");
+
+            }
+
+            function creds_off() {
+                $('#get_creds').removeClass("on");
+                $('#get_creds').addClass("off");
+            }
+
             function get_credentials() {
                 var cookie_name = '_pithos2_a';
                 var lurl = get_account_ui() + '/logout?next=' + get_pithos_ui()
                 show_creds = false;
-                $('#get_creds').hide();
+                creds_off();
                 got_cookie = false;
                 cred_win = gui.Window.open(lurl, {
                     focus: true, width: 820, height: 580, toolbar: false
@@ -131,6 +143,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 if(!url) {
                     $('#cloud-error small').text(errors.cloud_url_empty);
                     $('#cloud-error').addClass('error');
+                    creds_off();
                     return false;
                 } else {
                     refresh_endpoints(url);
@@ -229,6 +242,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 document.getElementById('directory_label').innerHTML = SETTINGS.DIRECTORY || "Directory";
                 document.getElementById('dirdialogue_label').innerHTML = SETTINGS.DIRDIALOGUE || "Select directory";
                 document.getElementById('sync_button').innerHTML = SETTINGS.SAVE;
+                document.getElementById('explain_cloud').innerHTML = SETTINGS["EXPLAIN CLOUD"] || "Go to the cloud site, login, click API ACCESS and copy the Authentication URL in the first box.";
+                document.getElementById('explain_sync').innerHTML = SETTINGS["EXPLAIN SYNC"] || "Pair a remote Pithos+ container with a local directory";
 
                 var cloud_placeholder = SETTINGS["CLOUD URL PLACEHOLDER"] || "Authentication URL";
                 $('#cloud-url').attr('placeholder', cloud_placeholder);
@@ -256,9 +271,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             window.setInterval(function() {
                 // Refresh get_creds visibility, until refresh_endpoints
                 // changes are in effect
-                if (get_pithos_ui() && show_creds) {
-                    $('#get_creds').show();
-                } else {$('#get_creds').hide();}
+                if (get_pithos_ui() && show_creds) creds_on();
+                else creds_off();
                 check_cloud_url();
                 check_token();
             }, 500);
@@ -291,6 +305,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </fieldset>
                 <fieldset>
                     <legend id="cloud_label">Cloud</legend>
+                    <div id="explain_cloud" class="row clearfix explain"> &nbsp; </div>
                     <div class="clearfix">
                         <div class="small-3 columns">
                             <label id="url_label" for="cloud-url" class="right inline">Cloud URL</label>
@@ -318,15 +333,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                      </div>
 
                     <div class="clearfix">
-                        <div class="small-8 columns"></div>
+                        <div class="small-9 columns"></div>
                        <a id="get_creds"
-                            class="small-4 columns button right" style="display: none;"
+                            class="small-3 columns button right off"
                             onclick="get_credentials();">Login to retrieve token</a>
                     </div>
 
                 </fieldset>
                 <fieldset>
                     <legend id="sync_label">What to sync</legend>
+                    <div id="explain_sync" class="row clearfix explain"> &nbsp; </div>
                     <div class="row clearfix">
                         <div class="small-3 columns">
                             <label id="container_label" for="container" class="right inline">Remote container</label>
@@ -348,11 +364,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                             Select</div>
                     </div>
                     <div class="row clearfix">
-                        <div class="small-3 columns">&nbsp;</div>
                         <div id="directory-error" class="small-6 columns">
                             <small>Invalid entry</small>
                         </div>
-                        <div class="small-3 columns">&nbsp;</div>
                     </div>
 
                     <input type="file" id="choose-dir" nwdirectory

@@ -66,15 +66,17 @@
         "DIRECTORY": "Τοπικός φάκελος",
         "DIRDIALOGUE": "Επιλογή φακέλου",
         "SAVE": "Αποθήκευση",
-        "CLOUD URL PLACEHOLDER": "Διεύθυνση (URL) εξουσιοδότησης",
-        "TOKEN PLACEHOLDER": "Κλειδί (token) πρόσβασης",
-        "CONTAINER PLACEHOLDER": "Απομακρυσμένος περιέκτης Pithos+",
+        "CLOUD URL PLACEHOLDER": "https://accounts.example.com/identity/v2.0",
+        "TOKEN PLACEHOLDER": "Αντιγράψτέ εδώ το κλειδί (token) πρόσβασης",
+        "CONTAINER PLACEHOLDER": "Πληκτρολογήστε τον περιέκτη (container)",
         "CLOUD URL IS EMPTY": "Δώστε τη Διεύθυνση (URL) εξουσιοδότησης του νέφους",
         "CLOUD URL UNEXPECTED RESPONSE": "Η απόκριση του νέφους δεν ήταν η αναμενόμενη",
         "TOKEN IS EMPTY": "Δώστε το κλειδί πρόσβασης (token) ή επιλέξτε είσοδο με όνομα χρήστη/κωδικό",
         "AUTHENTICATION FAILED": "Η εξουσιοδότηση απέτυχε",
         "TOKEN WITHOUT CLOUD": "Δεν έχετε δώσει διεύθυνση νέφους",
         "PROVIDE CONTAINER": "Δώστε το όνομα του περιέκτη (container) Pithos+",
-        "SELECT DIRECTORY": "Επιλέξτε ένα τοπικό φάκελο"
+        "SELECT DIRECTORY": "Επιλέξτε ένα τοπικό φάκελο",
+        "EXPLAIN CLOUD": "Για να ρυθμίσετε την πρόσβαση, επισκευθείτε τη σελίδα του νέφους και μετά την είσοδο επιλέξτε <u>API Access</u>. Βρείτε το URL και το κλειδί (token) και αντιγράψτε τα παρακάτω, είτε αντιγράψτε μόνο το URL και εισέλθετε με όνομα χρήστη/κωδικό.",
+        "EXPLAIN SYNC": "Για να θέσετε ένα ζεύγος περιέκτη (container) - τοπικού φακέλου, πληκτρολογήστε τον περιέκτη και χρησιμοποιήστε το κουμπί <u>Επιλογή φακέλου</u>. Αν ο περιέκτης δεν υπάρχει στο απομακρυσμένο σύστημα, θα δημιουργηθεί αυτόματα."
     }
 }

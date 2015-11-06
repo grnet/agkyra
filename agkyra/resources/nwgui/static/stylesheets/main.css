@@ -154,6 +154,14 @@ button, .button, .pickdir {
     transition: background-color 300ms ease-out;
 }
 
+a.on {
+    background-color: #008CBA;
+}
+a.off {
+    background-color: #cccccc;
+    pointer-events: none;
+}
+
 input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="url"],  textarea {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -213,6 +221,17 @@ fieldset legend {
 textarea {
     height: 150px;
     max-height: 150px;
+}
+div.explain {
+    padding: 0.2rem 0.2rem;
+    margin: 0 0.85rem 0.35rem;
+    font-size: 65%;
+    font-weight: 100;
+    font-style: italic;
+    color: #a0a0a0;
+    border-color: #a0a0a0;
+    border-style: dashed;
+    border-width: 0.1rem;
 }
 
 #directory {
