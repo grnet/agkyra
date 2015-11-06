@@ -61,7 +61,7 @@
         "CLOUD": "Cloud",
         "URL": "Cloud URL",
         "TOKEN": "User Token",
-        "RETRIEVE": "Login with user name/password",
+        "RETRIEVE": "Auto-fill token with login",
         "SYNC": "What to sync",
         "CONTAINER": "Remote container",
         "DIRECTORY": "Local directory",
@@ -69,15 +69,16 @@
         "SAVE": "Save",
         "CLOUD URL PLACEHOLDER": "https://accounts.example.com/identity/v2.0",
         "TOKEN PLACEHOLDER": "Copy your token here",
-        "CONTAINER PLACEHOLDER": "Type a Pithos+ container here",
-        "CLOUD URL IS EMPTY": "Provide a Cloud Authentication URL",
+        "CONTAINER PLACEHOLDER": "Name a new or existing Pithos+ container",
+        "CLOUD URL IS EMPTY": "Needs a Cloud Authentication URL",
         "CLOUD URL UNEXPECTED RESPONSE": "Cloud URL did not respond as expected",
-        "TOKEN IS EMPTY": "Provide a user token or login with user name/password",
+        "TOKEN IS EMPTY": "Needs a user token",
         "AUTHENTICATION FAILED": "Failed to authenticate",
         "TOKEN WITHOUT CLOUD": "The cloud URL is missing",
-        "PROVIDE CONTAINER": "Provide the name of the Pithos+ container",
+        "PROVIDE CONTAINER": "Needs a Pithos+ container name",
         "SELECT DIRECTORY": "Select the local directory",
-        "EXPLAIN CLOUD": "To get the cloud credentials, browse to your cloud website, log in and click on <u>API Access</u>. Find the URL and token and copy them bellow, or copy the URL and click the button to login with username/password.",
-        "EXPLAIN SYNC": "To pair a container with a directory, type the container and click on <u>Select directory</u>. If the container does not exist on the remote site, it will be created."
+        "EXPLAIN CLOUD": "To get your cloud credentials, browse to your cloud website, log in and click on <u>API access</u>. Copy the Authentication URL and Token below.",
+        "EXPLAIN SYNC": "The contents of your remote container and your local directory are kept synchronized, which means any changes you make in one side are copied to the other. If you happen to change a file in both sides at the same time, Agkyra will apply one version and copy the other into a separate conflict file."
+
     }
 }
