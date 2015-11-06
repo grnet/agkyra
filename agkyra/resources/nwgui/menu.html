@@ -139,6 +139,19 @@ var settings_menu = new gui.MenuItem({
   },
 });
 menu.append(settings_menu);
+var help_menu = new gui.MenuItem({
+  label: COMMON.MENU.HELP,
+  icon: 'static/images/help.png',
+  iconIsTemplate: false,
+  click: function () {
+    if (windows['help']) windows['help'].close();
+    windows['help'] = gui.Window.open(
+      'https://www.synnefo.org/docs/agkyra/latest/', {
+      toolbar: false, resizable: true, focus: true, width: 700, height: 500
+    });
+  }
+});
+menu.append(help_menu);
 
 var about_menu = new gui.MenuItem({
   label: COMMON.MENU.ABOUT,
@@ -148,8 +161,7 @@ var about_menu = new gui.MenuItem({
     if (windows['about']) windows['about'].close();
     windows['about'] = gui.Window.open(
         "about_" + globals.settings.language + ".html", {
-      toolbar: false, resizable: false, focus: true,
-      width: 640, height: 420
+      toolbar: false, resizable: false, focus: true, width: 640, height: 420
     });
   }
 });
@@ -210,6 +222,7 @@ function check_menu_lang() {
     local_folder_menu.label = COMMON.MENU.FOLDER;
     pithos_page_menu.label = COMMON.MENU.PITHOS;
     settings_menu.label = COMMON.MENU.SETTINGS;
+    help_menu.label = COMMON.MENU.HELP;
     about_menu.label = COMMON.MENU.ABOUT;
     quit_menu.label = COMMON.MENU.QUIT;
     tray.menu = menu;
