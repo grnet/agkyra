@@ -93,7 +93,7 @@ Here is a typical configuration:
     [global]
     default_sync = CLD
     language = en
-    sync_on_start = on
+    ask_to_sync = on
 
     [cloud "CLD"]
     url = http://www.example.org/identity/v2.0

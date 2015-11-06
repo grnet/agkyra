@@ -47,7 +47,7 @@ Commands and examples
       agkyra_dir: /home/user/.agkyra
       default_sync: default
       language: en
-      sync_on_start: on
+      ask_to_sync: on
     cloud default
       url: http://www.example.org/identity/v2.0
       token: us3r-t0k3n

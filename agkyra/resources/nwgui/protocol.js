@@ -40,7 +40,7 @@ var globals = {
     directory: null,
     exclude: null,
     language: 'en',
-    sync_on_start: true
+    ask_to_sync: true
   },
   status: {synced: 0, unsynced: 0, failed: 0, code: STATUS['UNINITIALIZED']},
   authenticated: false,

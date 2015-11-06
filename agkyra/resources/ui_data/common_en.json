@@ -61,7 +61,6 @@
         "TITLE": "Settings",
         "GENERAL": "General Settings",
         "LANGUAGE": "Language",
-        "SYNCONSTART": "Sync on start up",
         "CLOUD": "Cloud",
         "URL": "Cloud URL",
         "TOKEN": "User Token",

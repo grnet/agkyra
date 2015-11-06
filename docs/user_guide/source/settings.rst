@@ -26,7 +26,8 @@ Currently, the global settings are the following:
 :dfn:`language` The language of the GUI menu, windows and notifications. There are currently two supported languages, Greek (**el**) and English (**en**). The CLI is always in english.
     default: ``en``
 
-:dfn:`sync_on_start` A flag indicating whether the syncing should start on start-up. If it is ``off``, the client will start in "paused" mode.
+:dfn:`ask_to_sync` GUI only flag. Switch on a dialogue box asking user whether syncing should
+start (e.g., on startup or when the user modifies settings).
     default: ``on``
 
 Cloud

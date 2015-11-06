@@ -230,7 +230,7 @@ class WebSocketProtocol(WebSocket):
             "directory": <local directory>,
             "exclude": <file path>,
             "language": <en|el>,
-            "sync_on_start": <true|false>
+            "ask_to_sync": <true|false>
         } or {<ERROR>: <ERROR CODE>}
 
     -- PUT SETTINGS --
@@ -242,7 +242,7 @@ class WebSocketProtocol(WebSocket):
             "directory": <local directory>,
             "exclude": <file path>,
             "language": <en|el>,
-            "sync_on_start": <true|false>
+            "ask_to_sync": <true|false>
         }
     HELPER: {"CREATED": 201, "action": "put settings",} or
         {<ERROR>: <ERROR CODE>, "action": "get settings",}
@@ -264,7 +264,7 @@ class WebSocketProtocol(WebSocket):
     settings = dict(
         token=None, url=None,
         container=None, directory=None,
-        exclude=None, sync_on_start=True, language="en")
+        exclude=None, ask_to_sync=True, language="en")
     cnf = AgkyraConfig()
     essentials = ('url', 'token', 'container', 'directory')
 
@@ -356,8 +356,8 @@ class WebSocketProtocol(WebSocket):
                 self.settings[option] = None
                 self.set_status(code=STATUS['SETTINGS MISSING'])
 
-        self.settings['sync_on_start'] = (
-            self.cnf.get('global', 'sync_on_start') == 'on')
+        self.settings['ask_to_sync'] = (
+            self.cnf.get('global', 'ask_to_sync') == 'on')
         self.settings['language'] = self.cnf.get('global', 'language')
 
         # for option in ('container', 'directory', 'exclude'):
@@ -409,9 +409,8 @@ class WebSocketProtocol(WebSocket):
             changes = True
 
         self.cnf.set('global', 'language', self.settings.get('language', 'en'))
-        sync_on_start = self.settings.get('sync_on_start', False)
-        self.cnf.set(
-            'global', 'sync_on_start', 'on' if sync_on_start else 'off')
+        ask_to_sync = self.settings.get('ask_to_sync', False)
+        self.cnf.set('global', 'ask_to_sync', 'on' if ask_to_sync else 'off')
 
         if changes:
             self.cnf.write()
@@ -574,8 +573,7 @@ class WebSocketProtocol(WebSocket):
         self._load_settings()
         can_sync = must_reset_syncing and self.can_sync()
         if can_sync:
-            leave_paused = old_status in ok_not_syncing or \
-                           not self.settings.get('sync_on_start', False)
+            leave_paused = old_status in ok_not_syncing
             LOGGER.debug('Restart backend')
             self.init_sync(leave_paused=leave_paused)
 

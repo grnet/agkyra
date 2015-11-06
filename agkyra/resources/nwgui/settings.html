@@ -62,7 +62,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                         fs.readFileSync(exclude, encoding='utf-8'));
                 } catch (err) {console.log(err);}
                 if (!get_setting('language')) set_setting('language', cur_lang);
-                if (get_setting('sync_on_start')) $('#start_sync_box').click();
+                if (get_setting('ask_to_sync')) $('#ask_to_sync_box').click();
 
             });
             cur_lang = get_setting('language');
@@ -211,7 +211,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             }
 
             function check_start_sync() {
-                settings['sync_on_start'] = $('#start_sync_box').is(':checked');
+                settings['ask_to_sync'] = $('#ask_to_sync_box').is(':checked');
             }
 
             function localize() {
@@ -232,7 +232,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 document.getElementById('title').innerHTML = SETTINGS.TITLE || "Settings";
                 document.getElementById('appearance_label').innerHTML = SETTINGS.GENERAL || "General";
                 document.getElementById('language_label').innerHTML = SETTINGS.LANGUAGE || "Language";
-                document.getElementById('start_sync_label').innerHTML = SETTINGS.SYNCONSTART || "Sync on Start";
+                document.getElementById('start_sync_label').innerHTML = SETTINGS["ASK TO SYNC"] || "Ask to sync";
                 document.getElementById('cloud_label').innerHTML = SETTINGS.CLOUD || "Cloud";
                 document.getElementById('url_label').innerHTML = SETTINGS.URL || "URL";
                 document.getElementById('token_label').innerHTML = SETTINGS.TOKEN || "Token";
@@ -299,7 +299,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                             <label id="start_sync_label" for="start_sync" class="right inline">Sync on start up</label>
                         </div>
                         <div class="small-9 columns" id="start_sync">
-                            <input type="checkbox" name="start_sync_box" id="start_sync_box" onchange="check_start_sync();"/>
+                            <input type="checkbox" name="ask_to_sync_box" id="ask_to_sync_box" onchange="check_start_sync();"/>
                         </div>
                     </div>
                 </fieldset>
