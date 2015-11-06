@@ -21,4 +21,4 @@ LOGO=$DIST/agkyra/lib/agkyra/resources/nwgui/static/images/logo.icns
 IDENT=org.synnefo.agkyra
 VERSION=$(python -c "import agkyra; print agkyra.__version__")
 
-platypus -a Agkyra -u 'GRNET S.A.' -o None -i $LOGO -Q $LOGO -p /usr/bin/env -V $VERSION -f $DIST/agkyra/lib -I $IDENT -B -R $DIST/agkyra/agkyra $DIST/Agkyra.app
+platypus -a Agkyra -u 'GRNET S.A.' -o None -i $LOGO -Q $LOGO -p /usr/bin/env -V $VERSION -f $DIST/agkyra/lib -I $IDENT -B -y -R $DIST/agkyra/agkyra $DIST/Agkyra.app
