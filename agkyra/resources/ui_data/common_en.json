@@ -35,7 +35,10 @@
         "203": "Agkyra is deactivated because local directory \"%s\" has disappeared. Would you like Agkyra to create it again and restart syncing?",
         "204": "Agkyra is deactivated because remote container \"%s\" has disappeared. Would you like Agkyra to create it again and restart syncing?",
         "OK": "OK",
-        "CANCEL": "Cancel"
+        "CANCEL": "Cancel",
+        "ASK TO SYNC": "Should Agkyra start syncing your files?",
+        "START AND SYNC": "Start syncing",
+        "START AND PAUSE": "Stay paused"
     },
     "MENU": {
         "TITLE": "Agkyra File Syncer",
@@ -61,6 +64,7 @@
         "TITLE": "Settings",
         "GENERAL": "General Settings",
         "LANGUAGE": "Language",
+        "ASK TO SYNC": "Always ask before starting sync",
         "CLOUD": "Cloud",
         "URL": "Cloud URL",
         "TOKEN": "User Token",

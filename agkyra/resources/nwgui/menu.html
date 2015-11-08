@@ -251,7 +251,30 @@ window.setInterval(function() {
     break;
     case STATUS['READY']:
       if (status_unchanged) break;
-      post_start(socket);
+      if (globals.settings.ask_to_sync){
+        set_dialogue(COMMON.DIALOGUE["ASK TO SYNC"], {
+            ticker: {msg: COMMON.SETTINGS["ASK TO SYNC"], checked: true},
+            OK: COMMON.DIALOGUE["START AND SYNC"],
+            CANCEL: COMMON.DIALOGUE["START AND PAUSE"],
+          }, false);
+        if (windows.dialogue === null) {
+          windows['dialogue'] = gui.Window.open(
+            'dialogue.html', {
+              toolbar: false, focus: true, width: 420, height: 220});
+          windows['dialogue'].on('closed', function() {
+            var d = get_dialogue();
+            if (!d.terms.ticker.checked) {
+              globals.settings.ask_to_sync = d.terms.ticker.checked;
+              put_settings(socket, globals.settings);
+              get_settings(socket);
+            }
+            if (d.response) post_start(socket);
+            else post_pause(socket);
+            windows['dialogue'] = null;
+          });
+        }
+      } else post_start(socket);
+      activate_menu();
     break;
     case STATUS['SYNCING']:
       notify('info');

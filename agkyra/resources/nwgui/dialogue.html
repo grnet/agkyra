@@ -28,6 +28,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <div class="wrapper"><form>
             <h4 id="text">Do you agree to a fuzzy question which will be used against you in the future?</h4>
         <div class="clearfix small-12 columns">
+            <div id="ticker" class="small-12 columns">
+                <input id="ticker_tick" type="checkbox" name="ticker_tick"  class="right"  style="display: inline"
+                    onchange="d.terms.ticker.checked = !d.terms.ticker.checked;"></input>
+                <label id="ticker_label" for="ticker_tick" class="left"  style="display: inline"></label>
+                <div>&nbsp;</div>
+            </div>
             <a id="OK" class="button right" onclick="set_dialogue(d.msg, d.terms, true); window.close();">OK</a>
             <a id="CANCEL" class="button right" onclick="window.close()">Cancel</a>
         </div>
@@ -37,6 +43,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         document.getElementById('text').innerHTML = d.msg;
         document.getElementById('OK').innerHTML = d.terms.OK;
         document.getElementById('CANCEL').innerHTML = d.terms.CANCEL;
+
+        var ticker = d.terms.ticker || null;
+        if (ticker !== null) {
+            document.getElementById('ticker_label').innerHTML = ticker.msg;
+            document.getElementById('ticker_tick').checked = ticker.checked;
+            $('#ticker').show();
+        } else $('#ticker').hide();
     </script>
 </body>
 </html>
