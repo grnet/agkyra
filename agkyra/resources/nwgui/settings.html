@@ -33,7 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 token_error: 'Failed to authenticate',
                 token_cloudless: 'No cloud to try this token against',
                 container_empty: 'Provide the name of the remote container',
-                dir_not_chosen: 'Select the local directory'
+                dir_not_chosen: 'Select the local directory',
+                confirm_exit_with_errors: 'There are some errors, are you sure?'
             }
             var settings = {};
 
@@ -227,7 +228,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     token_error: SETTINGS["AUTHENTICATION FAILED"] || 'Failed to authenticate',
                     token_cloudless: SETTINGS["TOKEN WITHOUT CLOUD"] || 'No cloud to try this token against',
                     container_empty: SETTINGS["PROVIDE CONTAINER"] || 'Provide the name of the remote container',
-                    dir_not_chosen: SETTINGS["SELECT DIRECTORY"] || 'Select the local directory'
+                    dir_not_chosen: SETTINGS["SELECT DIRECTORY"] || 'Select the local directory',
+                    confirm_exit_with_errors: SETTINGS["CONFIRM EXIT WITH ERRORS"] || 'There are some errors, are you sure?'
                 }
                 document.getElementById('title').innerHTML = SETTINGS.TITLE || "Settings";
                 document.getElementById('appearance_label').innerHTML = SETTINGS.GENERAL || "General";
@@ -377,13 +379,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </fieldset>
                 <div class="clearfix">
                     <a id="sync_button" class="button right"
-                        onclick="if(check_fields() || confirm(
-                                'There are some concerns about your settings.\n'
-                                + 'To fix the errors: Cancel\n'
-                                + 'To save anyway: OK')) {
+                        onclick="
+                        if(check_fields() || confirm(errors.confirm_exit_with_errors)) {
                             export_settings(settings);
                             window.close();
-                        }">Save</a>
+                        }
+                        ">Save</a>
                 </div>
             </form>
         </div>

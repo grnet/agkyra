@@ -80,6 +80,7 @@
         "TOKEN WITHOUT CLOUD": "The cloud URL is missing",
         "PROVIDE CONTAINER": "Needs a Pithos+ container name",
         "SELECT DIRECTORY": "Select the local directory",
+        "CONFIRM EXIT WITH ERRORS": "There are some concerns about your settings.\nTo fix the errors: Cancel\nTo keep them and continue: OK",
         "EXPLAIN CLOUD": "To get your cloud credentials, browse to your cloud website, log in and click on <u>API access</u>. Copy the Authentication URL and Token below.",
         "EXPLAIN SYNC": "The contents of your remote container and your local directory are kept synchronized, which means any changes you make in one side are copied to the other. If you happen to change a file in both sides at the same time, Agkyra will apply one version and copy the other into a separate conflict file."
 
