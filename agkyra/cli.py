@@ -412,6 +412,15 @@ class AgkyraCLI(cmd.Cmd):
         """
         self._start(line)
 
+    def make_server_if_needed(self):
+        client = self.client
+        if not client:
+            sys.stderr.write('No Agkyra daemons running, starting one')
+            protocol.launch_server(self.callback, self.args.debug)
+            sys.stderr.write(' ... ')
+            self.helper.wait_session_to_load()
+            sys.stderr.write('OK\n')
+
     @handle_UI_error
     def _start(self, line):
         if self.must_help('start'):
@@ -422,25 +431,19 @@ class AgkyraCLI(cmd.Cmd):
             sys.stderr.write("Unrecognized subcommand '%s'.\n" % line)
             sys.stderr.flush()
             return
+        self.make_server_if_needed()
         client = self.client
-        if not client:
-            sys.stderr.write('No Agkyra daemons running, starting one')
-            protocol.launch_server(self.callback, self.args.debug)
-            sys.stderr.write(' ... ')
-            self.helper.wait_session_to_load()
-            sys.stderr.write('OK\n')
+        status = client.get_status()
+        if status['code'] == STATUS['PAUSED']:
+            client.start()
+            sys.stderr.write('Starting syncer ... ')
+            try:
+                client.wait_until_syncing()
+                sys.stderr.write('OK\n')
+            except protocol_client.UIClientError as uice:
+                sys.stderr.write('%s\n' % uice)
         else:
-            status = client.get_status()
-            if status['code'] == STATUS['PAUSED']:
-                client.start()
-                sys.stderr.write('Starting syncer ... ')
-                try:
-                    client.wait_until_syncing()
-                    sys.stderr.write('OK\n')
-                except protocol_client.UIClientError as uice:
-                    sys.stderr.write('%s\n' % uice)
-            else:
-                sys.stderr.write('Already ')
+            sys.stderr.write('Already ')
         sys.stderr.flush()
         self.do_status(line)
 
