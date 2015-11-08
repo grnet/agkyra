@@ -93,6 +93,7 @@ class GUI(WebSocketBaseClient):
             LOG.debug('Closed GUI connection')
         except Exception as e:
             LOG.warning('While cleaning GUI: %s' % e)
+        LOG.info('GUI is shutdown')
 
     def handshake_ok(self):
         """If handshake OK is, SessionHelper UP goes, so GUI launched can be"""

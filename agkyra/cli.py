@@ -513,6 +513,8 @@ class AgkyraCLI(cmd.Cmd):
                 sys.stderr.write('GUI interrupted by user, exiting\n')
                 sys.stderr.flush()
                 new_gui.clean_exit()
+                if self.client:
+                    self._shutdown('')
             except socket.error as e:
                 if e.errno == errno.ECONNREFUSED:
                     sys.stderr.write(
@@ -523,10 +525,6 @@ class AgkyraCLI(cmd.Cmd):
                     exit(1)
                 else:
                     raise
-
-            LOGGER.info('GUI is shutdown')
-            if self.client:
-                self._shutdown('')
         else:
             sys.stderr.write('Session failed to load\n')
             sys.stderr.flush()
