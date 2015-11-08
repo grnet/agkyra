@@ -118,10 +118,12 @@ class FileSyncer(object):
     def start_decide(self):
         if not self.decide_active:
             self.decide_thread = self._poll_decide()
+            logger.info("Started syncing")
 
     def stop_decide(self, timeout=None):
         if self.decide_active:
             self.decide_thread.stop()
+            logger.info("Stopped syncing")
             return utils.wait_joins([self.decide_thread], timeout)
         return timeout
 
