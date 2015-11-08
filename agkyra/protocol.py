@@ -421,8 +421,8 @@ class WebSocketProtocol(WebSocket):
 
     def _essentials_changed(self, new_settings):
         """Check if essential settings have changed in new_settings"""
-        return all([
-            self.settings[e] == self.settings[e] for e in self.essentials])
+        return any([
+            self.settings[e] != new_settings[e] for e in self.essentials])
 
     def _consume_messages(self, max_consumption=10):
         """Update status by consuming and understanding syncer messages"""
