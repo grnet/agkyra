@@ -434,7 +434,10 @@ class AgkyraCLI(cmd.Cmd):
         self.make_server_if_needed()
         client = self.client
         status = client.get_status()
-        if status['code'] == STATUS['PAUSED']:
+        if status['code'] == STATUS['SETTINGS READY']:
+            client.init()
+        status = client.get_status()
+        if status['code'] in [STATUS['PAUSED'], STATUS['READY']]:
             client.start()
             sys.stderr.write('Starting syncer ... ')
             try:
@@ -442,7 +445,7 @@ class AgkyraCLI(cmd.Cmd):
                 sys.stderr.write('OK\n')
             except protocol_client.UIClientError as uice:
                 sys.stderr.write('%s\n' % uice)
-        else:
+        elif status['code'] == STATUS['SYNCING']:
             sys.stderr.write('Already ')
         sys.stderr.flush()
         self.do_status(line)
@@ -501,7 +504,7 @@ class AgkyraCLI(cmd.Cmd):
             return
         session = self.helper.load_active_session()
         if not session:
-            self._start('')
+            self.make_server_if_needed()
             session = self.helper.wait_session_to_load()
         if session:
             LOGGER.info('Start new GUI')

@@ -93,6 +93,7 @@ class UIClient(WebSocketClient):
         msg = json.loads('%s' % m)
         {
             'post ui_id': self.recv_authenticate,
+            'post init': self.recv_init,
             'post start': self.recv_start,
             'post pause': self.recv_pause,
             'get status': self.recv_get_status,
@@ -110,6 +111,11 @@ class UIClient(WebSocketClient):
             raise UnexpectedResponseError(
                 'Client authentication failed', response=msg)
         self.ready = True
+
+    def recv_init(self, msg):
+        """Receive: init response"""
+        if 'OK' not in msg:
+            raise UnexpectedResponseError('Init failed', response=msg)
 
     def recv_start(self, msg):
         """Receive: start response"""
@@ -144,6 +150,11 @@ class UIClient(WebSocketClient):
         """Request: POST SHUTDOWN"""
         self.wait_until_ready()
         self._post('shutdown')
+
+    def init(self):
+        """Request: POST INIT"""
+        self.wait_until_ready()
+        self._post('init')
 
     def start(self):
         """Request: POST START"""

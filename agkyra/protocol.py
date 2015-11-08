@@ -477,7 +477,7 @@ class WebSocketProtocol(WebSocket):
         """Check if settings are enough to setup a syncing proccess"""
         return all([self.settings[e] for e in self.essentials])
 
-    def init_sync(self):
+    def init_sync(self, leave_paused=False):
         """Initialize syncer"""
         self.set_status(code=STATUS['INITIALIZING'])
         sync = self._get_default_sync()
@@ -531,7 +531,8 @@ class WebSocketProtocol(WebSocket):
                     break
             if local_ok and remote_ok:
                 syncer_.initiate_probe()
-                self.set_status(code=STATUS['PAUSED'])
+                new_status = 'PAUSED' if leave_paused else 'READY'
+                self.set_status(code=STATUS[new_status])
         except pithos_client.ClientError as ce:
             LOGGER.debug('backend init failed: %s %s' % (ce, ce.status))
             try:
@@ -556,7 +557,8 @@ class WebSocketProtocol(WebSocket):
         # Prepare setting save
         could_sync = self.syncer and self.can_sync()
         old_status = self.get_status('code')
-        active = (STATUS['SYNCING'], STATUS['PAUSING'], STATUS['PAUSED'])
+        ok_not_syncing = [STATUS['READY'], STATUS['PAUSING'], STATUS['PAUSED']]
+        active = ok_not_syncing + [STATUS['SYNCING']]
 
         must_reset_syncing = self._essentials_changed(new_settings)
         if must_reset_syncing and old_status in active:
@@ -572,14 +574,10 @@ class WebSocketProtocol(WebSocket):
         self._load_settings()
         can_sync = must_reset_syncing and self.can_sync()
         if can_sync:
+            leave_paused = old_status in ok_not_syncing or \
+                           not self.settings.get('sync_on_start', False)
             LOGGER.debug('Restart backend')
-            self.init_sync()
-            new_status = self.get_status('code')
-            if new_status in active:
-                must_sync = old_status == STATUS['SYNCING'] or (
-                    old_status not in active and (
-                        self.settings.get('sync_on_start', False)))
-                (self.start_sync if must_sync else self.pause_sync)()
+            self.init_sync(leave_paused=leave_paused)
 
     def _pause_syncer(self):
         syncer_ = self.syncer
@@ -604,8 +602,7 @@ class WebSocketProtocol(WebSocket):
         self.set_status(code=STATUS['INITIALIZING'])
         self.syncer.settings.purge_db_archives_and_enable()
         self.syncer.initiate_probe()
-        self.syncer.start_decide()
-        self.set_status(code=STATUS['SYNCING'])
+        self.set_status(code=STATUS['READY'])
 
     def send_json(self, msg):
         LOGGER.debug('send: %s' % msg)
@@ -623,6 +620,7 @@ class WebSocketProtocol(WebSocket):
                 self.clean_db()
                 return
             {
+                'init': self.init_sync,
                 'start': self.start_sync,
                 'pause': self.pause_sync,
                 'force': self.force_sync
@@ -632,12 +630,9 @@ class WebSocketProtocol(WebSocket):
             self.accepted = True
             self.send_json({'ACCEPTED': 202, 'action': 'post ui_id'})
             self._load_settings()
-            if (not self.syncer) and self.can_sync():
-                self.init_sync()
-                status = self.get_status('code')
-                if self.syncer and self.settings['sync_on_start'] and \
-                   status == STATUS["PAUSED"]:
-                    self.start_sync()
+            status = self.get_status('code')
+            if self.can_sync() and status == STATUS['UNINITIALIZED']:
+                self.set_status(code=STATUS['SETTINGS READY'])
         else:
             action = r.get('path', 'ui_id')
             self.send_json({'REJECTED': 401, 'action': 'post %s' % action})

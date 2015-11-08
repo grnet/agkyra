@@ -239,6 +239,8 @@ window.setInterval(function() {
   var dialogue_msg = null;
   var status_unchanged = (old_status == globals.status.code);
   switch(globals.status.code) {
+    case STATUS['SETTINGS READY']:
+      if (!status_unchanged) post_init(socket);
     case STATUS['UNINITIALIZED']:
     case STATUS['INITIALIZING']:
     case STATUS['SHUTING DOWN']:
@@ -246,6 +248,10 @@ window.setInterval(function() {
       deactivate_menu();
       new_pause = COMMON.MENU.INACTIVE;
       tray_icon_off = true;
+    break;
+    case STATUS['READY']:
+      if (status_unchanged) break;
+      post_start(socket);
     break;
     case STATUS['SYNCING']:
       notify('info');

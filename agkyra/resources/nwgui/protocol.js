@@ -79,6 +79,11 @@ function post_start(socket) {
   send_json(socket, {'method': 'post', 'path': 'start'});
 } // expected response: {"OK": 200}
 
+function post_init(socket) {
+  log_debug('SEND post init');
+  send_json(socket, {'method': 'post', 'path': 'init'});
+} // expected response: {"OK": 200}
+
 function post_force(socket) {
   log_debug('SEND post force');
   send_json(socket, {'method': 'post', 'path': 'force'});
@@ -130,6 +135,7 @@ socket.onmessage = function(e) {
     break;
     case 'post start':
     case 'post pause':
+    case 'post init':
       log_debug('RECV ' + r['OK']);
       if (r['OK'] === 200) {
         get_status(this);
