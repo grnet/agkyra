@@ -272,15 +272,6 @@ class WebSocketProtocol(WebSocket):
         """:return: updated status dict or value of specified key"""
         if self.syncer and self.can_sync():
             self._consume_messages()
-            with self.status.lock() as d:
-                LOGGER.debug('Status was %s' % d['code'])
-                if d['code'] in (
-                        STATUS['UNINITIALIZED'], STATUS['INITIALIZING']):
-                    if self.syncer.paused:
-                        d['code'] = STATUS['PAUSED']
-                    elif d['code'] != STATUS['PAUSING'] or (
-                            d['unsynced'] == d['synced'] + d['failed']):
-                        d['code'] = STATUS['SYNCING']
         with self.status.lock() as d:
             LOGGER.debug('Status is now %s' % d['code'])
             return d.get(key, None) if key else dict(d)
