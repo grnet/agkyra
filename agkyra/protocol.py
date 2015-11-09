@@ -46,7 +46,11 @@ SYNCERS = utils.ThreadSafeDict()
 
 with open(os.path.join(RESOURCES, 'ui_data/common_en.json')) as f:
     COMMON = json.load(f)
-STATUS = COMMON['STATUS']
+
+with open(os.path.join(RESOURCES, 'main.json')) as f:
+    MAINSETTINGS = json.load(f)
+
+STATUS = MAINSETTINGS['STATUS']
 
 
 class SessionDB(database.DB):

@@ -1,20 +1,4 @@
 {
-    "STATUS": {
-        "UNINITIALIZED": 0,
-        "INITIALIZING": 1,
-        "SHUTTING DOWN": 2,
-        "SETTINGS READY": 5,
-        "READY": 10,
-        "SYNCING": 100,
-        "PAUSING": 101,
-        "PAUSED": 102,
-        "SETTINGS MISSING": 200,
-        "AUTH URL ERROR": 201,
-        "TOKEN ERROR": 202,
-        "DIRECTORY ERROR": 203,
-        "CONTAINER ERROR": 204,
-        "CRITICAL ERROR": 1000
-    },
     "NOTIFICATION": {
         "0": "Not initialized",
         "1": "Initializing ...",

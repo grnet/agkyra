@@ -40,6 +40,7 @@ def extra_datas(prefix, path):
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'nwjs'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'nwgui'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'ui_data'))
+a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'main.json'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'cacert.pem'))
 a.datas += extra_datas(os.path.join(HERE, 'agkyra'), os.path.join('resources', 'defaults.conf'))
 

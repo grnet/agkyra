@@ -30,7 +30,8 @@ function load_common(lang) {
   return JSON.parse(fs.readFileSync(path.join('..', 'ui_data', common_path)));
 }
 var COMMON = load_common();
-var STATUS = COMMON.STATUS;
+var MAINSETTINGS = JSON.parse(fs.readFileSync(path.join('..', 'main.json')));
+var STATUS = MAINSETTINGS.STATUS;
 
 var globals = {
   settings: {
