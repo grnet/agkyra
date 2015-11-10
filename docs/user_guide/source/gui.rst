@@ -22,8 +22,12 @@ and `directory` information and press ``Save``.
 
 .. image:: images/settings_empty.png
 
-Otherwise, if the settings have been provided in a previous session and are
-sane and functional, agkyra will start running (syncing by default).
+If the provided settings are corrent, agkyra will establish a connection
+with Pithos and get ready for syncing. You will then be prompted to allow
+agkyra to start syncing. If you don't want to be asked again, untick
+`Always ask before starting sync`.
+
+.. image:: images/ask_to_sync.png
 
 Menu
 ----
