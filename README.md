@@ -27,7 +27,7 @@ operating system, visit `https://www.python.org/downloads/`.
   Explorer. You will be prompted to accept the website's certificate. Do so
   and then retry step 2.
 
-### Packaging for Windows and OSX
+### Packaging for Windows
 
 A package for Windows, that fully contains dependencies and the
 Python framework, can be created with PyInstaller.
@@ -57,9 +57,9 @@ a script based on `wheel`.
 1. Run `pip install wheel`.
 
 2. Run `make_package.sh`. This will make the application under
-   `dist/agkyra` on Linux and `dist/agkyra.app` on OSX.
+   `dist/agkyra`.
 
-* The sqlite3 version 3.8.5 that comes with Mac OS X 10.10 does not
+* The sqlite3 version that comes with Mac OS X >=10.10 does not
   work properly. You can build agkyra with a newer sqlite3
   library. Assuming you have installed one (eg with brew) under
   `/usr/local/opt/sqlite`, run `fix_sqlite_osx.sh
@@ -67,7 +67,8 @@ a script based on `wheel`.
 
 3. On OSX, we can make an app with `platypus`. Get the tool from
 `http://www.sveinbjorn.org/platypus` and install its command-line
-version, too. Then run `mk_osx_app.sh`.
+version, too. Then run `mk_osx_app.sh`. The app is stored at
+`dist/Agkyra.app`.
 
 4. Make an archive (gzipped tar on Linux, zip on OSX) with `python
 bundle.py <platform>`.
