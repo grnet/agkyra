@@ -111,17 +111,30 @@ socket.onopen = function() {
   post_ui_id(this);
 }
 
+function is_elem(value, list) {
+  return list.indexOf(value) > -1;
+}
+
+function set_open_settings(status) {
+  settings_statuses = [STATUS["SETTINGS MISSING"],
+                       STATUS["AUTH URL ERROR"],
+                       STATUS["TOKEN ERROR"],
+                       STATUS["CRITICAL ERROR"]];
+  must_open_settings = is_elem(status, settings_statuses);
+  prev = globals.previous_status || 0;
+  prev_open_settings = is_elem(prev, settings_statuses);
+  if (
+    globals.authenticated
+    && status !== prev
+    && must_open_settings
+    && (!prev_open_settings)
+    && (!globals.settings_are_open))
+    globals.open_settings = true;
+}
+
 socket.onmessage = function(e) {
   var r = JSON.parse(e.data)
   log_debug('RECV: ' + r['action']);
-  dont_open_settings = [STATUS['DIRECTORY ERROR'], STATUS['CONTAINER ERROR']];
-  if  (globals.authenticated && r.code >= 200
-  && (dont_open_settings.indexOf(r.code) == -1)
-  && (r.code !== (globals.previous_status || 0))
-  && (!globals.settings_are_open)) {
-    globals.open_settings = true;
-    return
-  } else globals.open_settings = false;
 
   switch(r['action']) {
     case 'post ui_id':
@@ -157,6 +170,7 @@ socket.onmessage = function(e) {
       }
     break;
     case 'get status':
+      set_open_settings(r.code);
       globals['status'] = r;
       globals.previous_status = r.code;
     break;
