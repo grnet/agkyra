@@ -26,7 +26,7 @@ from agkyra import __version__
 # Package info
 PACKAGE_NAME = "agkyra"
 VERSION = __version__
-SHORT_DESCRIPTION = 'Agkyra Syncing Client for Pithos Storage'
+SHORT_DESCRIPTION = 'Agkyra is a file syncing client for Pithos+'
 
 PACKAGES_ROOT = '.'
 PACKAGES = find_packages(PACKAGES_ROOT)
@@ -144,14 +144,14 @@ setup(
     name=PACKAGE_NAME,
     version=VERSION,
     license='GNU GPLv3',
-    url='http://www.synnefo.org/agkyra',
+    url='https://www.synnefo.org/agkyra',
     description=SHORT_DESCRIPTION,
     classifiers=CLASSIFIERS,
 
     author='Synnefo development team',
-    author_email='synnefo-devel@googlegroups.com',
+    author_email='agkyra@googlegroups.com',
     maintainer='Synnefo development team',
-    maintainer_email='synnefo-devel@googlegroups.com',
+    maintainer_email='agkyra@googlegroups.com',
 
     packages=PACKAGES,
     package_dir={'': PACKAGES_ROOT},

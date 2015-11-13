@@ -1,7 +1,7 @@
 {
   "name": "Agkyra",
   "main": "menu.html",
-  "description": "Agkyra is a Pithos+ Syncing Client and this is its GUI",
+  "description": "Agkyra is a file syncing client for Pithos+",
   "version": "placeholder",
   "window": {
     "show": false,
@@ -11,7 +11,8 @@
   },
   "maintainers": [{
     "name": "Synnefo Development Team",
-    "web": "http://www.synnefo.org"
+    "email": "agkyra@googlegroups.com",
+    "web": "https://www.synnefo.org/agkyra"
   }],
   "licences": [{
     "type": "GPLv3",
