@@ -2,7 +2,7 @@
   "name": "Agkyra",
   "main": "menu.html",
   "description": "Agkyra is a Pithos+ Syncing Client and this is its GUI",
-  "version": 0.1,
+  "version": "placeholder",
   "window": {
     "show": false,
     "toolbar": false,
