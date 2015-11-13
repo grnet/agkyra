@@ -19,6 +19,8 @@ var gui = require('nw.gui');
 var path = require('path');
 var fs = require('fs');
 
+var agkyra_version = gui.App.manifest.version;
+
 // Read config file
 var cnf = JSON.parse(fs.readFileSync(gui.App.argv[0], encoding='utf-8'));
 function load_common(lang) {

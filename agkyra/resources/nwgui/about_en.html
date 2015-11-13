@@ -25,7 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <div class="wrapper home">
             <header>
                 <img src="static/images/logo.png" class="logo" alt="agkyra"/>
-                <h1>Agkyra... it syncs</h1>
+                <h1>
+                  Agkyra <span id="version"></span>
+                  <em>...it syncs</em>
+                </h1>
             </header>
             <p><b>Agkyra</b> is a minimal file syncing client for Pithos+.<br/>It syncs a Pithos+ container with a local folder.</p>
 
@@ -43,6 +46,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 <li id="grnet"> <img src="static/images/grnet.png" /> </li>
             </ul>
         </footer>
+        <script src="protocol.js"></script>
+        <script>
+          document.getElementById("version").innerHTML = agkyra_version;
+        </script>
     </body>
 
 </html>

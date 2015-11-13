@@ -37,6 +37,7 @@ header {
 }
 
 header h1 {font-size: 18px; font-weight: 680; }
+header h1 em {font-size:14px; display:block;}
 
 header h2 { font-size: 16px; font-weight: 640;}
 header h2 img { height: 16px;}
