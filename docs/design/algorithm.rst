@@ -58,13 +58,14 @@ SYNC serial. Then it determines the direction of the sync needed and marks
 the new serial as decided by storing it in another special archive,
 'DECISION'. Note that if an object has changed both in the local filesystem
 and in the Pithos object-store, then the latter is given higher priority, as
-it is considered the 'master' archive.) Finally, the syncer initiates the
-syncing in a new thread.
+it is considered the 'master' archive.) Finally, the syncer enqueues the
+object for syncing.
 
 Syncing an object
 -----------------
 
-Syncing consists of several steps. First, the client which operates the
+Syncing is run in separate thread and consists of several steps.
+First, the client which operates the
 source archive must prepare the object for transfer ('stage' it). Then the
 target client pulls and applies the object to the target archive. The source
 object is unstaged and, if syncing has succeeded, the target client calls
@@ -102,9 +103,9 @@ from the SYNC serial, indicating that syncing has not completed. The
 decision process will detect it and resume the syncing. However, since the
 decision process is run often, it will also detect syncings that have not
 completed because they are just still running. In order to distinguish and
-exclude them, we keep in memory a 'heartbeat' entry for each active syncing
--- while an object is being transferred, the tranferring client is
-responsible to keep the heartbeat up-to-date.
+exclude them, we keep in memory a 'heartbeat' entry for each active syncing,
+which records the thread that runs the syncing; we skip objects with an alive
+syncing thread when deciding what to sync.
 
 When syncing an upstream object to the local file system, there is a risk to
 lose the local object if syncing fails after the object has been hidden, as
@@ -125,10 +126,12 @@ Algorithm sketch
 
     heartbeat: blocks probe while syncing, but candidates are kept for later
       blocks new sync action while syncing
+      records for each object the thread that runs its sync (which can be
+      checked if it is alive)
 
 
     probe_file:
-      if recent heartbeat for object found:
+      if alive heartbeat for object found:
         abort (object is being synced)
 
       if archive serial != sync serial:
@@ -141,7 +144,7 @@ Algorithm sketch
 
 
     decide_file_sync:
-      if recent heartbeat found with different id:
+      if alive or recent heartbeat found:
         abort (already syncing)
 
       if previous decision serial found:
@@ -150,7 +153,12 @@ Algorithm sketch
       make decision with priority to master
       add object/current id in heartbeat
       commit
-      sync_file (in new thread)
+      enqueue sync instructions
+
+
+    launch_syncs:
+      get sync instructions from queue
+      sync_file (in new thread; the thread is recorded in heartbeat)
 
 
     sync_file:
@@ -169,10 +177,11 @@ Algorithm sketch
 
 
     mark_as_failed:
-      remove object from heartbeat
-      include (serial, file) in failed serials
+      include (serial, file) in failed serials, if failed sync should not be
+        replayed
 
 
     main loop:
       for every archive, probe candidate files
       for every file with updated serial, decide sync
+      launch syncs
