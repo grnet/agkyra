@@ -25,6 +25,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
+import agkyra
 from agkyra.syncer.common import OBJECT_DIRSEP
 
 ENCODING = sys.getfilesystemencoding() or 'UTF-8'
@@ -108,6 +109,33 @@ def reg_name(settings, objname):
     if settings.case_insensitive:
         return objname.lower()
     return objname
+
+
+def user_agent():
+    return "agkyra %s" % agkyra.__version__
+
+
+def patch_request(client_class, headers=None, params=None):
+    if headers is None:
+        headers = {}
+    if params is None:
+        params = {}
+    class PatchedClient(client_class):
+        def request(
+                self, method, path,
+                async_headers=dict(), async_params=dict(),
+                **kwargs):
+            async_headers.update(headers)
+            async_params.update(params)
+            return client_class.request(
+                self, method, path,
+                async_headers=async_headers, async_params=async_params,
+                **kwargs)
+    return PatchedClient
+
+
+def patch_user_agent(client_class):
+    return patch_request(client_class, headers={'User-Agent': user_agent()})
 
 
 BaseStoppableThread = watchdog.utils.BaseThread

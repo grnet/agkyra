@@ -22,7 +22,7 @@ import stat
 
 from functools import wraps
 
-from agkyra.syncer.utils import join_path, ThreadSafeDict
+from agkyra.syncer.utils import join_path, ThreadSafeDict, patch_user_agent
 from agkyra.syncer.database import TransactedConnection
 from agkyra.syncer.messaging import Messager
 from agkyra.syncer import utils, common, database
@@ -32,6 +32,8 @@ from kamaki.clients import ClientError, KamakiSSLError
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.utils import https
+
+AgkyraPithosClient = patch_user_agent(PithosClient)
 
 logger = logging.getLogger(__name__)
 
@@ -251,13 +253,14 @@ class SyncerSettings():
             logger.error("Failed to authenticate user token")
             raise
         try:
-            PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
+            PITHOS_URL = astakos.get_endpoint_url(
+                AgkyraPithosClient.service_type)
         except ClientError:
             logger.error("Failed to get endpoints for Pithos")
             raise
         try:
             account = astakos.user_info['id']
-            return PithosClient(PITHOS_URL, token, account, container)
+            return AgkyraPithosClient(PITHOS_URL, token, account, container)
         except ClientError:
             logger.error("Failed to initialize Pithos client")
             raise
