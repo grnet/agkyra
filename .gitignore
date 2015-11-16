@@ -4,3 +4,7 @@
 _build
 build
 dist
+*.confc
+agkyra/resources/cacert.pem
+agkyra/resources/nwgui/package.json
+agkyra/resources/nwjs
